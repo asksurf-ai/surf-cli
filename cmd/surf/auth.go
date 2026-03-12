@@ -341,6 +341,16 @@ func (h *callbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Future: swap cli.Cache for OS keychain here.
 // ---------------------------------------------------------------------------
 
+func saveToken(key string, token *oauth2.Token) error {
+	cli.Cache.Set(key+".expires", token.Expiry)
+	cli.Cache.Set(key+".type", token.Type())
+	cli.Cache.Set(key+".token", token.AccessToken)
+	if token.RefreshToken != "" {
+		cli.Cache.Set(key+".refresh", token.RefreshToken)
+	}
+	return cli.Cache.WriteConfig()
+}
+
 func handleToken(source oauth2.TokenSource, key string, request *http.Request) error {
 	var cached *oauth2.Token
 

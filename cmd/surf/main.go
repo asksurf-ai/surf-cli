@@ -4,9 +4,11 @@ import (
 	_ "embed"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cyberconnecthq/surf-cli/cli"
 	"github.com/cyberconnecthq/surf-cli/openapi"
@@ -135,22 +137,51 @@ func newLoginCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "login",
 		Short: "Log in to Surf via browser (OAuth)",
-		Long:  "Opens your browser to authenticate with Surf. Tokens are cached locally in ~/.config/surf/.",
+		Long:  "Checks for a valid session first, tries to refresh if expired, and only opens the browser as a last resort.\nTokens are cached locally in ~/.config/surf/.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			handler := &SurfAuthHandler{}
-			req, _ := http.NewRequest("GET", "https://api.ask.surf/gateway/", nil)
 			profile := viper.GetString("rsh-profile")
 			key := "surf:" + profile
-			params := map[string]string{
-				"client_id":     "surf-cli",
-				"authorize_url": "https://next.ask.surf/oauth/authorize",
-				"token_url":     "https://surf-oauth.vercel.app/oauth/token",
-				"scopes":        "offline_access",
+
+			// 1. Already have a valid (non-expired) token — nothing to do.
+			if expiry := cli.Cache.GetTime(key + ".expires"); !expiry.IsZero() && time.Now().Before(expiry) {
+				fmt.Fprintf(os.Stderr, "Already logged in (valid until %s).\n", expiry.Local().Format("Jan 2 15:04"))
+				return nil
 			}
-			if err := handler.OnRequest(req, key, params); err != nil {
+
+			// 2. Token expired — try silent refresh with stored refresh token.
+			if rt := cli.Cache.GetString(key + ".refresh"); rt != "" {
+				fmt.Fprintln(os.Stderr, "Session expired, refreshing...")
+				token, err := requestToken(
+					"https://surf-oauth.vercel.app/oauth/token",
+					url.Values{
+						"grant_type":    {"refresh_token"},
+						"client_id":     {"surf-cli"},
+						"refresh_token": {rt},
+						"scope":         {"offline_access"},
+					}.Encode(),
+				)
+				if err == nil {
+					saveToken(key, token)
+					fmt.Fprintln(os.Stderr, "Token refreshed successfully.")
+					return nil
+				}
+				cli.LogDebug("Refresh failed: %v", err)
+				fmt.Fprintln(os.Stderr, "Refresh token expired, opening browser...")
+			}
+
+			// 3. No valid session — full browser login.
+			source := &surfAuthCodeTokenSource{
+				ClientID:     "surf-cli",
+				AuthorizeURL: "https://next.ask.surf/oauth/authorize",
+				TokenURL:     "https://surf-oauth.vercel.app/oauth/token",
+				Scopes:       []string{"offline_access"},
+			}
+			token, err := source.Token()
+			if err != nil {
 				return fmt.Errorf("login failed: %w", err)
 			}
+			saveToken(key, token)
 			fmt.Fprintln(os.Stderr, "Logged in successfully.")
 			return nil
 		},
