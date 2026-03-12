@@ -43,7 +43,7 @@ blobs:
   - provider: s3
     bucket: surf-cli-releases
     region: us-west-2
-    folder: "cli/releases/{{.Tag}}"
+    directory: "cli/releases/{{.Tag}}"
 
 release:
   github:
