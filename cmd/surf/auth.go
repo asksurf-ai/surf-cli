@@ -187,6 +187,7 @@ func (ts *surfRefreshTokenSource) Token() (*oauth2.Token, error) {
 		if err == nil {
 			return token, nil
 		}
+		cli.LogDebug("Refresh token failed: %v — falling back to browser login", err)
 	}
 
 	token, err := ts.TokenSource.Token()
