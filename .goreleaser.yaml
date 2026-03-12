@@ -13,6 +13,7 @@ builds:
     goos:
       - linux
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
@@ -22,6 +23,9 @@ builds:
 archives:
   - format: tar.gz
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
 
 checksum:
   name_template: "checksums.txt"
@@ -34,6 +38,12 @@ changelog:
       - "^chore:"
       - "^style:"
       - "^test:"
+
+blobs:
+  - provider: s3
+    bucket: surf-cli-releases
+    region: us-west-2
+    folder: "releases/{{.Tag}}"
 
 release:
   github:
