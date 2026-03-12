@@ -22,12 +22,13 @@ case "$ARCH" in
   *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 
-# Get latest version from GitHub API
+# Get latest version from GitHub tags API
 get_latest_version() {
+  local url="https://api.github.com/repos/${REPO}/tags?per_page=1"
   if command -v curl >/dev/null 2>&1; then
-    curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
+    curl -sL "$url" | grep '"name"' | head -1 | sed -E 's/.*"name": *"([^"]+)".*/\1/'
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
+    wget -qO- "$url" | grep '"name"' | head -1 | sed -E 's/.*"name": *"([^"]+)".*/\1/'
   else
     echo "Error: curl or wget is required" >&2
     exit 1
