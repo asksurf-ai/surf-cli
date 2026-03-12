@@ -1,0 +1,22 @@
+{
+  "$schema": "https://rest.sh/schemas/apis.json",
+  "surf": {
+    "base": "https://api.ask.surf/gateway",
+    "spec_files": [
+      "https://api.ask.surf/gateway/openapi.json"
+    ],
+    "profiles": {
+      "default": {
+        "auth": {
+          "name": "oauth-authorization-code",
+          "params": {
+            "client_id": "surf-cli",
+            "authorize_url": "https://next.ask.surf/oauth/authorize",
+            "token_url": "https://surf-oauth.vercel.app/oauth/token",
+            "scopes": "offline_access"
+          }
+        }
+      }
+    }
+  }
+}
