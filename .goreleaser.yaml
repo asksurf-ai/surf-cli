@@ -48,8 +48,4 @@ blobs:
     directory: "cli/releases/{{.Tag}}"
 
 release:
-  github:
-    owner: cyberconnecthq
-    name: surf-cli
-  draft: false
-  prerelease: auto
+  disable: true
