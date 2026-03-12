@@ -89,6 +89,7 @@ func main() {
 	// Add custom commands directly on Root (not under the API subcommand).
 	cli.Root.AddCommand(newLoginCmd())
 	cli.Root.AddCommand(newLogoutCmd())
+	cli.Root.AddCommand(newRefreshCmd())
 	cli.Root.AddCommand(newSyncCmd())
 	cli.Root.AddCommand(newVersionCmd())
 
@@ -103,7 +104,7 @@ func main() {
 // (not a local command like login/logout/help/completion).
 func shouldInjectAPIName() bool {
 	local := map[string]bool{
-		"login": true, "logout": true, "sync": true,
+		"login": true, "logout": true, "refresh": true, "sync": true,
 		"help": true, "completion": true, "version": true,
 	}
 	for _, arg := range os.Args[1:] {
@@ -150,6 +151,41 @@ func newLoginCmd() *cobra.Command {
 				return fmt.Errorf("login failed: %w", err)
 			}
 			fmt.Fprintln(os.Stderr, "Logged in successfully.")
+			return nil
+		},
+	}
+}
+
+func newRefreshCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "refresh",
+		Short: "Refresh the OAuth access token",
+		Long:  "Uses the stored refresh token to obtain a new access token and updates ~/.config/surf/credentials.json.",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			profile := viper.GetString("rsh-profile")
+			key := "surf:" + profile
+			refreshToken := cli.Cache.GetString(key + ".refresh")
+			if refreshToken == "" {
+				return fmt.Errorf("no refresh token found — run `surf login` first")
+			}
+			source := &surfRefreshTokenSource{
+				ClientID:     "surf-cli",
+				TokenURL:     "https://surf-oauth.vercel.app/oauth/token",
+				Scopes:       []string{"offline_access"},
+				RefreshToken: refreshToken,
+				TokenSource: &surfAuthCodeTokenSource{
+					ClientID:     "surf-cli",
+					AuthorizeURL: "https://next.ask.surf/oauth/authorize",
+					TokenURL:     "https://surf-oauth.vercel.app/oauth/token",
+					Scopes:       []string{"offline_access"},
+				},
+			}
+			req, _ := http.NewRequest("GET", "https://api.ask.surf/gateway/", nil)
+			if err := handleToken(source, key, req); err != nil {
+				return fmt.Errorf("refresh failed: %w", err)
+			}
+			fmt.Fprintln(os.Stderr, "Token refreshed.")
 			return nil
 		},
 	}
