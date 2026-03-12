@@ -2,18 +2,20 @@
 
 CLI for the Surf data platform — crypto market data, on-chain analytics, and more.
 
-Built as a thin wrapper around [restish](https://github.com/rest-sh/restish) that auto-loads the Surf OpenAPI spec, so every API endpoint is available as a CLI command.
+Every API endpoint is available as a CLI command, dynamically generated from the Surf OpenAPI spec.
 
 ## Install
 
 ```sh
-sh -c "$(curl -fsSL https://agent.asksurf.ai/cli/releases/install.sh)"
+curl -fsSL https://agent.asksurf.ai/cli/releases/install.sh | sh
 ```
 
-Or install a specific version:
+Installs to `~/.surf/bin`. No sudo required.
+
+To install a specific version:
 
 ```sh
-curl -fsSL https://agent.asksurf.ai/cli/releases/install.sh | sh -s v0.1.0
+curl -fsSL https://agent.asksurf.ai/cli/releases/install.sh | sh -s v0.1.3
 ```
 
 ### Build from source
@@ -42,7 +44,7 @@ surf version
 surf logout
 ```
 
-Run `surf help` to see all available commands. Commands are dynamically generated from the Surf API's OpenAPI spec.
+Run `surf help` to see all available commands.
 
 ## Configuration
 
@@ -56,20 +58,17 @@ Config and cached tokens are stored in `~/.config/surf/`.
 # Build
 go build -o surf ./cmd/surf
 
-# Build with version info
-go build -ldflags "-X main.version=0.1.0" -o surf ./cmd/surf
-
 # Run
 ./surf help
 ```
 
 ### Releasing
 
-Releases are automated via [GoReleaser](https://goreleaser.com/) and GitHub Actions. Push a version tag to trigger a release:
+Releases are built with [GoReleaser](https://goreleaser.com/) and published to S3/CloudFront.
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.x.x
+goreleaser release --clean
 ```
 
-This builds binaries for Linux, macOS, and Windows (amd64/arm64), uploads them to S3/CloudFront, and creates a GitHub release.
+Builds binaries for Linux, macOS, and Windows (amd64/arm64) and uploads to `s3://surf-cli-releases/cli/releases/<tag>/`.
