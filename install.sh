@@ -2,7 +2,7 @@
 set -e
 
 REPO="cyberconnecthq/surf-cli"
-CDN_BASE="https://d2hceb16yros0l.cloudfront.net/releases"
+CDN_BASE="https://agent.asksurf.ai/cli/releases"
 INSTALL_DIR="/usr/local/bin"
 
 # Detect OS
