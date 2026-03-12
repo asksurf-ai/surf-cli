@@ -91,6 +91,7 @@ func main() {
 	cli.Root.AddCommand(newLoginCmd())
 	cli.Root.AddCommand(newLogoutCmd())
 	cli.Root.AddCommand(newSyncCmd())
+	cli.Root.AddCommand(newVersionCmd())
 
 	// Run.
 	if err := cli.Run(); err != nil {
@@ -104,7 +105,7 @@ func main() {
 func shouldInjectAPIName() bool {
 	local := map[string]bool{
 		"login": true, "logout": true, "sync": true,
-		"help": true, "completion": true,
+		"help": true, "completion": true, "version": true,
 	}
 	for _, arg := range os.Args[1:] {
 		if strings.HasPrefix(arg, "-") {
@@ -170,6 +171,17 @@ func newLogoutCmd() *cobra.Command {
 			}
 			fmt.Fprintln(os.Stderr, "Logged out. Cached tokens cleared.")
 			return nil
+		},
+	}
+}
+
+func newVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print the surf CLI version",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("surf " + version)
 		},
 	}
 }
