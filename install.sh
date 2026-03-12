@@ -2,9 +2,20 @@
 set -e
 
 CDN_BASE="https://agent.asksurf.ai/cli/releases"
-INSTALL_DIR="${HOME}/.surf/bin"
 
-# Detect OS
+# Require curl or wget.
+if command -v curl >/dev/null 2>&1; then
+  fetch() { curl -fsSL "$1"; }
+  download() { curl -fSL -o "$2" "$1"; }
+elif command -v wget >/dev/null 2>&1; then
+  fetch() { wget -qO- "$1"; }
+  download() { wget -q -O "$2" "$1"; }
+else
+  echo "Error: curl or wget is required" >&2
+  exit 1
+fi
+
+# Detect OS.
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 case "$OS" in
   linux)  OS="linux" ;;
@@ -13,7 +24,7 @@ case "$OS" in
   *) echo "Unsupported OS: $OS" >&2; exit 1 ;;
 esac
 
-# Detect architecture
+# Detect architecture.
 ARCH=$(uname -m)
 case "$ARCH" in
   x86_64|amd64)  ARCH="amd64" ;;
@@ -21,49 +32,41 @@ case "$ARCH" in
   *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 
-# Get latest version from CDN
-get_latest_version() {
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "${CDN_BASE}/latest"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -qO- "${CDN_BASE}/latest"
-  else
-    echo "Error: curl or wget is required" >&2
-    exit 1
+# Rosetta 2 detection: prefer native arm64 binary on Apple Silicon.
+if [ "$OS" = "darwin" ] && [ "$ARCH" = "amd64" ]; then
+  if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" = "1" ]; then
+    ARCH="arm64"
   fi
-}
+fi
 
-VERSION="${1:-$(get_latest_version)}"
+# musl detection on Linux.
+if [ "$OS" = "linux" ]; then
+  if [ -f /lib/libc.musl-x86_64.so.1 ] || [ -f /lib/libc.musl-aarch64.so.1 ] || ldd /bin/ls 2>&1 | grep -q musl; then
+    ARCH="${ARCH}-musl"
+  fi
+fi
+
+# Get version.
+VERSION="${1:-$(fetch "${CDN_BASE}/latest")}"
 if [ -z "$VERSION" ]; then
   echo "Error: could not determine latest version" >&2
   exit 1
 fi
 
-# Build download URL
+# Build filename (bare binary, no archive).
+FILENAME="surf_${OS}_${ARCH}"
 if [ "$OS" = "windows" ]; then
-  FILENAME="surf_${OS}_${ARCH}.zip"
-else
-  FILENAME="surf_${OS}_${ARCH}.tar.gz"
+  FILENAME="${FILENAME}.exe"
 fi
-URL="${CDN_BASE}/${VERSION}/${FILENAME}"
-CHECKSUM_URL="${CDN_BASE}/${VERSION}/checksums.txt"
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
 echo "Downloading surf ${VERSION} for ${OS}/${ARCH}..."
+download "${CDN_BASE}/${VERSION}/${FILENAME}" "${TMPDIR}/${FILENAME}"
+download "${CDN_BASE}/${VERSION}/checksums.txt" "${TMPDIR}/checksums.txt"
 
-# Download archive and checksums
-if command -v curl >/dev/null 2>&1; then
-  curl -fSL -o "${TMPDIR}/${FILENAME}" "$URL"
-  curl -fSL -o "${TMPDIR}/checksums.txt" "$CHECKSUM_URL"
-else
-  wget -q -O "${TMPDIR}/${FILENAME}" "$URL"
-  wget -q -O "${TMPDIR}/checksums.txt" "$CHECKSUM_URL"
-fi
-
-# Verify checksum
-echo "Verifying checksum..."
+# Verify checksum.
 EXPECTED=$(grep "${FILENAME}" "${TMPDIR}/checksums.txt" | awk '{print $1}')
 if [ -z "$EXPECTED" ]; then
   echo "Error: checksum not found for ${FILENAME}" >&2
@@ -86,51 +89,6 @@ if [ "$EXPECTED" != "$ACTUAL" ]; then
   exit 1
 fi
 
-# Extract
-echo "Extracting..."
-if [ "$OS" = "windows" ]; then
-  unzip -q "${TMPDIR}/${FILENAME}" -d "${TMPDIR}"
-else
-  tar -xzf "${TMPDIR}/${FILENAME}" -C "${TMPDIR}"
-fi
-
-# Install
-BINARY="surf"
-if [ "$OS" = "windows" ]; then
-  BINARY="surf.exe"
-fi
-
-mkdir -p "$INSTALL_DIR"
-mv "${TMPDIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
-chmod +x "${INSTALL_DIR}/${BINARY}"
-
-echo "surf ${VERSION} installed to ${INSTALL_DIR}/${BINARY}"
-
-# Add to PATH if not already there
-case ":$PATH:" in
-  *":${INSTALL_DIR}:"*) ;;
-  *)
-    echo ""
-    echo "Add surf to your PATH by adding this to your shell profile:"
-    echo ""
-    SHELL_NAME=$(basename "$SHELL")
-    case "$SHELL_NAME" in
-      zsh)  RC_FILE="~/.zshrc" ;;
-      bash) RC_FILE="~/.bashrc" ;;
-      fish) RC_FILE="~/.config/fish/config.fish" ;;
-      *)    RC_FILE="your shell profile" ;;
-    esac
-    if [ "$SHELL_NAME" = "fish" ]; then
-      echo "  set -gx PATH ${INSTALL_DIR} \$PATH"
-    else
-      echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
-    fi
-    echo ""
-    echo "Then restart your shell or run:"
-    if [ "$SHELL_NAME" = "fish" ]; then
-      echo "  source ${RC_FILE}"
-    else
-      echo "  source ${RC_FILE}"
-    fi
-    ;;
-esac
+# Run surf install.
+chmod +x "${TMPDIR}/${FILENAME}"
+"${TMPDIR}/${FILENAME}" install

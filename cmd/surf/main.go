@@ -92,6 +92,7 @@ func main() {
 	cli.Root.AddCommand(newRefreshCmd())
 	cli.Root.AddCommand(newSyncCmd())
 	cli.Root.AddCommand(newVersionCmd())
+	cli.Root.AddCommand(newInstallCmd())
 
 	// Run.
 	if err := cli.Run(); err != nil {
@@ -105,7 +106,7 @@ func main() {
 func shouldInjectAPIName() bool {
 	local := map[string]bool{
 		"login": true, "logout": true, "refresh": true, "sync": true,
-		"help": true, "completion": true, "version": true,
+		"help": true, "completion": true, "version": true, "install": true,
 	}
 	for _, arg := range os.Args[1:] {
 		if strings.HasPrefix(arg, "-") {
