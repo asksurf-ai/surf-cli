@@ -1,7 +1,6 @@
 #!/bin/sh
 set -e
 
-REPO="cyberconnecthq/surf-cli"
 CDN_BASE="https://agent.asksurf.ai/cli/releases"
 INSTALL_DIR="/usr/local/bin"
 
@@ -22,13 +21,12 @@ case "$ARCH" in
   *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 
-# Get latest version from GitHub tags API
+# Get latest version from CDN
 get_latest_version() {
-  local url="https://api.github.com/repos/${REPO}/tags?per_page=1"
   if command -v curl >/dev/null 2>&1; then
-    curl -sL "$url" | grep '"name"' | head -1 | sed -E 's/.*"name": *"([^"]+)".*/\1/'
+    curl -fsSL "${CDN_BASE}/latest"
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO- "$url" | grep '"name"' | head -1 | sed -E 's/.*"name": *"([^"]+)".*/\1/'
+    wget -qO- "${CDN_BASE}/latest"
   else
     echo "Error: curl or wget is required" >&2
     exit 1
