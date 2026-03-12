@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/mattn/go-isatty"
-	"github.com/rest-sh/restish/cli"
+	"github.com/cyberconnecthq/surf-cli/cli"
 	"golang.org/x/oauth2"
 )
 
