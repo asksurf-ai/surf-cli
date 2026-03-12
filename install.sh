@@ -93,4 +93,4 @@ fi
 
 # Run surf install.
 chmod +x "${TMPDIR}/${FILENAME}"
-"${TMPDIR}/${FILENAME}" install
+"${TMPDIR}/${FILENAME}" install --local
