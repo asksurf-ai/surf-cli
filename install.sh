@@ -7,9 +7,11 @@ CDN_BASE="https://agent.asksurf.ai/cli/releases"
 if command -v curl >/dev/null 2>&1; then
   fetch() { curl -fsSL "$1"; }
   download() { curl -fSL -o "$2" "$1"; }
+  download_quiet() { curl -fsSL -o "$2" "$1"; }
 elif command -v wget >/dev/null 2>&1; then
   fetch() { wget -qO- "$1"; }
   download() { wget -q -O "$2" "$1"; }
+  download_quiet() { wget -q -O "$2" "$1"; }
 else
   echo "Error: curl or wget is required" >&2
   exit 1
@@ -64,7 +66,7 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 echo "Downloading surf ${VERSION} for ${OS}/${ARCH}..."
 download "${CDN_BASE}/${VERSION}/${FILENAME}" "${TMPDIR}/${FILENAME}"
-download "${CDN_BASE}/${VERSION}/checksums.txt" "${TMPDIR}/checksums.txt"
+download_quiet "${CDN_BASE}/${VERSION}/checksums.txt" "${TMPDIR}/checksums.txt"
 
 # Verify checksum.
 EXPECTED=$(grep "${FILENAME}" "${TMPDIR}/checksums.txt" | awk '{print $1}')

@@ -151,15 +151,26 @@ func newInstallCmd() *cobra.Command {
 			}
 
 			// Print success.
+			displayPath := linkPath
+			if strings.HasPrefix(linkPath, home) {
+				displayPath = "~" + linkPath[len(home):]
+			}
+
+			green := "\033[32m"
+			bold := "\033[1m"
+			reset := "\033[0m"
+
 			fmt.Println()
-			fmt.Printf("  surf successfully installed!\n\n")
-			fmt.Printf("  Version:  %s\n", version)
-			fmt.Printf("  Location: %s\n", linkPath)
+			fmt.Printf("%s\u2714 surf successfully installed!%s\n", green, reset)
+			fmt.Println()
+			fmt.Printf("  Version: %s%s%s\n", green, version, reset)
+			fmt.Printf("  Location: %s\n", displayPath)
 			fmt.Println()
 			if pathMsg != "" {
-				fmt.Printf("  %s\n\n", pathMsg)
+				fmt.Printf("  %s\n", pathMsg)
+				fmt.Println()
 			}
-			fmt.Println("  Next: Run surf --help to get started")
+			fmt.Printf("  Next: Run %ssurf --help%s to get started\n", bold, reset)
 			fmt.Println()
 
 			return nil
