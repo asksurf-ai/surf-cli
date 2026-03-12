@@ -27,9 +27,8 @@ func main() {
 		os.Exit(1)
 	}
 	configDir := filepath.Join(home, ".config", "surf")
-	cacheDir := filepath.Join(configDir, "cache")
 	os.Setenv("SURF_CONFIG_DIR", configDir)
-	os.Setenv("SURF_CACHE_DIR", cacheDir)
+	os.Setenv("SURF_CACHE_DIR", configDir)
 
 	// Ensure config directory exists.
 	if err := os.MkdirAll(configDir, 0700); err != nil {
