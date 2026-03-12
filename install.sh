@@ -2,7 +2,7 @@
 set -e
 
 CDN_BASE="https://agent.asksurf.ai/cli/releases"
-INSTALL_DIR="/usr/local/bin"
+INSTALL_DIR="${HOME}/.surf/bin"
 
 # Detect OS
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -100,13 +100,37 @@ if [ "$OS" = "windows" ]; then
   BINARY="surf.exe"
 fi
 
-if [ -w "$INSTALL_DIR" ]; then
-  mv "${TMPDIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
-else
-  echo "Installing to ${INSTALL_DIR} (requires sudo)..."
-  sudo mv "${TMPDIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
-fi
-
+mkdir -p "$INSTALL_DIR"
+mv "${TMPDIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
 chmod +x "${INSTALL_DIR}/${BINARY}"
 
 echo "surf ${VERSION} installed to ${INSTALL_DIR}/${BINARY}"
+
+# Add to PATH if not already there
+case ":$PATH:" in
+  *":${INSTALL_DIR}:"*) ;;
+  *)
+    echo ""
+    echo "Add surf to your PATH by adding this to your shell profile:"
+    echo ""
+    SHELL_NAME=$(basename "$SHELL")
+    case "$SHELL_NAME" in
+      zsh)  RC_FILE="~/.zshrc" ;;
+      bash) RC_FILE="~/.bashrc" ;;
+      fish) RC_FILE="~/.config/fish/config.fish" ;;
+      *)    RC_FILE="your shell profile" ;;
+    esac
+    if [ "$SHELL_NAME" = "fish" ]; then
+      echo "  set -gx PATH ${INSTALL_DIR} \$PATH"
+    else
+      echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+    fi
+    echo ""
+    echo "Then restart your shell or run:"
+    if [ "$SHELL_NAME" = "fish" ]; then
+      echo "  source ${RC_FILE}"
+    else
+      echo "  source ${RC_FILE}"
+    fi
+    ;;
+esac
