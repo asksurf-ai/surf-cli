@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/alexeyco/simpletable"
 	"github.com/amzn/ion-go/ion"
@@ -176,8 +177,21 @@ func (t Table) Detect(contentType string) bool {
 }
 
 // Marshal the value to a table string.
+// If the value is a data envelope (map with a "data" array), auto-extracts it.
 func (t Table) Marshal(value any) ([]byte, error) {
-	d, ok := makeJSONSafe(value).([]any)
+	safe := makeJSONSafe(value)
+	d, ok := safe.([]any)
+	if !ok {
+		// Auto-extract "data" array from { "data": [...], ... } envelope.
+		if m, mOk := safe.(map[string]any); mOk {
+			if dataField, dOk := m["data"]; dOk {
+				if arr, aOk := dataField.([]any); aOk {
+					d = arr
+					ok = true
+				}
+			}
+		}
+	}
 	if !ok {
 		return nil, fmt.Errorf("error building table. Must be array of objects")
 	}
@@ -224,7 +238,8 @@ func setTable(data []any) ([]byte, error) {
 						}
 						val = strings.Join(converted, ", ")
 					}
-					bodyCells = append(bodyCells, &simpletable.Cell{Align: simpletable.AlignRight, Text: fmt.Sprintf("%v", val)})
+					cellText := formatTableCell(cellKey.Text, val)
+					bodyCells = append(bodyCells, &simpletable.Cell{Align: simpletable.AlignRight, Text: cellText})
 				} else {
 					return nil, fmt.Errorf("error building table. Header Key not found in repeating object: %s", cellKey.Text)
 				}
@@ -244,6 +259,31 @@ func setTable(data []any) ([]byte, error) {
 
 	ret := []byte(table.String())
 	return ret, nil
+}
+
+// timestampSuffixes are field name patterns that indicate a Unix timestamp value.
+var timestampSuffixes = []string{"_time", "_at", "timestamp", "_ts", "_date"}
+
+// isTimestampField checks if a field name looks like a timestamp field.
+func isTimestampField(name string) bool {
+	lower := strings.ToLower(name)
+	for _, suffix := range timestampSuffixes {
+		if strings.HasSuffix(lower, suffix) {
+			return true
+		}
+	}
+	return lower == "timestamp" || lower == "created" || lower == "updated"
+}
+
+// formatTableCell formats a cell value for table display.
+// Unix timestamp fields are converted to human-readable dates.
+func formatTableCell(fieldName string, val any) string {
+	if isTimestampField(fieldName) {
+		if f, ok := val.(float64); ok && f > 1e9 && f < 1e11 {
+			return time.Unix(int64(f), 0).UTC().Format("2006-01-02 15:04:05")
+		}
+	}
+	return fmt.Sprintf("%v", val)
 }
 
 // Gron describes an output format for easier grepping. This is based on the
