@@ -105,6 +105,27 @@ func cacheAPI(name string, api *API) {
 	}
 }
 
+// LoadCachedAPI loads an API from the local cache without making network
+// requests. Returns nil if no valid cache exists or is expired.
+// Unlike Load, this skips the version check since it is used only to
+// populate command names and descriptions for help output.
+func LoadCachedAPI(name string) *API {
+	expires := Cache.GetTime(name + ".expires")
+	if expires.IsZero() || !time.Now().Before(expires) {
+		return nil
+	}
+	filename := filepath.Join(getCacheDir(), name+".cbor")
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil
+	}
+	var api API
+	if err := cbor.Unmarshal(data, &api); err != nil {
+		return nil
+	}
+	return &api
+}
+
 // Load will hydrate the command tree for an API, possibly refreshing the
 // API spec if the cache is out of date.
 func Load(entrypoint string, root *cobra.Command) (API, error) {

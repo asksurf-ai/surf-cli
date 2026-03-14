@@ -88,6 +88,26 @@ func main() {
 		}
 	}
 
+	// Populate "Available API Commands" in help from cached API spec.
+	// These are lightweight stubs for display only — real execution goes
+	// through the "surf" subcommand via shouldInjectAPIName().
+	if api := cli.LoadCachedAPI("surf"); api != nil {
+		for _, op := range api.Operations {
+			if op.Hidden {
+				continue
+			}
+			cli.Root.AddCommand(&cobra.Command{
+				Use:     op.Name,
+				GroupID: "api",
+				Short:   op.Short,
+				Aliases: op.Aliases,
+				Run: func(cmd *cobra.Command, args []string) {
+					cmd.Help()
+				},
+			})
+		}
+	}
+
 	// Add custom commands directly on Root (not under the API subcommand).
 	cli.Root.AddCommand(newLoginCmd())
 	cli.Root.AddCommand(newLogoutCmd())
@@ -95,6 +115,7 @@ func main() {
 	cli.Root.AddCommand(newSyncCmd())
 	cli.Root.AddCommand(newVersionCmd())
 	cli.Root.AddCommand(newInstallCmd())
+	cli.Root.AddCommand(newListOperationsCmd())
 
 	// Run.
 	if err := cli.Run(); err != nil {
@@ -109,6 +130,7 @@ func shouldInjectAPIName() bool {
 	local := map[string]bool{
 		"login": true, "logout": true, "refresh": true, "sync": true,
 		"help": true, "completion": true, "version": true, "install": true,
+		"list-operations": true,
 	}
 	for _, arg := range os.Args[1:] {
 		if strings.HasPrefix(arg, "-") {
@@ -268,4 +290,82 @@ func newSyncCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newListOperationsCmd() *cobra.Command {
+	var groupByTag bool
+	cmd := &cobra.Command{
+		Use:   "list-operations",
+		Short: "List all available API operations",
+		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			api := cli.LoadCachedAPI("surf")
+			if api == nil {
+				return fmt.Errorf("no cached API spec — run `surf sync` first")
+			}
+
+			if groupByTag {
+				printOperationsGrouped(api.Operations)
+			} else {
+				printOperationsFlat(api.Operations)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVarP(&groupByTag, "group", "g", false, "Group operations by category")
+	return cmd
+}
+
+func printOperationsFlat(ops []cli.Operation) {
+	for _, op := range ops {
+		if op.Hidden {
+			continue
+		}
+		params := formatParams(op)
+		fmt.Fprintf(os.Stdout, "  %-6s %-35s %s%s\n", op.Method, op.Name, op.Short, params)
+	}
+}
+
+func printOperationsGrouped(ops []cli.Operation) {
+	groups := map[string][]cli.Operation{}
+	var order []string
+	for _, op := range ops {
+		if op.Hidden {
+			continue
+		}
+		g := op.Group
+		if g == "" {
+			g = "other"
+		}
+		if _, seen := groups[g]; !seen {
+			order = append(order, g)
+		}
+		groups[g] = append(groups[g], op)
+	}
+
+	for i, g := range order {
+		if i > 0 {
+			fmt.Println()
+		}
+		fmt.Printf("%s:\n", g)
+		for _, op := range groups[g] {
+			params := formatParams(op)
+			fmt.Fprintf(os.Stdout, "  %-6s %-35s %s%s\n", op.Method, op.Name, op.Short, params)
+		}
+	}
+}
+
+func formatParams(op cli.Operation) string {
+	var names []string
+	for _, p := range op.PathParams {
+		names = append(names, "<"+p.Name+">")
+	}
+	for _, p := range op.QueryParams {
+		names = append(names, "--"+p.Name)
+	}
+	if len(names) == 0 {
+		return ""
+	}
+	return "  (" + strings.Join(names, ", ") + ")"
 }
