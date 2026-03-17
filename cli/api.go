@@ -290,7 +290,7 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 				// Override the operation base path if requested, otherwise
 				// default to the API entrypoint.
 				opsBase := uri
-				if config.OperationBase != "" {
+				if config != nil && config.OperationBase != "" {
 					opsBase = uri.ResolveReference(&url.URL{Path: config.OperationBase})
 				}
 				api, err := load(root, *opsBase, *resolved, resp, name, l)
