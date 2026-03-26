@@ -16,19 +16,12 @@ import path from 'path'
 
 const args = process.argv.slice(2)
 const projectName = args.find(a => !a.startsWith('--')) || '.'
-const frontendPort = getRequiredFlag('--port')
-const backendPort = getRequiredFlag('--backend-port')
+const frontendPort = getFlag('--port') || process.env.VITE_PORT || '5173'
+const backendPort = getFlag('--backend-port') || process.env.VITE_BACKEND_PORT || '3001'
 
 function getFlag(name: string): string | undefined {
   const idx = args.indexOf(name)
   return idx >= 0 && args[idx + 1] ? args[idx + 1] : undefined
-}
-
-function getRequiredFlag(name: string): string {
-  const value = getFlag(name)
-  if (value) return value
-
-  throw new Error(`Missing required flag ${name}`)
 }
 
 // ---------------------------------------------------------------------------
