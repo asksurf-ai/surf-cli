@@ -3,9 +3,8 @@
  * create-surf-app — Scaffold a Surf app with @surf-ai/sdk.
  *
  * Usage:
- *   bunx create-surf-app my-app
- *   bunx create-surf-app my-app --port 5173 --backend-port 3001
- *   bunx create-surf-app .          # scaffold in current directory
+ *   bunx create-surf-app my-app --port <frontend-port> --backend-port <backend-port>
+ *   bunx create-surf-app . --port <frontend-port> --backend-port <backend-port>
  */
 
 import fs from 'fs'
@@ -17,12 +16,19 @@ import path from 'path'
 
 const args = process.argv.slice(2)
 const projectName = args.find(a => !a.startsWith('--')) || '.'
-const frontendPort = getFlag('--port', '5173')
-const backendPort = getFlag('--backend-port', '3001')
+const frontendPort = getRequiredFlag('--port')
+const backendPort = getRequiredFlag('--backend-port')
 
-function getFlag(name: string, fallback: string): string {
+function getFlag(name: string): string | undefined {
   const idx = args.indexOf(name)
-  return idx >= 0 && args[idx + 1] ? args[idx + 1] : fallback
+  return idx >= 0 && args[idx + 1] ? args[idx + 1] : undefined
+}
+
+function getRequiredFlag(name: string): string {
+  const value = getFlag(name)
+  if (value) return value
+
+  throw new Error(`Missing required flag ${name}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -34,7 +40,7 @@ const frontendPkg = {
   private: true,
   type: 'module',
   scripts: {
-    dev: `vite --port ${frontendPort}`,
+    dev: 'vite',
     build: 'vite build',
     preview: 'vite preview',
     lint: 'eslint .',
@@ -143,14 +149,33 @@ createServer().start()
 
   'frontend/package.json': JSON.stringify(frontendPkg, null, 2),
 
+  'frontend/.env': `VITE_PORT=${frontendPort}
+VITE_BACKEND_PORT=${backendPort}
+`,
+
   'frontend/vite.config.ts': `import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 const env = loadEnv('', process.cwd(), '')
-const FRONTEND_PORT = parseInt(env.VITE_PORT || '${frontendPort}', 10)
-const BACKEND_PORT = parseInt(env.VITE_BACKEND_PORT || '${backendPort}', 10)
+
+function requiredPort(name: string) {
+  const value = env[name]
+  if (!value) {
+    throw new Error(\`Missing \${name}. Set it in frontend/.env or your shell environment.\`)
+  }
+
+  const port = Number.parseInt(value, 10)
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(\`Invalid \${name}: \${value}\`)
+  }
+
+  return port
+}
+
+const FRONTEND_PORT = requiredPort('VITE_PORT')
+const BACKEND_PORT = requiredPort('VITE_BACKEND_PORT')
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

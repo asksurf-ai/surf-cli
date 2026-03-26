@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --clean && rm -rf dist/templates && cp -r templates dist/templates",
-    "dev": "tsup src/index.ts --format esm --watch"
+    "dev": "tsup src/index.ts --format esm --watch",
+    "test": "bun test"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
