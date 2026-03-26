@@ -9,6 +9,9 @@ on:
         description: 'OpenAPI spec URL (default: live endpoint)'
         required: false
         default: 'https://api.ask.surf/gateway/openapi.json'
+      version:
+        description: 'Override SDK version (default: read from spec info.version)'
+        required: false
       skip_publish:
         description: 'Skip npm publish (only regenerate and commit)'
         type: boolean
@@ -40,14 +43,19 @@ jobs:
         working-directory: js/packages/sdk
         run: python3 scripts/gen_sdk.py --spec /tmp/openapi.json
 
-      - name: Stamp package versions from spec
+      - name: Stamp package versions
         id: version
         run: |
-          VER=$(python3 -c "
+          OVERRIDE="${{ inputs.version }}"
+          if [ -n "$OVERRIDE" ]; then
+            VER="$OVERRIDE"
+          else
+            VER=$(python3 -c "
           import json
           spec = json.load(open('/tmp/openapi.json'))
           print(spec['info']['version'].lstrip('v'))
           ")
+          fi
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           echo "SDK version: $VER"
           for pkg in js/packages/sdk js/packages/theme js/packages/create-surf-app; do
