@@ -4,6 +4,14 @@
   "description": "Surf Design System — Tailwind CSS theme, color tokens, and base styles",
   "main": "index.css",
   "style": "index.css",
-  "files": ["index.css"],
-  "keywords": ["surf", "tailwind", "theme", "design-system", "css"]
+  "files": [
+    "index.css"
+  ],
+  "keywords": [
+    "surf",
+    "tailwind",
+    "theme",
+    "design-system",
+    "css"
+  ]
 }
