@@ -1,0 +1,314 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700;900&family=Roboto+Mono:wght@400;500&display=swap');
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ===== Tailwind CSS 4 Theme — maps CSS vars to Tailwind tokens ===== */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  /* Surf Semantic — Background */
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-subtle-hover: var(--bg-subtle-hover);
+  --color-bg-base: var(--bg-base);
+  --color-bg-base-opaque: var(--bg-base-opaque);
+  --color-bg-menu: var(--bg-menu);
+  --color-bg-chat: var(--bg-chat);
+  --color-bg-chat-nav: var(--bg-chat-nav);
+
+  /* Surf Semantic — Foreground */
+  --color-fg-base: var(--fg-base);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-disabled: var(--fg-disabled);
+
+  /* Surf Semantic — Border */
+  --color-border-base: var(--border-base);
+  --color-border-strong: var(--border-strong);
+  --color-border-contrast: var(--border-contrast);
+  --color-border-focus: var(--border-focus);
+
+  /* Surf Brand */
+  --color-brand-100: var(--brand-100);
+  --color-brand-60: var(--brand-60);
+  --color-brand-30: var(--brand-30);
+  --color-brand-10: var(--brand-10);
+
+  /* Surf Visualizer (Chart/Status) */
+  --color-visualizer-rose-pop: var(--visualizer-rose-pop);
+  --color-visualizer-indigo-breeze: var(--visualizer-indigo-breeze);
+  --color-visualizer-emerald-mint: var(--visualizer-emerald-mint);
+  --color-visualizer-golden-amber: var(--visualizer-golden-amber);
+  --color-visualizer-royal-blue: var(--visualizer-royal-blue);
+  --color-visualizer-crimson-spark: var(--visualizer-crimson-spark);
+  --color-visualizer-aqua-glow: var(--visualizer-aqua-glow);
+  --color-visualizer-sunbeam-yellow: var(--visualizer-sunbeam-yellow);
+
+  /* Surf Tags */
+  --color-tag-blue-10: var(--tag-blue-10);
+  --color-tag-blue-100: var(--tag-blue-100);
+  --color-tag-yellow-10: var(--tag-yellow-10);
+  --color-tag-yellow-100: var(--tag-yellow-100);
+  --color-tag-purple-10: var(--tag-purple-10);
+  --color-tag-purple-100: var(--tag-purple-100);
+  --color-tag-cyan-10: var(--tag-cyan-10);
+  --color-tag-cyan-100: var(--tag-cyan-100);
+  --color-tag-pink-10: var(--tag-pink-10);
+  --color-tag-pink-100: var(--tag-pink-100);
+  --color-tag-orange-10: var(--tag-orange-10);
+  --color-tag-orange-100: var(--tag-orange-100);
+
+  /* Neutral */
+  --color-neutral-0: var(--neutral-0);
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+/* ===== Light Mode (default) ===== */
+:root {
+  /* shadcn semantic tokens (Surf Light) */
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 13%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(0 0% 13%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(0 0% 13%);
+  --primary: hsl(339 100% 58%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(0 3% 95%);
+  --secondary-foreground: hsl(0 0% 13%);
+  --muted: hsl(0 3% 95%);
+  --muted-foreground: hsl(0 0% 48%);
+  --accent: hsl(0 3% 95%);
+  --accent-foreground: hsl(0 0% 13%);
+  --destructive: hsl(357 91% 55%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(0 0% 91%);
+  --input: hsl(0 0% 91%);
+  --ring: #212121;
+  --radius: 0.5rem;
+
+  /* Surf Neutral Palette */
+  --neutral-0: #ffffff;
+  --neutral-50: #fafafa;
+  --neutral-100: #f5f4f4;
+  --neutral-200: #e7e7e7;
+  --neutral-300: #d8d8d8;
+  --neutral-400: #aaaaaa;
+  --neutral-500: #7a7a7a;
+  --neutral-600: #5b5b5b;
+  --neutral-700: #464646;
+  --neutral-800: #2a2a2a;
+  --neutral-900: #212121;
+  --neutral-950: #1b1b1b;
+  --neutral-1000: #101010;
+
+  /* Surf Brand */
+  --brand-100: #ff2882;
+  --brand-60: rgba(255, 40, 130, 0.6);
+  --brand-30: rgba(255, 40, 130, 0.3);
+  --brand-10: rgba(255, 40, 130, 0.1);
+
+  /* Surf Brand Extended */
+  --brand-seafoam: #b6cfd0;
+  --brand-dusty-teal: #6ba4b8;
+  --brand-black-aqua: #002f38;
+  --brand-deep-teal-blue: #07272d;
+
+  /* Surf Visualizer (Chart) Colors */
+  --visualizer-rose-pop: #fd4b96;
+  --visualizer-indigo-breeze: #6366f1;
+  --visualizer-emerald-mint: #10b981;
+  --visualizer-golden-amber: #f59e0b;
+  --visualizer-royal-blue: #1d4ed8;
+  --visualizer-crimson-spark: #ef4444;
+  --visualizer-aqua-glow: #06b6d4;
+  --visualizer-sunbeam-yellow: #facc15;
+
+  /* Surf Semantic Tokens (Light) */
+  --bg-subtle: rgba(42, 42, 42, 0.04);
+  --bg-subtle-hover: rgba(42, 42, 42, 0.06);
+  --bg-base: rgba(255, 255, 255, 0.88);
+  --bg-base-opaque: #ffffff;
+  --bg-menu: #ffffff;
+  --bg-chat: #fcfcfc;
+  --bg-chat-nav: #f4f4f4;
+  --fg-base: #212121;
+  --fg-subtle: #7a7a7a;
+  --fg-muted: #aaaaaa;
+  --fg-disabled: #d8d8d8;
+  --border-base: rgba(42, 42, 42, 0.04);
+  --border-strong: rgba(42, 42, 42, 0.08);
+  --border-contrast: rgba(42, 42, 42, 0.12);
+  --border-focus: rgba(42, 42, 42, 0.4);
+
+  /* Tag Colors */
+  --tag-blue-10: rgba(91, 181, 255, 0.1);
+  --tag-blue-100: #5bb5ff;
+  --tag-yellow-10: rgba(222, 195, 120, 0.1);
+  --tag-yellow-100: #dec378;
+  --tag-purple-10: rgba(144, 142, 184, 0.1);
+  --tag-purple-100: #908eb8;
+  --tag-cyan-10: rgba(116, 173, 164, 0.1);
+  --tag-cyan-100: #74ada4;
+  --tag-pink-10: rgba(184, 142, 167, 0.1);
+  --tag-pink-100: #b88ea7;
+  --tag-orange-10: rgba(184, 160, 142, 0.1);
+  --tag-orange-100: #b8a08e;
+
+  /* Surf Gradient Definitions (raw, mode-independent) */
+  --gradient-max-dark: linear-gradient(213deg, #8c421d 2%, #fbe67b 31%, #fcfbe7 53%, #f7d14e 77%, #d4a041 100%);
+  --gradient-max-light: linear-gradient(125deg, #8c421d 22%, #d2af00 47%, #cd9124 67%, #d4a041 88%);
+  --gradient-pro-dark: linear-gradient(213deg, #7a96ac 1%, #c5d6e2 27%, #eaeff3 47%, #c5d6e2 65%, #a3bccf 89%);
+  --gradient-pro-light: linear-gradient(129deg, #7a96ac 4%, #6d7f8d 27%, #9fb9ce 55%, #6d7f8d 90%);
+  --gradient-plus-dark: linear-gradient(214deg, #986732 0%, #a7825b 23%, #f6d0ab 45%, #a07043 66%, #9d774e 100%);
+  --gradient-plus-light: linear-gradient(129deg, #9e8976 5%, #7a5e50 19%, #f6d0ab 35%, #9d774e 49%, #c99b70 65%, #795f52 78%);
+  --gradient-upgrade-dark: linear-gradient(214deg, #ffedf3 0%, #ff9fbf 30%, #fd5d92 59%, #ffdab2 100%);
+  --gradient-upgrade-light: linear-gradient(32deg, #fc3bb2 6%, #f7906e 79%);
+  --gradient-new-function: linear-gradient(33deg, #6e86ff 17%, #ff2882 55%, #ff98a4 103%);
+  --gradient-suggestion: linear-gradient(32deg, #fd538c 4%, #5aa6e0 47%, #ffdab2 98%);
+  --gradient-g1: linear-gradient(189deg, #ffacc6 6%, #b6e0f5 99%);
+  --gradient-g2: linear-gradient(34deg, #9796f0 9%, #fbc7d4 84%);
+  --gradient-g3: linear-gradient(to right, #ed4264, #ffedbc);
+  --gradient-g4: linear-gradient(232deg, #fedc2a 4%, #dd5789 56%, #7a2c9e 104%);
+  --gradient-g5: linear-gradient(32deg, #fc3bb2 6%, #f7906e 79%);
+
+  /* Surf Gradients (semantic, auto-switch by mode) */
+  --gradient-max: var(--gradient-max-light);
+  --gradient-pro: var(--gradient-pro-light);
+  --gradient-plus: var(--gradient-plus-light);
+  --gradient-upgrade: var(--gradient-upgrade-light);
+
+  /* Spacing */
+  --spacing-2: 2px;
+  --spacing-4: 4px;
+  --spacing-6: 6px;
+  --spacing-8: 8px;
+  --spacing-10: 10px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-64: 64px;
+  --spacing-96: 96px;
+  --spacing-128: 128px;
+
+  /* Border Radius */
+  --radius-2: 2px;
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-20: 20px;
+  --radius-24: 24px;
+  --radius-full: 999px;
+
+  /* Typography */
+  --font-family-header: "Lato", "PingFang SC", sans-serif;
+  --font-family-body: "Lato", "PingFang SC", sans-serif;
+  --font-family-code: "Roboto Mono", monospace;
+}
+
+/* ===== Dark Mode ===== */
+.dark {
+  /* shadcn semantic tokens (Surf Dark) */
+  --background: hsl(0 0% 9%);
+  --foreground: hsl(0 0% 91%);
+  --card: hsl(0 0% 9%);
+  --card-foreground: hsl(0 0% 91%);
+  --popover: hsl(0 0% 15%);
+  --popover-foreground: hsl(0 0% 91%);
+  --primary: hsl(339 100% 58%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(0 0% 16%);
+  --secondary-foreground: hsl(0 0% 91%);
+  --muted: hsl(0 0% 16%);
+  --muted-foreground: hsl(0 0% 67%);
+  --accent: hsl(0 0% 16%);
+  --accent-foreground: hsl(0 0% 91%);
+  --destructive: hsl(359 100% 65%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(0 0% 20%);
+  --input: hsl(0 0% 20%);
+  --ring: #e7e7e7;
+
+  /* Surf Gradients (Dark) */
+  --gradient-max: var(--gradient-max-dark);
+  --gradient-pro: var(--gradient-pro-dark);
+  --gradient-plus: var(--gradient-plus-dark);
+  --gradient-upgrade: var(--gradient-upgrade-dark);
+
+  /* Surf Semantic Tokens (Dark) */
+  --bg-subtle: rgba(255, 255, 255, 0.04);
+  --bg-subtle-hover: rgba(255, 255, 255, 0.12);
+  --bg-base: rgba(42, 42, 42, 0.8);
+  --bg-base-opaque: #171717;
+  --bg-menu: #252525;
+  --bg-chat: #101010;
+  --bg-chat-nav: #171717;
+  --fg-base: #e7e7e7;
+  --fg-subtle: #aaaaaa;
+  --fg-muted: #7a7a7a;
+  --fg-disabled: #5b5b5b;
+  --border-base: rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.08);
+  --border-contrast: rgba(255, 255, 255, 0.12);
+  --border-focus: rgba(255, 255, 255, 0.4);
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: "Lato", "PingFang SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --spacing-96: 64px;
+    --spacing-128: 64px;
+  }
+}

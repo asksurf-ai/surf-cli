@@ -1,0 +1,12 @@
+{
+  "name": "test-app-backend",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@surf-ai/sdk": "file:../../",
+    "express": "^4.22.0"
+  }
+}

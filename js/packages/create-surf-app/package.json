@@ -1,0 +1,18 @@
+{
+  "name": "create-surf-app",
+  "version": "0.1.0",
+  "description": "Scaffold a Surf app — Vite + React + Express + @surf-ai/sdk",
+  "type": "module",
+  "bin": {
+    "create-surf-app": "./dist/index.js"
+  },
+  "files": ["dist", "templates"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean && rm -rf dist/templates && cp -r templates dist/templates",
+    "dev": "tsup src/index.ts --format esm --watch"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.9.0"
+  }
+}
