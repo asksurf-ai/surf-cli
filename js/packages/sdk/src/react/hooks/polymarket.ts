@@ -5,10 +5,10 @@ import { proxyGet, proxyPost } from '../fetch';
 import type { ApiResponse, PolymarketActivityItem, PolymarketActivityParams, PolymarketEventsItem, PolymarketEventsParams, PolymarketMarketsItem, PolymarketMarketsParams, PolymarketOpenInterestItem, PolymarketOpenInterestParams, PolymarketPositionsItem, PolymarketPositionsParams, PolymarketPricesItem, PolymarketPricesParams, PolymarketRankingItem, PolymarketRankingParams, PolymarketTradesItem, PolymarketTradesParams, PolymarketVolumesItem, PolymarketVolumesParams } from '../../data/types';
 
 /** Get trade and redemption activity for a Polymarket wallet. Data refresh: ~30 minutes */
-export function useInfinitePolymarketActivity(params?: Omit<PolymarketActivityParams, 'offset'>) {
+export function useInfinitePolymarketActivity(params: Omit<PolymarketActivityParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-activity', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketActivityItem>>('polymarket/activity', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketActivityItem>>('prediction-market/polymarket/activity', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -20,10 +20,10 @@ export function useInfinitePolymarketActivity(params?: Omit<PolymarketActivityPa
 }
 
 /** Get Polymarket events with nested markets, optionally filtered by `event_slug`. Each event includes aggregated status, volume, and a list of markets with `side_a`/`side_b` outcomes. Data refresh: ~30 minutes */
-export function useInfinitePolymarketEvents(params?: Omit<PolymarketEventsParams, 'offset'>) {
+export function useInfinitePolymarketEvents(params: Omit<PolymarketEventsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-events', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketEventsItem>>('polymarket/events', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketEventsItem>>('prediction-market/polymarket/events', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -35,10 +35,10 @@ export function useInfinitePolymarketEvents(params?: Omit<PolymarketEventsParams
 }
 
 /** Get Polymarket markets, optionally filtered by `market_slug`. Each market includes `side_a` and `side_b` outcomes. Current prices are available via `/polymarket/prices` using the `condition_id`. Data refresh: ~30 minutes */
-export function useInfinitePolymarketMarkets(params?: Omit<PolymarketMarketsParams, 'offset'>) {
+export function useInfinitePolymarketMarkets(params: Omit<PolymarketMarketsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-markets', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketMarketsItem>>('polymarket/markets', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketMarketsItem>>('prediction-market/polymarket/markets', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -50,18 +50,25 @@ export function useInfinitePolymarketMarkets(params?: Omit<PolymarketMarketsPara
 }
 
 /** Get daily open interest history for a Polymarket market. Data refresh: ~30 minutes */
-export function usePolymarketOpenInterest(params?: PolymarketOpenInterestParams) {
-  return useQuery({
+export function useInfinitePolymarketOpenInterest(params: Omit<PolymarketOpenInterestParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['polymarket-open-interest', params],
-    queryFn: () => proxyGet<ApiResponse<PolymarketOpenInterestItem>>('polymarket/open-interest', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketOpenInterestItem>>('prediction-market/polymarket/open-interest', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
 /** Get wallet positions on Polymarket markets. Data refresh: ~30 minutes */
-export function useInfinitePolymarketPositions(params?: Omit<PolymarketPositionsParams, 'offset'>) {
+export function useInfinitePolymarketPositions(params: Omit<PolymarketPositionsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-positions', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketPositionsItem>>('polymarket/positions', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketPositionsItem>>('prediction-market/polymarket/positions', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -73,10 +80,17 @@ export function useInfinitePolymarketPositions(params?: Omit<PolymarketPositions
 }
 
 /** Get aggregated price history for a Polymarket market. Use `interval=latest` for the most recent price snapshot. Data refresh: ~30 minutes */
-export function usePolymarketPrices(params?: PolymarketPricesParams) {
-  return useQuery({
+export function useInfinitePolymarketPrices(params: Omit<PolymarketPricesParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['polymarket-prices', params],
-    queryFn: () => proxyGet<ApiResponse<PolymarketPricesItem>>('polymarket/prices', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketPricesItem>>('prediction-market/polymarket/prices', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
@@ -84,7 +98,7 @@ export function usePolymarketPrices(params?: PolymarketPricesParams) {
 export function useInfinitePolymarketRanking(params?: Omit<PolymarketRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-ranking', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketRankingItem>>('polymarket/ranking', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketRankingItem>>('prediction-market/polymarket/ranking', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -99,7 +113,7 @@ export function useInfinitePolymarketRanking(params?: Omit<PolymarketRankingPara
 export function useInfinitePolymarketTrades(params?: Omit<PolymarketTradesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-trades', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketTradesItem>>('polymarket/trades', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketTradesItem>>('prediction-market/polymarket/trades', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -111,10 +125,17 @@ export function useInfinitePolymarketTrades(params?: Omit<PolymarketTradesParams
 }
 
 /** Get trading volume and trade count history for a Polymarket market. Data refresh: ~30 minutes */
-export function usePolymarketVolumes(params?: PolymarketVolumesParams) {
-  return useQuery({
+export function useInfinitePolymarketVolumes(params: Omit<PolymarketVolumesParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['polymarket-volumes', params],
-    queryFn: () => proxyGet<ApiResponse<PolymarketVolumesItem>>('polymarket/volumes', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<PolymarketVolumesItem>>('prediction-market/polymarket/volumes', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 

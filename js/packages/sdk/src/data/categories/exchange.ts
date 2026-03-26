@@ -5,19 +5,19 @@ import type { ApiObjectResponse, ApiResponse, ExchangeDepthItem, ExchangeDepthPa
 
 export const exchange = {
   /** Get order book bid/ask levels with computed stats: spread, spread percentage, mid-price, and total bid/ask depth. Use `limit` to control the number of price levels (1–100, default 20). Set `type=swap` to query perpetual contract order books instead of spot. */
-  depth: (params?: ExchangeDepthParams): Promise<ApiResponse<ExchangeDepthItem>> =>
+  depth: (params: ExchangeDepthParams): Promise<ApiResponse<ExchangeDepthItem>> =>
     get('exchange/depth', params as any),
 
   /** Get historical funding rate records for a perpetual contract. Use `from` to set the start time and `limit` to control result count. For longer history, paginate by using the last returned timestamp as the next `from` value. Note: not all exchanges support historical queries via `from`; some only return recent data regardless. For the latest funding rate snapshot, see `/exchange/perp?fields=funding`. */
-  funding_history: (params?: ExchangeFundingHistoryParams): Promise<ApiResponse<ExchangeFundingHistoryItem>> =>
+  funding_history: (params: ExchangeFundingHistoryParams): Promise<ApiResponse<ExchangeFundingHistoryItem>> =>
     get('exchange/funding-history', params as any),
 
   /** Get OHLCV candlestick data with period summary stats (high, low, total volume). Supports 15 intervals from `1m` to `1M`. Use `from` to set the start time and `limit` to control how many candles to return. For longer ranges, paginate by using the last returned candle's timestamp as the next `from` value. Exchange-side limits vary (200–1000 per request). Set `type=swap` to query perpetual contract candles instead of spot. */
-  klines: (params?: ExchangeKlinesParams): Promise<ApiResponse<ExchangeKlinesItem>> =>
+  klines: (params: ExchangeKlinesParams): Promise<ApiResponse<ExchangeKlinesItem>> =>
     get('exchange/klines', params as any),
 
   /** Get historical long/short ratio for a perpetual contract — ratio value, long account percentage, and short account percentage. Use `interval` (`1h`, `4h`, `1d`) for granularity, `from` for start time, and `limit` for result count. For longer history, paginate by using the last returned timestamp as the next `from` value. Note: not all exchanges support historical queries via `from`; some only return recent data regardless. Just pass the base pair (e.g. `pair=BTC/USDT`). For aggregated cross-exchange long/short ratio, see `/market/futures`. */
-  long_short_ratio: (params?: ExchangeLongShortRatioParams): Promise<ApiResponse<ExchangeLongShortRatioItem>> =>
+  long_short_ratio: (params: ExchangeLongShortRatioParams): Promise<ApiResponse<ExchangeLongShortRatioItem>> =>
     get('exchange/long-short-ratio', params as any),
 
   /** List trading pairs available on an exchange. Filter by `type` (`spot`, `swap`, `future`, `option`) or free-text `search`. Returns pair name, base/quote currencies, market type, active status, and default fee rates. Use the returned `pair` values as the `pair` parameter in other exchange endpoints. */
@@ -25,11 +25,11 @@ export const exchange = {
     get('exchange/markets', params as any),
 
   /** Get a combined snapshot of perpetual contract data for a pair. Use `fields` to select which sub-resources to fetch: `funding` (current funding rate, next settlement, mark/index price) and/or `oi` (open interest in contracts and USD). Just pass the base pair (e.g. `pair=BTC/USDT`). The `:USDT` swap suffix is added automatically. */
-  perp: (params?: ExchangePerpParams): Promise<ApiObjectResponse<ExchangePerpData>> =>
+  perp: (params: ExchangePerpParams): Promise<ApiObjectResponse<ExchangePerpData>> =>
     get('exchange/perp', params as any),
 
   /** Get the real-time ticker for a trading pair — last price, bid/ask, 24h high/low, 24h volume, and 24h price change. Set `type=swap` to query perpetual contract prices instead of spot. For historical price trends, use `/market/price`. */
-  price: (params?: ExchangePriceParams): Promise<ApiResponse<ExchangePriceItem>> =>
+  price: (params: ExchangePriceParams): Promise<ApiResponse<ExchangePriceItem>> =>
     get('exchange/price', params as any),
 
 };

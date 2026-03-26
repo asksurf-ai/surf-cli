@@ -5,7 +5,7 @@ import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, ApiResponse, ExchangeDepthItem, ExchangeDepthParams, ExchangeFundingHistoryItem, ExchangeFundingHistoryParams, ExchangeKlinesItem, ExchangeKlinesParams, ExchangeLongShortRatioItem, ExchangeLongShortRatioParams, ExchangeMarketsItem, ExchangeMarketsParams, ExchangePerpData, ExchangePerpParams, ExchangePriceItem, ExchangePriceParams } from '../../data/types';
 
 /** Get order book bid/ask levels with computed stats: spread, spread percentage, mid-price, and total bid/ask depth. Use `limit` to control the number of price levels (1–100, default 20). Set `type=swap` to query perpetual contract order books instead of spot. */
-export function useExchangeDepth(params?: ExchangeDepthParams) {
+export function useExchangeDepth(params: ExchangeDepthParams) {
   return useQuery({
     queryKey: ['exchange-depth', params],
     queryFn: () => proxyGet<ApiResponse<ExchangeDepthItem>>('exchange/depth', params as any),
@@ -13,7 +13,7 @@ export function useExchangeDepth(params?: ExchangeDepthParams) {
 }
 
 /** Get historical funding rate records for a perpetual contract. Use `from` to set the start time and `limit` to control result count. For longer history, paginate by using the last returned timestamp as the next `from` value. Note: not all exchanges support historical queries via `from`; some only return recent data regardless. For the latest funding rate snapshot, see `/exchange/perp?fields=funding`. */
-export function useExchangeFundingHistory(params?: ExchangeFundingHistoryParams) {
+export function useExchangeFundingHistory(params: ExchangeFundingHistoryParams) {
   return useQuery({
     queryKey: ['exchange-funding-history', params],
     queryFn: () => proxyGet<ApiResponse<ExchangeFundingHistoryItem>>('exchange/funding-history', params as any),
@@ -21,7 +21,7 @@ export function useExchangeFundingHistory(params?: ExchangeFundingHistoryParams)
 }
 
 /** Get OHLCV candlestick data with period summary stats (high, low, total volume). Supports 15 intervals from `1m` to `1M`. Use `from` to set the start time and `limit` to control how many candles to return. For longer ranges, paginate by using the last returned candle's timestamp as the next `from` value. Exchange-side limits vary (200–1000 per request). Set `type=swap` to query perpetual contract candles instead of spot. */
-export function useExchangeKlines(params?: ExchangeKlinesParams) {
+export function useExchangeKlines(params: ExchangeKlinesParams) {
   return useQuery({
     queryKey: ['exchange-klines', params],
     queryFn: () => proxyGet<ApiResponse<ExchangeKlinesItem>>('exchange/klines', params as any),
@@ -29,7 +29,7 @@ export function useExchangeKlines(params?: ExchangeKlinesParams) {
 }
 
 /** Get historical long/short ratio for a perpetual contract — ratio value, long account percentage, and short account percentage. Use `interval` (`1h`, `4h`, `1d`) for granularity, `from` for start time, and `limit` for result count. For longer history, paginate by using the last returned timestamp as the next `from` value. Note: not all exchanges support historical queries via `from`; some only return recent data regardless. Just pass the base pair (e.g. `pair=BTC/USDT`). For aggregated cross-exchange long/short ratio, see `/market/futures`. */
-export function useExchangeLongShortRatio(params?: ExchangeLongShortRatioParams) {
+export function useExchangeLongShortRatio(params: ExchangeLongShortRatioParams) {
   return useQuery({
     queryKey: ['exchange-long-short-ratio', params],
     queryFn: () => proxyGet<ApiResponse<ExchangeLongShortRatioItem>>('exchange/long-short-ratio', params as any),
@@ -45,7 +45,7 @@ export function useExchangeMarkets(params?: ExchangeMarketsParams) {
 }
 
 /** Get a combined snapshot of perpetual contract data for a pair. Use `fields` to select which sub-resources to fetch: `funding` (current funding rate, next settlement, mark/index price) and/or `oi` (open interest in contracts and USD). Just pass the base pair (e.g. `pair=BTC/USDT`). The `:USDT` swap suffix is added automatically. */
-export function useExchangePerp(params?: ExchangePerpParams) {
+export function useExchangePerp(params: ExchangePerpParams) {
   return useQuery({
     queryKey: ['exchange-perp', params],
     queryFn: () => proxyGet<ApiObjectResponse<ExchangePerpData>>('exchange/perp', params as any),
@@ -53,7 +53,7 @@ export function useExchangePerp(params?: ExchangePerpParams) {
 }
 
 /** Get the real-time ticker for a trading pair — last price, bid/ask, 24h high/low, 24h volume, and 24h price change. Set `type=swap` to query perpetual contract prices instead of spot. For historical price trends, use `/market/price`. */
-export function useExchangePrice(params?: ExchangePriceParams) {
+export function useExchangePrice(params: ExchangePriceParams) {
   return useQuery({
     queryKey: ['exchange-price', params],
     queryFn: () => proxyGet<ApiResponse<ExchangePriceItem>>('exchange/price', params as any),

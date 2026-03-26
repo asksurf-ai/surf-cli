@@ -8,7 +8,7 @@ import type { ApiObjectResponse, ApiResponse, OnchainBridgeRankingItem, OnchainB
 export function useInfiniteOnchainBridgeRanking(params?: Omit<OnchainBridgeRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['onchain-bridge-ranking', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<OnchainBridgeRankingItem>>('onchain/bridge-ranking', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<OnchainBridgeRankingItem>>('onchain/bridge/ranking', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -20,42 +20,70 @@ export function useInfiniteOnchainBridgeRanking(params?: Omit<OnchainBridgeRanki
 }
 
 /** Get the current gas price for an EVM chain via `eth_gasPrice` JSON-RPC. Returns gas price in both wei (raw) and Gwei (human-readable). **Supported chains:** `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, `cyber`. */
-export function useOnchainGasPrice(params?: OnchainGasPriceParams) {
+export function useOnchainGasPrice(params: OnchainGasPriceParams) {
   return useQuery({
     queryKey: ['onchain-gas-price', params],
     queryFn: () => proxyGet<ApiObjectResponse<OnchainGasPriceData>>('onchain/gas-price', params as any),
   });
 }
 
-/** Execute a structured JSON query on blockchain data. No raw SQL needed — specify source, fields, filters, sort, and pagination. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns. - Source format: `agent.<table_name>` like `agent.ethereum_transactions` or `agent.ethereum_dex_trades` - Max 10,000 rows (default 20), 30s timeout. - **Always filter on block_date** — it is the partition key. Without it, queries scan billions of rows and will timeout. - **Data refresh:** ~24 hours. */
-export function useOnchainStructuredQuery(params: OnchainStructuredQueryParams) {
-  return useQuery({
+/** Execute a structured JSON query on blockchain data. No raw SQL needed — specify source, fields, filters, sort, and pagination. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns. - Source format: `agent.<table_name>` like `agent.ethereum_transactions` or `agent.ethereum_dex_trades` - Max 10,000 rows (default 20), 30s timeout. - **Always filter on block_date** — it is the partition key. Without it, queries scan billions of rows and will timeout. - **Data refresh:** ~24 hours. ## Example ```json { "source": "agent.ethereum_dex_trades", "fields": ["block_time", "project", "token_pair", "amount_usd", "taker"], "filters": [ {"field": "block_date", "op": "gte", "value": "2025-03-01"}, {"field": "project", "op": "eq", "value": "uniswap"}, {"field": "amount_usd", "op": "gte", "value": 100000} ], "sort": [{"field": "amount_usd", "order": "desc"}], "limit": 20 } ``` */
+export function useInfiniteOnchainStructuredQuery(params: Omit<OnchainStructuredQueryParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['onchain-structured-query', params],
-    queryFn: () => proxyPost<ApiResponse<OnchainStructuredQueryItem>>('onchain/structured-query', params),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<OnchainStructuredQueryItem>>('onchain/query', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
 /** Get table metadata — database, table, column names, types, and comments for all available on-chain databases. */
-export function useOnchainSchema() {
-  return useQuery({
-    queryKey: ['onchain-schema'],
+export function useInfiniteOnchainSchema() {
+  return useInfiniteQuery({
+    queryKey: ['onchain-schema', params],
     queryFn: () => proxyGet<ApiResponse<OnchainSchemaItem>>('onchain/schema'),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
-/** Execute a raw SQL SELECT query against blockchain data. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns before writing queries. */
-export function useOnchainSql(params: OnchainSqlParams) {
-  return useQuery({
+/** Execute a raw SQL SELECT query against blockchain data. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns before writing queries. ## Rules - Only SELECT/WITH statements allowed (read-only). - All table references must be database-qualified: `agent.<table_name>`. - Max 10,000 rows (default 1,000), 30s timeout. - **Always filter on block_date or block_number** — partition key, without it queries will timeout. - Avoid `SELECT *` on large tables. Specify only the columns you need. - **Data refresh:** ~24 hours. ## Example ```sql SELECT block_time, token_pair, amount_usd, taker, tx_hash FROM agent.ethereum_dex_trades WHERE block_date >= today() - 7 AND project = 'uniswap' AND amount_usd > 100000 ORDER BY amount_usd DESC LIMIT 20 ``` */
+export function useInfiniteOnchainSql(params: Omit<OnchainSqlParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['onchain-sql', params],
-    queryFn: () => proxyPost<ApiResponse<OnchainSqlItem>>('onchain/sql', params),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<OnchainSqlItem>>('onchain/sql', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
 /** Get transaction details by hash. All numeric fields are hex-encoded — use parseInt(hex, 16) to convert. **Supported chains:** `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, `cyber`. Returns 404 if the transaction is not found. */
-export function useOnchainTx(params?: OnchainTxParams) {
-  return useQuery({
+export function useInfiniteOnchainTx(params: Omit<OnchainTxParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['onchain-tx', params],
-    queryFn: () => proxyGet<ApiResponse<OnchainTxItem>>('onchain/tx', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<OnchainTxItem>>('onchain/tx', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
@@ -63,7 +91,7 @@ export function useOnchainTx(params?: OnchainTxParams) {
 export function useInfiniteOnchainYieldRanking(params?: Omit<OnchainYieldRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['onchain-yield-ranking', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<OnchainYieldRankingItem>>('onchain/yield-ranking', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<OnchainYieldRankingItem>>('onchain/yield/ranking', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;

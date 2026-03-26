@@ -5,11 +5,11 @@ import type { ApiResponse, TokenDexTradesItem, TokenDexTradesParams, TokenHolder
 
 export const token = {
   /** Get recent DEX swap events for a token contract address. Covers DEXes like `uniswap`, `sushiswap`, `curve`, and `balancer` on `ethereum` and `base`. Returns trading pair, amounts, USD value, and taker address. Data refresh: ~24 hours · Chain: Ethereum, Base */
-  dex_trades: (params?: TokenDexTradesParams): Promise<ApiResponse<TokenDexTradesItem>> =>
+  dex_trades: (params: TokenDexTradesParams): Promise<ApiResponse<TokenDexTradesItem>> =>
     get('token/dex-trades', params as any),
 
   /** Get top token holders for a contract address — wallet address, balance, and percentage. Lookup by `address` and `chain`. Supports EVM chains and Solana. */
-  holders: (params?: TokenHoldersParams): Promise<ApiResponse<TokenHoldersItem>> =>
+  holders: (params: TokenHoldersParams): Promise<ApiResponse<TokenHoldersItem>> =>
     get('token/holders', params as any),
 
   /** Get token unlock time-series — unlock events with amounts and allocation breakdowns. Lookup by project UUID (`id`) or token `symbol`. Filter by date range with `from`/`to`. Defaults to the current calendar month when omitted. Returns 404 if no token found. */
@@ -17,7 +17,7 @@ export const token = {
     get('token/tokenomics', params as any),
 
   /** Get recent transfer events **for a specific token** (ERC-20/TRC-20 contract). Pass the **token contract address** in `address` — returns every on-chain transfer of that token regardless of sender/receiver. Each record includes sender, receiver, raw amount, and block timestamp. Use this to analyze a token's on-chain activity (e.g. large movements, distribution patterns). Lookup: `address` (token contract) + `chain`. Sort by `asc` or `desc`. Data refresh: ~24 hours · Chain: Ethereum, Base, TRON (Solana uses a different source with no delay) */
-  transfers: (params?: TokenTransfersParams): Promise<ApiResponse<TokenTransfersItem>> =>
+  transfers: (params: TokenTransfersParams): Promise<ApiResponse<TokenTransfersItem>> =>
     get('token/transfers', params as any),
 
 };

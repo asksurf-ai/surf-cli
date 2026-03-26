@@ -13,7 +13,7 @@ export const fund = {
     get('fund/portfolio', params as any),
 
   /** List top-ranked funds by metric. Available metrics: `tier` (lower is better), `portfolio_count` (number of invested projects). */
-  ranking: (params?: FundRankingParams): Promise<ApiResponse<FundRankingItem>> =>
+  ranking: (params: FundRankingParams): Promise<ApiResponse<FundRankingItem>> =>
     get('fund/ranking', params as any),
 
 };

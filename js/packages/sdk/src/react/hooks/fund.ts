@@ -28,7 +28,7 @@ export function useInfiniteFundPortfolio(params?: Omit<FundPortfolioParams, 'off
 }
 
 /** List top-ranked funds by metric. Available metrics: `tier` (lower is better), `portfolio_count` (number of invested projects). */
-export function useInfiniteFundRanking(params?: Omit<FundRankingParams, 'offset'>) {
+export function useInfiniteFundRanking(params: Omit<FundRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['fund-ranking', params],
     queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<FundRankingItem>>('fund/ranking', { ...params!, offset: String(pageParam) }),

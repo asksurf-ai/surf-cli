@@ -13,10 +13,17 @@ export function useSocialDetail(params?: SocialDetailParams) {
 }
 
 /** Get mindshare (social view count) **time-series trend** for a project, aggregated by `interval`. Use this when the user asks about sentiment **trends**, mindshare **over time**, or social momentum changes. `interval` can be `5m`, `1h`, `1d`, or `7d`. Filter by date range with `from`/`to` (Unix seconds). Lookup by name (`q`). For a **point-in-time snapshot** of social analytics (sentiment score, follower geo, smart followers), use `/social/detail` instead. */
-export function useSocialMindshare(params?: SocialMindshareParams) {
-  return useQuery({
+export function useInfiniteSocialMindshare(params: Omit<SocialMindshareParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['social-mindshare', params],
-    queryFn: () => proxyGet<ApiResponse<SocialMindshareItem>>('social/mindshare', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<SocialMindshareItem>>('social/mindshare', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
@@ -36,33 +43,47 @@ export function useInfiniteSocialRanking(params?: Omit<SocialRankingParams, 'off
 }
 
 /** Get smart follower count time-series for a project, sorted by date descending. Lookup by X account ID (`x_id`) or project name (`q`). The `q` parameter must be a project name (e.g. `uniswap`, `ethereum`), not a personal X handle — use `x_id` for individual accounts. Returns 404 if the project has no linked X account. */
-export function useSocialSmartFollowersHistory(params?: SocialSmartFollowersHistoryParams) {
-  return useQuery({
+export function useInfiniteSocialSmartFollowersHistory(params?: Omit<SocialSmartFollowersHistoryParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['social-smart-followers-history', params],
-    queryFn: () => proxyGet<ApiResponse<SocialSmartFollowersHistoryItem>>('social/smart-followers-history', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<SocialSmartFollowersHistoryItem>>('social/smart-followers/history', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
 /** Returns replies/comments on a specific tweet. Lookup by `tweet_id`. */
-export function useInfiniteSocialTweetReplies(params?: Omit<SocialTweetRepliesParams, 'cursor'>) {
+export function useInfiniteSocialTweetReplies(params: Omit<SocialTweetRepliesParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['social-tweet-replies', params],
-    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialTweetRepliesItem>>('social/tweet-replies', { ...params!, cursor: pageParam || undefined }),
+    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialTweetRepliesItem>>('social/tweet/replies', { ...params!, cursor: pageParam || undefined }),
     initialPageParam: '',
     getNextPageParam: (last) => last?.meta?.has_more ? last.meta.next_cursor : undefined,
   });
 }
 
 /** Get X (Twitter) posts by numeric post ID strings. Pass up to 100 comma-separated IDs via the `ids` query parameter. */
-export function useSocialTweets(params?: SocialTweetsParams) {
-  return useQuery({
+export function useInfiniteSocialTweets(params: Omit<SocialTweetsParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['social-tweets', params],
-    queryFn: () => proxyGet<ApiResponse<SocialTweetsItem>>('social/tweets', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<SocialTweetsItem>>('social/tweets', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
 /** Get an X (Twitter) user profile — display name, follower count, following count, and bio. Lookup by `handle` (without @). */
-export function useSocialUser(params?: SocialUserParams) {
+export function useSocialUser(params: SocialUserParams) {
   return useQuery({
     queryKey: ['social-user', params],
     queryFn: () => proxyGet<ApiObjectResponse<SocialUserData>>('social/user', params as any),
@@ -70,40 +91,40 @@ export function useSocialUser(params?: SocialUserParams) {
 }
 
 /** Returns a list of followers for the specified handle on X (Twitter). Lookup by `handle` (without @). */
-export function useInfiniteSocialUserFollowers(params?: Omit<SocialUserFollowersParams, 'cursor'>) {
+export function useInfiniteSocialUserFollowers(params: Omit<SocialUserFollowersParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['social-user-followers', params],
-    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialUserFollowersItem>>('social/user-followers', { ...params!, cursor: pageParam || undefined }),
+    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialUserFollowersItem>>('social/user/followers', { ...params!, cursor: pageParam || undefined }),
     initialPageParam: '',
     getNextPageParam: (last) => last?.meta?.has_more ? last.meta.next_cursor : undefined,
   });
 }
 
 /** Returns a list of users that the specified handle follows on X (Twitter). Lookup by `handle` (without @). */
-export function useInfiniteSocialUserFollowing(params?: Omit<SocialUserFollowingParams, 'cursor'>) {
+export function useInfiniteSocialUserFollowing(params: Omit<SocialUserFollowingParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['social-user-following', params],
-    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialUserFollowingItem>>('social/user-following', { ...params!, cursor: pageParam || undefined }),
+    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialUserFollowingItem>>('social/user/following', { ...params!, cursor: pageParam || undefined }),
     initialPageParam: '',
     getNextPageParam: (last) => last?.meta?.has_more ? last.meta.next_cursor : undefined,
   });
 }
 
 /** Get recent X (Twitter) posts by a specific user, ordered by recency. Lookup by `handle` (without @). Use `filter=original` to exclude retweets. To load more results, check `meta.has_more`; if true, pass `meta.next_cursor` as the `cursor` query parameter in the next request. */
-export function useInfiniteSocialUserPosts(params?: Omit<SocialUserPostsParams, 'cursor'>) {
+export function useInfiniteSocialUserPosts(params: Omit<SocialUserPostsParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['social-user-posts', params],
-    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialUserPostsItem>>('social/user-posts', { ...params!, cursor: pageParam || undefined }),
+    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialUserPostsItem>>('social/user/posts', { ...params!, cursor: pageParam || undefined }),
     initialPageParam: '',
     getNextPageParam: (last) => last?.meta?.has_more ? last.meta.next_cursor : undefined,
   });
 }
 
 /** Returns recent replies by the specified handle on X (Twitter). Lookup by `handle` (without @). */
-export function useInfiniteSocialUserReplies(params?: Omit<SocialUserRepliesParams, 'cursor'>) {
+export function useInfiniteSocialUserReplies(params: Omit<SocialUserRepliesParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['social-user-replies', params],
-    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialUserRepliesItem>>('social/user-replies', { ...params!, cursor: pageParam || undefined }),
+    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SocialUserRepliesItem>>('social/user/replies', { ...params!, cursor: pageParam || undefined }),
     initialPageParam: '',
     getNextPageParam: (last) => last?.meta?.has_more ? last.meta.next_cursor : undefined,
   });

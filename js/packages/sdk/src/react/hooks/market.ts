@@ -5,7 +5,7 @@ import { proxyGet, proxyPost } from '../fetch';
 import type { ApiResponse, MarketEtfItem, MarketEtfParams, MarketFearGreedItem, MarketFearGreedParams, MarketFuturesItem, MarketFuturesParams, MarketLiquidationChartItem, MarketLiquidationChartParams, MarketLiquidationExchangeListItem, MarketLiquidationExchangeListParams, MarketLiquidationOrderItem, MarketLiquidationOrderParams, MarketOnchainIndicatorItem, MarketOnchainIndicatorParams, MarketOptionsItem, MarketOptionsParams, MarketPriceIndicatorItem, MarketPriceIndicatorParams, MarketPriceItem, MarketPriceParams, MarketRankingItem, MarketRankingParams } from '../../data/types';
 
 /** Get daily ETF flow history for US spot ETFs — net flow (USD), token price, and per-ticker breakdown. Sorted by date descending. `symbol`: `BTC` or `ETH`. */
-export function useMarketEtf(params?: MarketEtfParams) {
+export function useMarketEtf(params: MarketEtfParams) {
   return useQuery({
     queryKey: ['market-etf', params],
     queryFn: () => proxyGet<ApiResponse<MarketEtfItem>>('market/etf', params as any),
@@ -29,10 +29,10 @@ export function useMarketFutures(params?: MarketFuturesParams) {
 }
 
 /** Get OHLC-style aggregated liquidation data for a token on a specific exchange. Filter by `symbol`, `exchange`, and `interval`. Useful for charting liquidation volume over time. */
-export function useMarketLiquidationChart(params?: MarketLiquidationChartParams) {
+export function useMarketLiquidationChart(params: MarketLiquidationChartParams) {
   return useQuery({
     queryKey: ['market-liquidation-chart', params],
-    queryFn: () => proxyGet<ApiResponse<MarketLiquidationChartItem>>('market/liquidation-chart', params as any),
+    queryFn: () => proxyGet<ApiResponse<MarketLiquidationChartItem>>('market/liquidation/chart', params as any),
   });
 }
 
@@ -40,7 +40,7 @@ export function useMarketLiquidationChart(params?: MarketLiquidationChartParams)
 export function useMarketLiquidationExchangeList(params?: MarketLiquidationExchangeListParams) {
   return useQuery({
     queryKey: ['market-liquidation-exchange-list', params],
-    queryFn: () => proxyGet<ApiResponse<MarketLiquidationExchangeListItem>>('market/liquidation-exchange-list', params as any),
+    queryFn: () => proxyGet<ApiResponse<MarketLiquidationExchangeListItem>>('market/liquidation/exchange-list', params as any),
   });
 }
 
@@ -48,12 +48,12 @@ export function useMarketLiquidationExchangeList(params?: MarketLiquidationExcha
 export function useMarketLiquidationOrder(params?: MarketLiquidationOrderParams) {
   return useQuery({
     queryKey: ['market-liquidation-order', params],
-    queryFn: () => proxyGet<ApiResponse<MarketLiquidationOrderItem>>('market/liquidation-order', params as any),
+    queryFn: () => proxyGet<ApiResponse<MarketLiquidationOrderItem>>('market/liquidation/order', params as any),
   });
 }
 
 /** Get on-chain indicator time-series for BTC or ETH. Metrics: `nupl`, `sopr`, `mvrv`, `puell-multiple`, `nvm`, `nvt`, `nvt-golden-cross`, `exchange-flows` (inflow/outflow/netflow/reserve). */
-export function useMarketOnchainIndicator(params?: MarketOnchainIndicatorParams) {
+export function useMarketOnchainIndicator(params: MarketOnchainIndicatorParams) {
   return useQuery({
     queryKey: ['market-onchain-indicator', params],
     queryFn: () => proxyGet<ApiResponse<MarketOnchainIndicatorItem>>('market/onchain-indicator', params as any),
@@ -61,7 +61,7 @@ export function useMarketOnchainIndicator(params?: MarketOnchainIndicatorParams)
 }
 
 /** Get options market data — open interest, volume, put/call ratio, and max pain price for a `symbol`. */
-export function useMarketOptions(params?: MarketOptionsParams) {
+export function useMarketOptions(params: MarketOptionsParams) {
   return useQuery({
     queryKey: ['market-options', params],
     queryFn: () => proxyGet<ApiResponse<MarketOptionsItem>>('market/options', params as any),
@@ -69,7 +69,7 @@ export function useMarketOptions(params?: MarketOptionsParams) {
 }
 
 /** Get historical price data points for a token. Use `time_range` for predefined windows (`1d`, `7d`, `14d`, `30d`, `90d`, `180d`, `365d`, `max`) or `from`/`to` for a custom date range (Unix timestamp or YYYY-MM-DD). Granularity is automatic: 5-min for 1d, hourly for 7-90d, daily for 180d+. */
-export function useMarketPrice(params?: MarketPriceParams) {
+export function useMarketPrice(params: MarketPriceParams) {
   return useQuery({
     queryKey: ['market-price', params],
     queryFn: () => proxyGet<ApiResponse<MarketPriceItem>>('market/price', params as any),
@@ -77,7 +77,7 @@ export function useMarketPrice(params?: MarketPriceParams) {
 }
 
 /** Get a technical indicator for a trading pair on a given exchange and interval. Set `from`/`to` for time-series mode, omit for latest value. Use `options` for indicator-specific tuning (e.g. `period:7`, `fast_period:8,slow_period:21,signal_period:5`, `period:10,stddev:1.5`). Indicators: `rsi`, `macd`, `ema`, `sma`, `bbands`, `stoch`, `adx`, `atr`, `cci`, `obv`, `vwap`, `dmi`, `ichimoku`, `supertrend`. */
-export function useMarketPriceIndicator(params?: MarketPriceIndicatorParams) {
+export function useMarketPriceIndicator(params: MarketPriceIndicatorParams) {
   return useQuery({
     queryKey: ['market-price-indicator', params],
     queryFn: () => proxyGet<ApiResponse<MarketPriceIndicatorItem>>('market/price-indicator', params as any),

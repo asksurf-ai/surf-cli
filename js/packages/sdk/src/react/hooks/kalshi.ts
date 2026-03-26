@@ -5,10 +5,10 @@ import { proxyGet, proxyPost } from '../fetch';
 import type { ApiResponse, KalshiEventsItem, KalshiEventsParams, KalshiMarketsItem, KalshiMarketsParams, KalshiOpenInterestItem, KalshiOpenInterestParams, KalshiPricesItem, KalshiPricesParams, KalshiRankingItem, KalshiRankingParams, KalshiTradesItem, KalshiTradesParams, KalshiVolumesItem, KalshiVolumesParams } from '../../data/types';
 
 /** Get Kalshi events with nested markets, optionally filtered by `event_ticker`. Each event includes market count and a list of markets. Data refresh: ~30 minutes */
-export function useInfiniteKalshiEvents(params?: Omit<KalshiEventsParams, 'offset'>) {
+export function useInfiniteKalshiEvents(params: Omit<KalshiEventsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-events', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiEventsItem>>('kalshi/events', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiEventsItem>>('prediction-market/kalshi/events', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -20,10 +20,10 @@ export function useInfiniteKalshiEvents(params?: Omit<KalshiEventsParams, 'offse
 }
 
 /** Get Kalshi markets, optionally filtered by `market_ticker`. Each market includes price, volume, and status. Data refresh: ~30 minutes */
-export function useInfiniteKalshiMarkets(params?: Omit<KalshiMarketsParams, 'offset'>) {
+export function useInfiniteKalshiMarkets(params: Omit<KalshiMarketsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-markets', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiMarketsItem>>('kalshi/markets', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiMarketsItem>>('prediction-market/kalshi/markets', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -35,18 +35,32 @@ export function useInfiniteKalshiMarkets(params?: Omit<KalshiMarketsParams, 'off
 }
 
 /** Get daily open interest history for a Kalshi market filtered by `time_range`. Data refresh: ~30 minutes */
-export function useKalshiOpenInterest(params?: KalshiOpenInterestParams) {
-  return useQuery({
+export function useInfiniteKalshiOpenInterest(params: Omit<KalshiOpenInterestParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['kalshi-open-interest', params],
-    queryFn: () => proxyGet<ApiResponse<KalshiOpenInterestItem>>('kalshi/open-interest', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiOpenInterestItem>>('prediction-market/kalshi/open-interest', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
 /** Get price history for a Kalshi market. Use `interval=1d` for daily OHLC from market reports (~30 min delay), or `interval=latest` for real-time price from trades. Data refresh: ~30 minutes (daily), real-time (latest) */
-export function useKalshiPrices(params?: KalshiPricesParams) {
-  return useQuery({
+export function useInfiniteKalshiPrices(params: Omit<KalshiPricesParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['kalshi-prices', params],
-    queryFn: () => proxyGet<ApiResponse<KalshiPricesItem>>('kalshi/prices', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiPricesItem>>('prediction-market/kalshi/prices', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
@@ -54,7 +68,7 @@ export function useKalshiPrices(params?: KalshiPricesParams) {
 export function useInfiniteKalshiRanking(params?: Omit<KalshiRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-ranking', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiRankingItem>>('kalshi/ranking', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiRankingItem>>('prediction-market/kalshi/ranking', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -66,10 +80,10 @@ export function useInfiniteKalshiRanking(params?: Omit<KalshiRankingParams, 'off
 }
 
 /** Get individual trade records for a Kalshi market. Filter by `taker_side`, `min_contracts`, and date range. Sort by `timestamp` or `num_contracts`. Data refresh: real-time */
-export function useInfiniteKalshiTrades(params?: Omit<KalshiTradesParams, 'offset'>) {
+export function useInfiniteKalshiTrades(params: Omit<KalshiTradesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-trades', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiTradesItem>>('kalshi/trades', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiTradesItem>>('prediction-market/kalshi/trades', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -81,10 +95,17 @@ export function useInfiniteKalshiTrades(params?: Omit<KalshiTradesParams, 'offse
 }
 
 /** Get daily trading volume history for a Kalshi market filtered by `time_range`. Data refresh: ~30 minutes */
-export function useKalshiVolumes(params?: KalshiVolumesParams) {
-  return useQuery({
+export function useInfiniteKalshiVolumes(params: Omit<KalshiVolumesParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['kalshi-volumes', params],
-    queryFn: () => proxyGet<ApiResponse<KalshiVolumesItem>>('kalshi/volumes', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<KalshiVolumesItem>>('prediction-market/kalshi/volumes', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 

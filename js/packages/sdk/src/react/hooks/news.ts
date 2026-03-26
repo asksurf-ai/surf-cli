@@ -5,7 +5,7 @@ import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, ApiResponse, NewsDetailData, NewsDetailParams, NewsFeedItem, NewsFeedParams } from '../../data/types';
 
 /** Returns the full content of a single news article by its ID (returned as `id` in feed and search results). */
-export function useNewsDetail(params?: NewsDetailParams) {
+export function useNewsDetail(params: NewsDetailParams) {
   return useQuery({
     queryKey: ['news-detail', params],
     queryFn: () => proxyGet<ApiObjectResponse<NewsDetailData>>('news/detail', params as any),

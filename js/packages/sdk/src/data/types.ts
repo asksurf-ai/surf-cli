@@ -22,21 +22,23 @@ export interface ApiCursorResponse<T> { data: T[]; meta?: CursorMeta; }
 
 export interface ExchangeDepthItem {
   /** Total ask-side depth in base currency units */
-  ask_depth: unknown;
+  ask_depth: number;
+  /** Sell orders, price ascending */
   asks: ExchangeDepthItemAsksItem[];
   /** Total bid-side depth in base currency units */
-  bid_depth: unknown;
+  bid_depth: number;
+  /** Buy orders, price descending */
   bids: ExchangeDepthItemBidsItem[];
   /** Exchange identifier */
   exchange: string;
   /** (best_bid + best_ask) / 2 */
-  mid_price: unknown;
+  mid_price: number;
   /** Trading pair like BTC/USDT */
   pair: string;
   /** Best ask - best bid */
-  spread: unknown;
+  spread: number;
   /** Spread as percent of mid price */
-  spread_pct: unknown;
+  spread_pct: number;
 }
 
 export interface ExchangeDepthItemAsksItem {
@@ -55,7 +57,7 @@ export interface ExchangeDepthItemBidsItem {
 
 export interface ExchangeDepthParams {
   /** Trading pair (e.g. BTC/USDT) */
-  pair?: string;
+  pair: string;
   /** Market type: spot for spot trading, swap for perpetual contracts — @default 'spot' */
   type?: 'spot' | 'swap';
   /** Number of price levels (1-100) — @default '20' */
@@ -68,16 +70,16 @@ export interface ExchangeFundingHistoryItem {
   /** Exchange identifier */
   exchange: string;
   /** Funding rate at this settlement */
-  funding_rate: unknown;
+  funding_rate: number;
   /** Perpetual contract pair like BTC/USDT */
   pair: string;
   /** Unix timestamp in seconds */
-  timestamp: unknown;
+  timestamp: number;
 }
 
 export interface ExchangeFundingHistoryParams {
   /** Trading pair (e.g. BTC/USDT) */
-  pair?: string;
+  pair: string;
   /** Start of time range. Accepts Unix seconds or date string (YYYY-MM-DD, ISO8601). Not all exchanges support historical queries; some only return recent data regardless of this value. */
   from?: string;
   /** Max number of records. For longer history, paginate using the last returned timestamp as the next from value. — @default '100' */
@@ -87,6 +89,7 @@ export interface ExchangeFundingHistoryParams {
 }
 
 export interface ExchangeKlinesItem {
+  /** OHLCV candles */
   candles: ExchangeKlinesItemCandlesItem[];
   /** Number of candles */
   count: number;
@@ -97,15 +100,15 @@ export interface ExchangeKlinesItem {
   /** Trading pair */
   pair: string;
   /** Last candle datetime */
-  period_end: unknown;
+  period_end: string;
   /** Highest price in period */
-  period_high: unknown;
+  period_high: number;
   /** Lowest price in period */
-  period_low: unknown;
+  period_low: number;
   /** First candle datetime */
-  period_start: unknown;
+  period_start: string;
   /** Total volume in period */
-  period_volume: unknown;
+  period_volume: number;
 }
 
 export interface ExchangeKlinesItemCandlesItem {
@@ -118,14 +121,14 @@ export interface ExchangeKlinesItemCandlesItem {
   /** Opening price */
   open: number;
   /** Candle open time in Unix seconds */
-  timestamp: unknown;
+  timestamp: number;
   /** Trading volume in base currency units */
   volume: number;
 }
 
 export interface ExchangeKlinesParams {
   /** Trading pair (e.g. BTC/USDT) */
-  pair?: string;
+  pair: string;
   /** Market type: spot for spot trading, swap for perpetual contracts — @default 'spot' */
   type?: 'spot' | 'swap';
   /** Candle interval — @default '1h' */
@@ -142,16 +145,16 @@ export interface ExchangeLongShortRatioItem {
   /** Exchange identifier */
   exchange: string;
   /** Ratio of longs to shorts (e.g. 1.5 means 60% long / 40% short). To get percentages: long% = ratio/(ratio+1)*100, short% = 100/(ratio+1) */
-  long_short_ratio: unknown;
+  long_short_ratio: number;
   /** Perpetual contract pair like BTC/USDT */
   pair: string;
   /** Unix timestamp in seconds */
-  timestamp: unknown;
+  timestamp: number;
 }
 
 export interface ExchangeLongShortRatioParams {
   /** Trading pair (e.g. BTC/USDT) */
-  pair?: string;
+  pair: string;
   /** Data interval — @default '1h' */
   interval?: '1h' | '4h' | '1d';
   /** Start of time range. Accepts Unix seconds or date string (YYYY-MM-DD, ISO8601). Not all exchanges support historical queries; some only return recent data regardless of this value. */
@@ -164,21 +167,21 @@ export interface ExchangeLongShortRatioParams {
 
 export interface ExchangeMarketsItem {
   /** Whether the market is active */
-  active: unknown;
+  active: boolean;
   /** Base currency */
-  base: unknown;
+  base: string;
   /** Exchange identifier */
   exchange: string;
   /** Default maker fee rate */
-  maker_fee: unknown;
+  maker_fee: number;
   /** Trading pair like BTC/USDT */
   pair: string;
   /** Quote currency */
-  quote: unknown;
+  quote: string;
   /** Default taker fee rate */
-  taker_fee: unknown;
+  taker_fee: number;
   /** Market type: spot, swap, future, option */
-  type: unknown;
+  type: string;
 }
 
 export interface ExchangeMarketsParams {
@@ -209,15 +212,15 @@ export interface ExchangePerpDataFunding {
   /** Exchange identifier */
   exchange: string;
   /** Current funding rate (0.0001 = 0.01%) */
-  funding_rate: unknown;
+  funding_rate: number;
   /** Index price derived from the weighted average of spot prices across multiple exchanges */
-  index_price: unknown;
+  index_price: number;
   /** Funding interval like 8h */
-  interval: unknown;
+  interval: string;
   /** Mark price calculated by the exchange from the index price and funding rate, used as the reference for liquidations */
-  mark_price: unknown;
+  mark_price: number;
   /** Next settlement time ISO8601 */
-  next_funding: unknown;
+  next_funding: string;
   /** Perpetual contract pair like BTC/USDT */
   pair: string;
 }
@@ -226,19 +229,19 @@ export interface ExchangePerpDataOpenInterest {
   /** Exchange identifier */
   exchange: string;
   /** Open interest in contracts */
-  open_interest_amount: unknown;
+  open_interest_amount: number;
   /** Open interest in USD */
-  open_interest_usd: unknown;
+  open_interest_usd: number;
   /** Trading pair like BTC/USDT */
   pair: string;
   /** Unix timestamp in seconds */
-  timestamp: unknown;
+  timestamp: number;
 }
 
 export interface ExchangePerpParams {
   /** Trading pair (e.g. BTC/USDT). The swap suffix ':USDT' is added automatically. */
-  pair?: string;
-  /** Comma-separated fields to include: 'funding' (current funding rate), 'oi' (open interest). Defaults to all fields. — @default 'funding' */
+  pair: string;
+  /** Comma-separated fields to include: 'funding' (current funding rate), 'oi' (open interest). Defaults to all fields. — @default 'funding,oi' */
   fields?: string;
   /** Exchange identifier — @default 'binance' */
   exchange?: 'binance' | 'okx' | 'bybit' | 'bitget' | 'htx' | 'bitfinex' | 'bitmex';
@@ -246,30 +249,30 @@ export interface ExchangePerpParams {
 
 export interface ExchangePriceItem {
   /** Best ask price */
-  ask: unknown;
+  ask: number;
   /** Best bid price */
-  bid: unknown;
+  bid: number;
   /** Price change percentage in 24h */
-  change_24h_pct: unknown;
+  change_24h_pct: number;
   /** Exchange identifier like binance, okx */
   exchange: string;
   /** 24h high price */
-  high_24h: unknown;
+  high_24h: number;
   /** Last traded price */
-  last: unknown;
+  last: number;
   /** 24h low price */
-  low_24h: unknown;
+  low_24h: number;
   /** Trading pair like BTC/USDT */
   pair: string;
   /** Unix timestamp in seconds */
-  timestamp: unknown;
+  timestamp: number;
   /** 24h trading volume in base currency units */
-  volume_24h_base: unknown;
+  volume_24h_base: number;
 }
 
 export interface ExchangePriceParams {
   /** Trading pair (e.g. BTC/USDT) */
-  pair?: string;
+  pair: string;
   /** Market type: spot for spot trading, swap for perpetual contracts — @default 'spot' */
   type?: 'spot' | 'swap';
   /** Exchange identifier — @default 'binance' */
@@ -287,15 +290,19 @@ export interface FundDetailData {
   invested_projects_count: number;
   /** Fund jurisdiction */
   jurisdiction?: string;
+  /** Fund links (website, social, etc.) */
   links: FundDetailDataLinksItem[];
+  /** Fund team members */
   members: FundDetailDataMembersItem[];
   /** Fund name */
   name: string;
+  /** Recent research publications */
   recent_researches: FundDetailDataRecentResearchesItem[];
   /** Fund tier ranking (lower is better) */
   tier: number;
   /** Fund type like `VC` or `Accelerator` */
   type?: string;
+  /** X (Twitter) accounts */
   x_accounts: FundDetailDataXAccountsItem[];
 }
 
@@ -311,6 +318,7 @@ export interface FundDetailDataMembersItem {
   avatar?: string;
   /** Member name */
   name: string;
+  /** Member roles */
   roles: unknown;
 }
 
@@ -396,6 +404,7 @@ export interface FundRankingItem {
   name: string;
   /** Fund tier ranking (lower is better) */
   tier: number;
+  /** Top invested projects (up to 5) */
   top_projects: FundRankingItemTopProjectsItem[];
   /** Fund type */
   type?: string;
@@ -422,7 +431,7 @@ export interface FundRankingItemTopProjectsItem {
 
 export interface FundRankingParams {
   /** Ranking metric. Can be `tier` (lower is better) or `portfolio_count` (number of invested projects). */
-  metric?: 'tier' | 'portfolio_count';
+  metric: 'tier' | 'portfolio_count';
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -430,6 +439,7 @@ export interface FundRankingParams {
 }
 
 export interface MarketEtfItem {
+  /** Flow breakdown by individual ETF ticker */
   etfs?: MarketEtfItemEtfsItem[];
   /** Daily net flow in USD (positive=inflow, negative=outflow) */
   flow_usd: number;
@@ -448,7 +458,7 @@ export interface MarketEtfItemEtfsItem {
 
 export interface MarketEtfParams {
   /** Token symbol. Can be `BTC` or `ETH`. */
-  symbol?: 'BTC' | 'ETH';
+  symbol: 'BTC' | 'ETH';
   /** Field to sort results by — @default 'timestamp' */
   sort_by?: 'flow_usd' | 'timestamp';
   /** Sort order — @default 'desc' */
@@ -512,7 +522,7 @@ export interface MarketLiquidationChartItem {
 
 export interface MarketLiquidationChartParams {
   /** Token ticker symbol like `BTC` or `ETH` */
-  symbol?: string;
+  symbol: string;
   /** Candlestick interval. Can be `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `4h`, `6h`, `8h`, `12h`, `1d`, or `1w`. — @default '1h' */
   interval?: '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '6h' | '8h' | '12h' | '1d' | '1w';
   /** Exchange name. Can be `Binance`, `OKX`, `Bybit`, `Bitget`, `Hyperliquid`, `Gate`, `HTX`, `Bitmex`, `Bitfinex`, `CoinEx`, `Aster`, or `Lighter`. — @default 'Binance' */
@@ -596,9 +606,9 @@ export interface MarketOnchainIndicatorItem {
 
 export interface MarketOnchainIndicatorParams {
   /** Token ticker symbol. Can be `BTC` or `ETH`. */
-  symbol?: 'BTC' | 'ETH';
+  symbol: 'BTC' | 'ETH';
   /** On-chain metric name. Can be `nupl`, `sopr`, `mvrv`, `puell-multiple`, `nvm`, `nvt`, `nvt-golden-cross`, or `exchange-flows/{inflow,outflow,netflow,reserve}`. */
-  metric?: 'nupl' | 'sopr' | 'mvrv' | 'puell-multiple' | 'nvm' | 'nvt' | 'nvt-golden-cross' | 'exchange-flows/inflow' | 'exchange-flows/outflow' | 'exchange-flows/netflow' | 'exchange-flows/reserve';
+  metric: 'nupl' | 'sopr' | 'mvrv' | 'puell-multiple' | 'nvm' | 'nvt' | 'nvt-golden-cross' | 'exchange-flows/inflow' | 'exchange-flows/outflow' | 'exchange-flows/netflow' | 'exchange-flows/reserve';
   /** Aggregation granularity. — @default 'day' */
   granularity?: 'day';
   /** Start of time range. Accepts Unix seconds or date string (YYYY-MM-DD). Defaults to 90 days ago when omitted. Maximum range is 365 days. */
@@ -628,7 +638,7 @@ export interface MarketOptionsItem {
 
 export interface MarketOptionsParams {
   /** Token symbol. Can be `BTC`, `ETH`, `SOL`, `XRP`, `BNB`, `DOGE`, `ADA`, or `AVAX`. */
-  symbol?: 'BTC' | 'ETH' | 'SOL' | 'XRP' | 'BNB' | 'DOGE' | 'ADA' | 'AVAX';
+  symbol: 'BTC' | 'ETH' | 'SOL' | 'XRP' | 'BNB' | 'DOGE' | 'ADA' | 'AVAX';
   /** Field to sort results by — @default 'volume_24h' */
   sort_by?: 'open_interest' | 'volume_24h';
   /** Sort order — @default 'desc' */
@@ -648,7 +658,7 @@ export interface MarketPriceItem {
 
 export interface MarketPriceParams {
   /** Single token ticker symbol like `BTC`, `ETH`, or `SOL` (multi-symbol not supported) */
-  symbol?: string;
+  symbol: string;
   /** Predefined time range for historical data. Ignored when `from`/`to` are set. Can be `1d`, `7d`, `14d`, `30d`, `90d`, `180d`, `365d`, or `max`. — @default '30d' */
   time_range?: '1d' | '7d' | '14d' | '30d' | '90d' | '180d' | '365d' | 'max';
   /** Start of custom date range (Unix timestamp or YYYY-MM-DD). Must be used together with `to`. Overrides `time_range` when set. */
@@ -722,9 +732,9 @@ export interface MarketPriceIndicatorItemValues {
 
 export interface MarketPriceIndicatorParams {
   /** Technical indicator name. Can be `rsi`, `macd`, `ema`, `sma`, `bbands`, `stoch`, `adx`, `atr`, `cci`, `obv`, `vwap`, `dmi`, `ichimoku`, or `supertrend`. */
-  indicator?: 'rsi' | 'macd' | 'ema' | 'sma' | 'bbands' | 'stoch' | 'adx' | 'atr' | 'cci' | 'obv' | 'vwap' | 'dmi' | 'ichimoku' | 'supertrend';
+  indicator: 'rsi' | 'macd' | 'ema' | 'sma' | 'bbands' | 'stoch' | 'adx' | 'atr' | 'cci' | 'obv' | 'vwap' | 'dmi' | 'ichimoku' | 'supertrend';
   /** Trading pair as `BTC/USDT` or bare symbol like `BTC` */
-  symbol?: string;
+  symbol: string;
   /** Candlestick interval. Can be `1m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `12h`, `1d`, or `1w`. — @default '1d' */
   interval?: '1m' | '5m' | '15m' | '30m' | '1h' | '2h' | '4h' | '12h' | '1d' | '1w';
   /** Exchange for price data. Can be `binance`, `bybit`, `coinbase`, or `kraken`. — @default 'binance' */
@@ -808,10 +818,11 @@ export interface NewsDetailData {
 
 export interface NewsDetailParams {
   /** Article ID (returned as id in feed/search results) */
-  id?: string;
+  id: string;
 }
 
 export interface NewsFeedItem {
+  /** Search highlight fragments with <em> tags around matching terms. Only present in search results. */
   highlights?: NewsFeedItemHighlights;
   /** Article ID. Use with the detail endpoint to fetch full content. */
   id: string;
@@ -881,20 +892,22 @@ export interface OnchainGasPriceData {
 
 export interface OnchainGasPriceParams {
   /** Chain. Can be `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, or `cyber`. */
-  chain?: 'ethereum' | 'polygon' | 'bsc' | 'arbitrum' | 'optimism' | 'base' | 'avalanche' | 'fantom' | 'linea' | 'cyber';
+  chain: 'ethereum' | 'polygon' | 'bsc' | 'arbitrum' | 'optimism' | 'base' | 'avalanche' | 'fantom' | 'linea' | 'cyber';
 }
 
 export interface OnchainStructuredQueryItem {
-  [key: string]: unknown;
 }
 
 export interface OnchainStructuredQueryParams {
+  /** Columns to return. Omit to return all columns. Example for agent.ethereum_transactions: [`transaction_hash`, `from_address`, `value`] */
   fields?: unknown;
+  /** WHERE conditions (ANDed together) */
   filters?: OnchainStructuredQueryParamsFiltersItem[];
   /** Max rows to return. Default 20, max 10000 */
   limit?: number;
   /** Rows to skip for pagination. Default 0 */
   offset?: number;
+  /** ORDER BY clauses */
   sort?: OnchainStructuredQueryParamsSortItem[];
   /** Fully-qualified table name like `agent.my_table` */
   source: string;
@@ -905,7 +918,7 @@ export interface OnchainStructuredQueryParamsFiltersItem {
   field: string;
   /** Comparison operator: eq, neq, gt, gte, lt, lte, like, in, not_in. For `in`/`not_in`, value must be a JSON array */
   op: string;
-  /** <any> */
+  /** Comparison value. Use a JSON array for `in`/`not_in` operators like `[21000000, 21000001]` */
   value: unknown;
 }
 
@@ -917,6 +930,7 @@ export interface OnchainStructuredQueryParamsSortItem {
 }
 
 export interface OnchainSchemaItem {
+  /** List of columns in this table */
   columns: OnchainSchemaItemColumnsItem[];
   /** Database name (always `agent`) */
   database: string;
@@ -934,7 +948,6 @@ export interface OnchainSchemaItemColumnsItem {
 }
 
 export interface OnchainSqlItem {
-  [key: string]: unknown;
 }
 
 export interface OnchainSqlParams {
@@ -945,12 +958,14 @@ export interface OnchainSqlParams {
 }
 
 export interface OnchainTxItem {
+  /** List of addresses and storage keys. Empty array for legacy; populated for EIP-2930+ */
   accessList: OnchainTxItemAccesslistItem[];
+  /** Versioned hashes of blob commitments. EIP-4844 only */
   blobVersionedHashes?: unknown;
   /** Block hash, null if pending */
-  blockHash: unknown;
+  blockHash: string;
   /** Block number (hex), null if pending */
-  blockNumber: unknown;
+  blockNumber: string;
   /** Chain ID (hex) */
   chainId?: string;
   /** Sender address (0x-prefixed) */
@@ -976,9 +991,9 @@ export interface OnchainTxItem {
   /** Signature S (hex) */
   s: string;
   /** Recipient address, null for contract creation */
-  to: unknown;
+  to: string;
   /** Index in block (hex), null if pending */
-  transactionIndex: unknown;
+  transactionIndex: string;
   /** Transaction type: 0x0=legacy, 0x1=EIP-2930, 0x2=EIP-1559, 0x3=EIP-4844 */
   type: string;
   /** Signature V (hex). Legacy: recovery ID (0x1b/0x1c); EIP-2930+: parity (0x0/0x1) */
@@ -992,14 +1007,15 @@ export interface OnchainTxItem {
 export interface OnchainTxItemAccesslistItem {
   /** Account address (0x-prefixed) */
   address: string;
+  /** List of storage slot keys (0x-prefixed hex) */
   storageKeys: unknown;
 }
 
 export interface OnchainTxParams {
   /** Transaction hash (0x-prefixed hex) */
-  hash?: string;
+  hash: string;
   /** Chain. Can be `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, or `cyber`. */
-  chain?: 'ethereum' | 'polygon' | 'bsc' | 'arbitrum' | 'optimism' | 'base' | 'avalanche' | 'fantom' | 'linea' | 'cyber';
+  chain: 'ethereum' | 'polygon' | 'bsc' | 'arbitrum' | 'optimism' | 'base' | 'avalanche' | 'fantom' | 'linea' | 'cyber';
 }
 
 export interface OnchainYieldRankingItem {
@@ -1058,7 +1074,7 @@ export interface PredictionMarketCategoryMetricsParams {
   category?: 'crypto' | 'culture' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports';
   /** Predefined time range: `7d`, `30d`, `90d`, `180d`, `1y`, or `all` — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y' | 'all';
-  /** Results per page — @default '20' */
+  /** Maximum rows to return — @default '200' */
   limit?: number;
   /** Pagination offset — @default '0' */
   offset?: number;
@@ -1073,6 +1089,7 @@ export interface KalshiEventsItem {
   event_title: string;
   /** Number of markets in this event */
   market_count: number;
+  /** Markets within this event */
   markets: KalshiEventsItemMarketsItem[];
 }
 
@@ -1113,7 +1130,7 @@ export interface KalshiEventsItemMarketsItem {
 
 export interface KalshiEventsParams {
   /** Event ticker identifier */
-  event_ticker?: string;
+  event_ticker: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1157,7 +1174,7 @@ export interface KalshiMarketsItem {
 
 export interface KalshiMarketsParams {
   /** Market ticker identifier */
-  market_ticker?: string;
+  market_ticker: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1173,7 +1190,7 @@ export interface KalshiOpenInterestItem {
 
 export interface KalshiOpenInterestParams {
   /** Market ticker identifier */
-  ticker?: string;
+  ticker: string;
   /** Predefined time range: `7d`, `30d`, `90d`, `180d`, or `1y` — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
 }
@@ -1207,7 +1224,7 @@ export interface KalshiPricesItemSideB {
 
 export interface KalshiPricesParams {
   /** Market ticker identifier */
-  ticker?: string;
+  ticker: string;
   /** Predefined time range: `7d`, `30d`, `90d`, `180d`, or `1y`. Ignored when `interval=latest`. — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
   /** Data interval: `1h` for hourly, `1d` for daily OHLC, `latest` for real-time price from trades — @default '1d' */
@@ -1283,7 +1300,7 @@ export interface KalshiTradesItem {
 
 export interface KalshiTradesParams {
   /** Market ticker identifier */
-  ticker?: string;
+  ticker: string;
   /** Filter by taker side: `yes` or `no` */
   taker_side?: 'yes' | 'no';
   /** Minimum notional volume in USD (each contract = $1) */
@@ -1311,7 +1328,7 @@ export interface KalshiVolumesItem {
 
 export interface KalshiVolumesParams {
   /** Market ticker identifier */
-  ticker?: string;
+  ticker: string;
   /** Predefined time range: `7d`, `30d`, `90d`, `180d`, or `1y` — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
 }
@@ -1341,7 +1358,7 @@ export interface PolymarketActivityItem {
 
 export interface PolymarketActivityParams {
   /** Polymarket proxy wallet address */
-  address?: string;
+  address: string;
   /** Results per page — @default '50' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1361,6 +1378,7 @@ export interface PolymarketEventsItem {
   image?: string;
   /** Number of markets in this event */
   market_count: number;
+  /** Markets within this event */
   markets: PolymarketEventsItemMarketsItem[];
   /** Resolution source URL */
   settlement_sources?: string;
@@ -1370,6 +1388,7 @@ export interface PolymarketEventsItem {
   status: string;
   /** Surf curated event subcategory */
   subcategory?: string;
+  /** Event tags */
   tags?: unknown;
   /** Event title */
   title: string;
@@ -1412,6 +1431,7 @@ export interface PolymarketEventsItemMarketsItem {
   status: string;
   /** Surf curated market subcategory */
   subcategory?: string;
+  /** Market tags */
   tags?: unknown;
   /** Market title */
   title: string;
@@ -1443,7 +1463,7 @@ export interface PolymarketEventsItemMarketsItemSideB {
 
 export interface PolymarketEventsParams {
   /** Event slug identifier */
-  event_slug?: string;
+  event_slug: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1485,6 +1505,7 @@ export interface PolymarketMarketsItem {
   status: string;
   /** Surf curated market subcategory */
   subcategory?: string;
+  /** Market tags */
   tags?: unknown;
   /** Market title */
   title: string;
@@ -1516,7 +1537,7 @@ export interface PolymarketMarketsItemSideB {
 
 export interface PolymarketMarketsParams {
   /** Market slug identifier */
-  market_slug?: string;
+  market_slug: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1534,7 +1555,7 @@ export interface PolymarketOpenInterestItem {
 
 export interface PolymarketOpenInterestParams {
   /** Market condition identifier */
-  condition_id?: string;
+  condition_id: string;
   /** Predefined time range — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
 }
@@ -1564,7 +1585,7 @@ export interface PolymarketPositionsItem {
 
 export interface PolymarketPositionsParams {
   /** Polymarket proxy wallet address */
-  address?: string;
+  address: string;
   /** Results per page — @default '50' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1598,7 +1619,7 @@ export interface PolymarketPricesItemSideB {
 
 export interface PolymarketPricesParams {
   /** Market condition identifier */
-  condition_id?: string;
+  condition_id: string;
   /** Predefined time range. Ignored when `interval` is `latest`. — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
   /** Aggregation interval: `1h` (hourly), `1d` (daily), or `latest` (most recent snapshot) — @default '1d' */
@@ -1624,6 +1645,7 @@ export interface PolymarketRankingItem {
   status: string;
   /** Surf curated market subcategory */
   subcategory?: string;
+  /** Market tags */
   tags?: unknown;
 }
 
@@ -1711,7 +1733,7 @@ export interface PolymarketVolumesItem {
 
 export interface PolymarketVolumesParams {
   /** Market condition identifier */
-  condition_id?: string;
+  condition_id: string;
   /** Predefined time range — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
   /** Aggregation interval: `1h` (hourly) or `1d` (daily) — @default '1d' */
@@ -1731,7 +1753,7 @@ export interface ProjectDefiMetricsParams {
   /** Fuzzy entity name search. Only use when 'id' is not available. May return unexpected results for ambiguous names. */
   q?: string;
   /** Metric to query. Can be `volume`, `fees` (or `fee` alias), `revenue`, `tvl`, or `users`. */
-  metric?: 'volume' | 'fee' | 'fees' | 'revenue' | 'tvl' | 'users';
+  metric: 'volume' | 'fee' | 'fees' | 'revenue' | 'tvl' | 'users';
   /** Start of time range. Accepts Unix seconds (`1704067200`) or date string (`2024-01-01`) */
   from?: string;
   /** End of time range. Accepts Unix seconds (`1706745600`) or date string (`2024-02-01`) */
@@ -1758,7 +1780,7 @@ export interface ProjectDefiRankingItem {
 
 export interface ProjectDefiRankingParams {
   /** Ranking metric. Can be `tvl`, `revenue`, `fees`, `volume`, or `users`. */
-  metric?: 'tvl' | 'revenue' | 'fees' | 'volume' | 'users';
+  metric: 'tvl' | 'revenue' | 'fees' | 'volume' | 'users';
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1777,19 +1799,23 @@ export interface ProjectDetailData {
 }
 
 export interface ProjectDetailDataContracts {
+  /** List of deployed smart contract addresses across chains */
   contracts?: ProjectDetailDataContractsContractsItem[];
 }
 
 export interface ProjectDetailDataFunding {
+  /** List of individual funding rounds */
   rounds?: ProjectDetailDataFundingRoundsItem[];
   /** Total capital raised across all rounds in USD */
   total_raise?: number;
 }
 
 export interface ProjectDetailDataOverview {
+  /** Chains the project is deployed on */
   chains?: unknown;
   /** Short description of the project */
   description?: string;
+  /** Exchange names where the token is listed */
   exchanges?: unknown;
   /** Surf project UUID — pass as 'id' parameter to /project/detail, /project/events, or /project/defi/metrics for exact lookup. Prefer over 'q' (fuzzy name search). */
   id: string;
@@ -1799,6 +1825,7 @@ export interface ProjectDetailDataOverview {
   name: string;
   /** URL-friendly project slug */
   slug?: string;
+  /** Project category tags like `DeFi`, `NFT`, or `Layer2` */
   tags?: unknown;
   /** TGE status: pre, upcoming, or post */
   tge_status?: string;
@@ -1820,12 +1847,14 @@ export interface ProjectDetailDataSocial {
 }
 
 export interface ProjectDetailDataTeam {
+  /** List of team members with their roles and social links */
   members?: ProjectDetailDataTeamMembersItem[];
 }
 
 export interface ProjectDetailDataTgeStatus {
   /** TGE status: `pre`, `upcoming`, or `post`. Omitted when unknown. */
   current_status?: string;
+  /** Exchange names where the token is listed */
   exchanges?: unknown;
   /** Unix timestamp of the last TGE event */
   last_event_time?: number;
@@ -1891,6 +1920,7 @@ export interface ProjectDetailDataFundingRoundsItem {
   amount?: number;
   /** Date when the round closed in ISO 8601 format */
   date?: string;
+  /** Investors participating in this round */
   investors?: ProjectDetailDataFundingRoundsItemInvestorsItem[];
   /** Funding round name like `Seed`, `Series A`, or `Private` */
   round_name: string;
@@ -1941,6 +1971,7 @@ export interface ProjectDetailDataTeamMembersItem {
   name: string;
   /** Team member's role or title */
   role?: string;
+  /** Social profile links keyed by platform name like `twitter` or `linkedin` */
   social_links?: ProjectDetailDataTeamMembersItemSocialLinks;
 }
 
@@ -1964,7 +1995,7 @@ export interface ProjectDetailParams {
   id?: string;
   /** Fuzzy entity name search. Only use when 'id' is not available. May return unexpected results for ambiguous names. */
   q?: string;
-  /** Comma-separated sub-resources to include. Can be `overview`, `token_info`, `tokenomics`, `funding`, `team`, `contracts`, `social`, or `tge_status`. — @default 'overview' */
+  /** Comma-separated sub-resources to include. Can be `overview`, `token_info`, `tokenomics`, `funding`, `team`, `contracts`, `social`, or `tge_status`. — @default 'overview,token_info,tokenomics,funding,team,contracts,social,tge_status' */
   fields?: string;
 }
 
@@ -1988,6 +2019,7 @@ export interface SearchAirdropItem {
   /** Airdrop lifecycle stage: `POTENTIAL` (speculated, tasks open), `CONFIRMED` (announced, tasks open), `SNAPSHOT` (eligibility snapshot taken), `VERIFICATION` (claim window open), `REWARD_AVAILABLE` (ready to claim), `DISTRIBUTED` (sent, historical) */
   status: string;
   task_summary?: SearchAirdropItemTaskSummary;
+  /** Full task list (only with include_tasks=true) */
   tasks?: SearchAirdropItemTasksItem[];
   /** Total project fundraise in USD (0 if unknown) */
   total_raise: number;
@@ -2000,10 +2032,12 @@ export interface SearchAirdropItemTaskSummary {
   open: number;
   /** Total number of tasks */
   total: number;
+  /** Distinct task types */
   types: unknown;
 }
 
 export interface SearchAirdropItemTasksItem {
+  /** Supported blockchain names */
   blockchains?: unknown;
   /** Task close date as Unix seconds (0 if unknown) */
   close_date: number;
@@ -2028,13 +2062,13 @@ export interface SearchAirdropItemTasksItem {
 export interface SearchAirdropParams {
   /** Search keyword for coin name */
   q?: string;
-  /** Comma-separated lifecycle phases. `active` = tasks open, can participate (POTENTIAL + CONFIRMED). `claimable` = eligible, can claim (SNAPSHOT + VERIFICATION + REWARD_AVAILABLE). `completed` = done (DISTRIBUTED). Defaults to `active,claimable` to show actionable airdrops. — @default 'active' */
+  /** Comma-separated lifecycle phases. `active` = tasks open, can participate (POTENTIAL + CONFIRMED). `claimable` = eligible, can claim (SNAPSHOT + VERIFICATION + REWARD_AVAILABLE). `completed` = done (DISTRIBUTED). Defaults to `active,claimable` to show actionable airdrops. — @default 'active,claimable' */
   phase?: string;
   /** Filter by reward type */
   reward_type?: 'airdrop' | 'points' | 'whitelist' | 'nft' | 'role' | 'ambassador';
   /** Filter activities containing tasks of this type */
   task_type?: 'social' | 'bounty-platforms' | 'testnet' | 'mainnet' | 'role' | 'form' | 'liquidity' | 'mint-nft' | 'game' | 'trading' | 'staking' | 'depin' | 'node' | 'ambassador' | 'hold' | 'check-wallet' | 'mint-domain' | 'predictions' | 'deploy';
-  /** Only return activities with currently OPEN tasks — @default 'false' */
+  /** Only return activities with currently OPEN tasks — @default 'False' */
   has_open?: boolean;
   /** Field to sort results by — @default 'last_status_update' */
   sort_by?: 'total_raise' | 'xscore' | 'last_status_update';
@@ -2044,7 +2078,7 @@ export interface SearchAirdropParams {
   limit?: number;
   /** Pagination offset — @default '0' */
   offset?: number;
-  /** Include full task list per activity — @default 'false' */
+  /** Include full task list per activity — @default 'False' */
   include_tasks?: boolean;
 }
 
@@ -2085,6 +2119,7 @@ export interface SearchFundItem {
   name: string;
   /** Fund tier ranking (lower is better) */
   tier: number;
+  /** Top invested projects (up to 5) */
   top_projects: SearchFundItemTopProjectsItem[];
   /** Fund type */
   type?: string;
@@ -2111,7 +2146,7 @@ export interface SearchFundItemTopProjectsItem {
 
 export interface SearchFundParams {
   /** Search keyword — fund name like `a16z`, `paradigm`, or `coinbase ventures` */
-  q?: string;
+  q: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -2127,6 +2162,7 @@ export interface SearchKalshiItem {
   event_title: string;
   /** Number of markets in this event */
   market_count: number;
+  /** Markets within this event */
   markets: SearchKalshiItemMarketsItem[];
 }
 
@@ -2179,6 +2215,7 @@ export interface SearchKalshiParams {
 }
 
 export interface SearchNewsItem {
+  /** Search highlight fragments with <em> tags around matching terms. Only present in search results. */
   highlights?: SearchNewsItemHighlights;
   /** Article ID. Use with the detail endpoint to fetch full content. */
   id: string;
@@ -2204,7 +2241,7 @@ export interface SearchNewsItemHighlights {
 
 export interface SearchNewsParams {
   /** Search keyword or phrase */
-  q?: string;
+  q: string;
 }
 
 export interface SearchPolymarketItem {
@@ -2220,6 +2257,7 @@ export interface SearchPolymarketItem {
   image?: string;
   /** Number of markets in this event */
   market_count: number;
+  /** Markets within this event */
   markets: SearchPolymarketItemMarketsItem[];
   /** Resolution source URL */
   settlement_sources?: string;
@@ -2229,6 +2267,7 @@ export interface SearchPolymarketItem {
   status: string;
   /** Surf curated event subcategory */
   subcategory?: string;
+  /** Event tags */
   tags?: unknown;
   /** Event title */
   title: string;
@@ -2271,6 +2310,7 @@ export interface SearchPolymarketItemMarketsItem {
   status: string;
   /** Surf curated market subcategory */
   subcategory?: string;
+  /** Market tags */
   tags?: unknown;
   /** Market title */
   title: string;
@@ -2316,6 +2356,7 @@ export interface SearchPolymarketParams {
 }
 
 export interface SearchProjectItem {
+  /** Chains the project operates on */
   chains?: unknown;
   /** Short description of the project */
   description?: string;
@@ -2329,7 +2370,9 @@ export interface SearchProjectItem {
   slug?: string;
   /** Primary token symbol like `BTC` or `ETH` */
   symbol?: string;
+  /** Project category tags */
   tags?: unknown;
+  /** Associated tokens */
   tokens?: SearchProjectItemTokensItem[];
 }
 
@@ -2346,7 +2389,7 @@ export interface SearchProjectItemTokensItem {
 
 export interface SearchProjectParams {
   /** Search keyword — project name or ticker like `uniswap`, `bitcoin`, or `ETH` */
-  q?: string;
+  q: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -2372,7 +2415,7 @@ export interface SearchSocialPeopleItem {
 
 export interface SearchSocialPeopleParams {
   /** Search keyword or `@handle` for exact handle lookup. Use a keyword like `vitalik` for fuzzy matching across names and bios, or `@VitalikButerin` to find a specific account by handle */
-  q?: string;
+  q: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Opaque cursor token from a previous response's next_cursor field for fetching the next page */
@@ -2383,6 +2426,7 @@ export interface SearchSocialPostsItem {
   author: SearchSocialPostsItemAuthor;
   /** Unix timestamp (seconds) when the tweet was posted */
   created_at: number;
+  /** Attached media items (photos, videos, GIFs) */
   media?: SearchSocialPostsItemMediaItem[];
   stats: SearchSocialPostsItemStats;
   /** Full text content of the tweet */
@@ -2424,7 +2468,7 @@ export interface SearchSocialPostsItemStats {
 
 export interface SearchSocialPostsParams {
   /** Search keyword or `from:handle` syntax like `ethereum` or `from:cz_binance` */
-  q?: string;
+  q: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Opaque cursor token from a previous response's next_cursor field for fetching the next page */
@@ -2434,6 +2478,7 @@ export interface SearchSocialPostsParams {
 export interface SearchWalletItem {
   /** Primary wallet address for this entity */
   address?: string;
+  /** Known wallet addresses for this entity (max 10, use num_addresses for the total count) */
   addresses?: SearchWalletItemAddressesItem[];
   /** Chain of the primary address */
   chain?: string;
@@ -2458,7 +2503,7 @@ export interface SearchWalletItemAddressesItem {
 
 export interface SearchWalletParams {
   /** Search keyword like `binance`, `vitalik.eth`, or `0xd8dA...` */
-  q?: string;
+  q: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -2478,7 +2523,7 @@ export interface SearchWebItem {
 
 export interface SearchWebParams {
   /** Search query like `bitcoin price prediction 2026` */
-  q?: string;
+  q: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -2500,6 +2545,7 @@ export interface SocialDetailData {
 }
 
 export interface SocialDetailDataFollowerGeo {
+  /** Follower count breakdown by geographic location */
   locations: SocialDetailDataFollowerGeoLocationsItem[];
   /** Total number of followers across all locations */
   total_follower_count: number;
@@ -2507,7 +2553,7 @@ export interface SocialDetailDataFollowerGeo {
 
 export interface SocialDetailDataSentiment {
   /** Sentiment score from -1 (very negative) to 1 (very positive) */
-  score: unknown;
+  score: number;
   /** Time range for the sentiment analysis like 7d or 30d */
   time_range: string;
 }
@@ -2515,6 +2561,7 @@ export interface SocialDetailDataSentiment {
 export interface SocialDetailDataSmartFollowers {
   /** Total number of smart followers */
   count: number;
+  /** List of top smart followers sorted by influence score */
   followers: SocialDetailDataSmartFollowersFollowersItem[];
 }
 
@@ -2553,7 +2600,7 @@ export interface SocialDetailParams {
   x_id?: string;
   /** Entity name to resolve like `uniswap`, `ethereum`, or `aave` */
   q?: string;
-  /** Comma-separated sub-resources to include. Can be `sentiment`, `follower_geo`, or `smart_followers`. — @default 'sentiment' */
+  /** Comma-separated sub-resources to include. Can be `sentiment`, `follower_geo`, or `smart_followers`. — @default 'sentiment,follower_geo,smart_followers' */
   fields?: string;
   /** Timeframe for sentiment data. Can be `24h`, `48h`, `7d`, `30d`, `3m`, `6m`, or `1y`. — @default '7d' */
   time_range?: '24h' | '48h' | '7d' | '30d' | '3m' | '6m' | '1y';
@@ -2570,9 +2617,9 @@ export interface SocialMindshareItem {
 
 export interface SocialMindshareParams {
   /** Entity name to resolve like `uniswap`, `ethereum`, or `aave` */
-  q?: string;
+  q: string;
   /** Time aggregation interval. Can be `5m`, `1h`, `1d`, or `7d`. */
-  interval?: '5m' | '1h' | '1d' | '7d';
+  interval: '5m' | '1h' | '1d' | '7d';
   /** Start timestamp. Accepts Unix seconds (1704067200) or date string (2024-01-01) */
   from?: string;
   /** End timestamp. Accepts Unix seconds (1706745600) or date string (2024-02-01) */
@@ -2587,6 +2634,7 @@ export interface SocialRankingItem {
   sentiment?: string;
   /** Weighted sentiment score from -1 (very negative) to 1 (very positive) */
   sentiment_score?: number;
+  /** Project category tags */
   tags?: unknown;
   token?: SocialRankingItemToken;
   /** Deprecated: no longer populated. */
@@ -2660,6 +2708,7 @@ export interface SocialTweetRepliesItem {
   author: SocialTweetRepliesItemAuthor;
   /** Unix timestamp (seconds) when the tweet was posted */
   created_at: number;
+  /** Attached media items (photos, videos, GIFs) */
   media?: SocialTweetRepliesItemMediaItem[];
   stats: SocialTweetRepliesItemStats;
   /** Full text content of the tweet */
@@ -2701,7 +2750,7 @@ export interface SocialTweetRepliesItemStats {
 
 export interface SocialTweetRepliesParams {
   /** Tweet ID to get replies for */
-  tweet_id?: string;
+  tweet_id: string;
   /** Max results to return — @default '20' */
   limit?: number;
   /** Opaque cursor token from a previous response's next_cursor field for fetching the next page */
@@ -2712,6 +2761,7 @@ export interface SocialTweetsItem {
   author: SocialTweetsItemAuthor;
   /** Unix timestamp (seconds) when the tweet was posted */
   created_at: number;
+  /** Attached media items (photos, videos, GIFs) */
   media?: SocialTweetsItemMediaItem[];
   stats: SocialTweetsItemStats;
   /** Full text content of the tweet */
@@ -2753,7 +2803,7 @@ export interface SocialTweetsItemStats {
 
 export interface SocialTweetsParams {
   /** Comma-separated numeric post ID strings, max 100 */
-  ids?: string;
+  ids: string;
 }
 
 export interface SocialUserData {
@@ -2775,7 +2825,7 @@ export interface SocialUserData {
 
 export interface SocialUserParams {
   /** X (Twitter) username without @ like `cz_binance` or `vitalikbuterin` */
-  handle?: string;
+  handle: string;
 }
 
 export interface SocialUserFollowersItem {
@@ -2797,7 +2847,7 @@ export interface SocialUserFollowersItem {
 
 export interface SocialUserFollowersParams {
   /** X (Twitter) username without @ like `vitalikbuterin` or `cz_binance` */
-  handle?: string;
+  handle: string;
   /** Max results to return — @default '20' */
   limit?: number;
   /** Opaque cursor token from a previous response's next_cursor field for fetching the next page */
@@ -2823,7 +2873,7 @@ export interface SocialUserFollowingItem {
 
 export interface SocialUserFollowingParams {
   /** X (Twitter) username without @ like `vitalikbuterin` or `cz_binance` */
-  handle?: string;
+  handle: string;
   /** Max results to return — @default '20' */
   limit?: number;
   /** Opaque cursor token from a previous response's next_cursor field for fetching the next page */
@@ -2834,6 +2884,7 @@ export interface SocialUserPostsItem {
   author: SocialUserPostsItemAuthor;
   /** Unix timestamp (seconds) when the tweet was posted */
   created_at: number;
+  /** Attached media items (photos, videos, GIFs) */
   media?: SocialUserPostsItemMediaItem[];
   stats: SocialUserPostsItemStats;
   /** Full text content of the tweet */
@@ -2875,7 +2926,7 @@ export interface SocialUserPostsItemStats {
 
 export interface SocialUserPostsParams {
   /** X (Twitter) username without @ like `vitalikbuterin` or `cz_binance` */
-  handle?: string;
+  handle: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Opaque cursor token from a previous response's next_cursor field for fetching the next page */
@@ -2888,6 +2939,7 @@ export interface SocialUserRepliesItem {
   author: SocialUserRepliesItemAuthor;
   /** Unix timestamp (seconds) when the tweet was posted */
   created_at: number;
+  /** Attached media items (photos, videos, GIFs) */
   media?: SocialUserRepliesItemMediaItem[];
   stats: SocialUserRepliesItemStats;
   /** Full text content of the tweet */
@@ -2929,7 +2981,7 @@ export interface SocialUserRepliesItemStats {
 
 export interface SocialUserRepliesParams {
   /** X (Twitter) username without @ like `vitalikbuterin` or `cz_binance` */
-  handle?: string;
+  handle: string;
   /** Max results to return — @default '20' */
   limit?: number;
   /** Opaque cursor token from a previous response's next_cursor field for fetching the next page */
@@ -2967,7 +3019,7 @@ export interface TokenDexTradesItem {
 
 export interface TokenDexTradesParams {
   /** Token contract address (0x-prefixed hex) */
-  address?: string;
+  address: string;
   /** Chain. Can be `ethereum` or `base`. — @default 'ethereum' */
   chain?: 'ethereum' | 'base';
   /** Results per page — @default '20' */
@@ -2991,9 +3043,9 @@ export interface TokenHoldersItem {
 
 export interface TokenHoldersParams {
   /** Token contract address (0x-prefixed hex or Solana base58) */
-  address?: string;
+  address: string;
   /** Chain. Can be `ethereum`, `polygon`, `bsc`, `solana`, `avalanche`, `arbitrum`, `optimism`, or `base`. */
-  chain?: 'ethereum' | 'polygon' | 'bsc' | 'solana' | 'avalanche' | 'arbitrum' | 'optimism' | 'base';
+  chain: 'ethereum' | 'polygon' | 'bsc' | 'solana' | 'avalanche' | 'arbitrum' | 'optimism' | 'base';
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset (accepted for API consistency but currently ignored) — @default '0' */
@@ -3001,6 +3053,7 @@ export interface TokenHoldersParams {
 }
 
 export interface TokenTokenomicsItem {
+  /** Breakdown by allocation */
   allocations?: TokenTokenomicsItemAllocationsItem[];
   /** Unix timestamp in seconds */
   timestamp: number;
@@ -3047,9 +3100,9 @@ export interface TokenTransfersItem {
 
 export interface TokenTransfersParams {
   /** Token contract address (0x-prefixed hex or Solana base58) */
-  address?: string;
+  address: string;
   /** Chain. Can be `ethereum`, `base`, `solana`, or `tron`. */
-  chain?: 'ethereum' | 'base' | 'solana' | 'tron';
+  chain: 'ethereum' | 'base' | 'solana' | 'tron';
   /** Start of date range. Accepts Unix seconds or YYYY-MM-DD. Defaults to 30 days ago. */
   from?: string;
   /** End of date range. Accepts Unix seconds or YYYY-MM-DD. Defaults to today. */
@@ -3061,14 +3114,20 @@ export interface TokenTransfersParams {
 }
 
 export interface WalletDetailData {
+  /** Chains the wallet has non-zero balances on. Always present (not controlled by fields param). For Solana addresses, returns a single entry. */
   active_chains?: WalletDetailDataActiveChainsItem[];
+  /** Token approvals (EVM-only, up to 50). Only present when `approvals` is included in the `fields` param. */
   approvals?: WalletDetailDataApprovalsItem[];
+  /** Per-field errors for any fields that failed to load */
   errors?: WalletDetailDataErrorsItem[];
   evm_balance?: WalletDetailDataEvmBalance;
+  /** EVM token holdings (up to 50). Populated for EVM chains only. */
   evm_tokens?: WalletDetailDataEvmTokensItem[];
   labels?: WalletDetailDataLabels;
+  /** NFT holdings (EVM-only, top 200 by value) */
   nft?: WalletDetailDataNftItem[];
   sol_balance?: WalletDetailDataSolBalance;
+  /** Solana SPL token holdings from Solscan (up to 50). Populated for Solana chain only. */
   sol_tokens?: WalletDetailDataSolTokensItem[];
 }
 
@@ -3088,6 +3147,7 @@ export interface WalletDetailDataApprovalsItem {
   chain: string;
   /** Full token name */
   name?: string;
+  /** List of approved spender contracts */
   spenders: WalletDetailDataApprovalsItemSpendersItem[];
   /** Token ticker symbol */
   symbol: string;
@@ -3105,6 +3165,7 @@ export interface WalletDetailDataErrorsItem {
 export interface WalletDetailDataEvmBalance {
   /** Wallet address */
   address: string;
+  /** Per-chain balance breakdown, sorted by value descending (EVM only) */
   chain_balances?: WalletDetailDataEvmBalanceChainBalancesItem[];
   /** Total portfolio value in USD (EVM only) */
   total_usd: number;
@@ -3138,6 +3199,7 @@ export interface WalletDetailDataLabels {
   entity_name?: string;
   /** Type of entity like `exchange`, `fund`, or `whale` */
   entity_type?: string;
+  /** List of labels assigned to this address */
   labels: WalletDetailDataLabelsLabelsItem[];
 }
 
@@ -3205,10 +3267,10 @@ export interface WalletDetailDataLabelsLabelsItem {
 
 export interface WalletDetailParams {
   /** Wallet address (0x hex for EVM, base58 for Solana) */
-  address?: string;
+  address: string;
   /** Chain filter for `tokens`, `nft`, and `approvals`. When omitted, inferred from address format: 0x addresses query all EVM chains, base58 addresses query Solana. */
   chain?: 'ethereum' | 'polygon' | 'bsc' | 'avalanche' | 'arbitrum' | 'optimism' | 'fantom' | 'base' | 'solana';
-  /** Comma-separated sub-resources to include. Valid: `balance`, `tokens`, `labels`, `nft`, `approvals`. The `active_chains` field is always returned. `approvals` is opt-in (not in default) as it triggers additional upstream calls. — @default 'balance' */
+  /** Comma-separated sub-resources to include. Valid: `balance`, `tokens`, `labels`, `nft`, `approvals`. The `active_chains` field is always returned. `approvals` is opt-in (not in default) as it triggers additional upstream calls. — @default 'balance,tokens,labels,nft' */
   fields?: string;
 }
 
@@ -3229,7 +3291,7 @@ export interface WalletHistoryItem {
 
 export interface WalletHistoryParams {
   /** Wallet address — must be a raw 0x-prefixed hex address, not an ENS name */
-  address?: string;
+  address: string;
   /** Chain filter. Can be `ethereum`, `polygon`, `bsc`, `avalanche`, `arbitrum`, `optimism`, `fantom`, or `base`. — @default 'ethereum' */
   chain?: 'ethereum' | 'polygon' | 'bsc' | 'avalanche' | 'arbitrum' | 'optimism' | 'fantom' | 'base';
   /** Results per page — @default '20' */
@@ -3249,6 +3311,7 @@ export interface WalletLabelsBatchItem {
   entity_name?: string;
   /** Type of entity like `exchange`, `fund`, or `whale` */
   entity_type?: string;
+  /** List of labels assigned to this address */
   labels: WalletLabelsBatchItemLabelsItem[];
 }
 
@@ -3261,7 +3324,7 @@ export interface WalletLabelsBatchItemLabelsItem {
 
 export interface WalletLabelsBatchParams {
   /** Comma-separated wallet addresses to look up, max 100 */
-  addresses?: string;
+  addresses: string;
 }
 
 export interface WalletNetWorthItem {
@@ -3273,7 +3336,7 @@ export interface WalletNetWorthItem {
 
 export interface WalletNetWorthParams {
   /** Wallet address (0x hex, base58, or ENS name like `vitalik.eth`) */
-  address?: string;
+  address: string;
 }
 
 export interface WalletProtocolsItem {
@@ -3281,6 +3344,7 @@ export interface WalletProtocolsItem {
   chain: string;
   /** Protocol logo image URL */
   logo_url?: string;
+  /** Individual positions held in this protocol */
   positions: WalletProtocolsItemPositionsItem[];
   /** Human-readable protocol name */
   protocol_name: string;
@@ -3293,11 +3357,15 @@ export interface WalletProtocolsItem {
 export interface WalletProtocolsItemPositionsItem {
   /** Total USD value of this position */
   balance_usd: number;
+  /** Tokens borrowed in this position */
   borrow_tokens?: WalletProtocolsItemPositionsItemBorrowTokensItem[];
+  /** LP tokens in this position */
   lp_tokens?: WalletProtocolsItemPositionsItemLpTokensItem[];
   /** Position name or type like `Lending` or `Staking` */
   name: string;
+  /** Unclaimed reward tokens in this position */
   reward_tokens?: WalletProtocolsItemPositionsItemRewardTokensItem[];
+  /** Tokens supplied/deposited in this position */
   supply_tokens?: WalletProtocolsItemPositionsItemSupplyTokensItem[];
 }
 
@@ -3363,7 +3431,7 @@ export interface WalletProtocolsItemPositionsItemSupplyTokensItem {
 
 export interface WalletProtocolsParams {
   /** Wallet address — must be a raw 0x-prefixed hex address, not an ENS name */
-  address?: string;
+  address: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -3395,7 +3463,7 @@ export interface WalletTransfersItem {
 
 export interface WalletTransfersParams {
   /** Wallet address — must be a raw address (0x-prefixed hex for EVM, base58 for Solana). ENS names like `vitalik.eth` are not supported; resolve to a 0x address first. */
-  address?: string;
+  address: string;
   /** Chain. Can be `ethereum`, `base`, or `solana`. — @default 'ethereum' */
   chain?: 'ethereum' | 'base' | 'solana';
   /** Filter by transfer direction relative to the queried wallet. `in` for incoming, `out` for outgoing. Omit for both directions. */
@@ -3419,7 +3487,7 @@ export interface WebFetchData {
 
 export interface WebFetchParams {
   /** URL to fetch and parse */
-  url?: string;
+  url: string;
   /** CSS selector to extract specific content */
   target_selector?: string;
   /** CSS selector to remove unwanted elements */

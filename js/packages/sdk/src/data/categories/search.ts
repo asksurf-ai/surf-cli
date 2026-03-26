@@ -13,7 +13,7 @@ export const search = {
     get('search/events', params as any),
 
   /** Search funds by keyword. Returns matching funds with name, tier, type, logo, and top invested projects. */
-  fund: (params?: SearchFundParams): Promise<ApiResponse<SearchFundItem>> =>
+  fund: (params: SearchFundParams): Promise<ApiResponse<SearchFundItem>> =>
     get('search/fund', params as any),
 
   /** Search Kalshi events by keyword and/or category. Filter by keyword matching event title, subtitle, or market title; or by category. At least one of `q` or `category` is required. Returns events with nested markets. Data refresh: ~30 minutes */
@@ -21,7 +21,7 @@ export const search = {
     get('search/kalshi', params as any),
 
   /** Search crypto news articles by keyword. Returns top 10 results ranked by relevance with highlighted matching fragments. */
-  news: (params?: SearchNewsParams): Promise<ApiResponse<SearchNewsItem>> =>
+  news: (params: SearchNewsParams): Promise<ApiResponse<SearchNewsItem>> =>
     get('search/news', params as any),
 
   /** Search Polymarket events by keyword, tags, and/or category. Filter by keyword matching market question, event title, or description; by comma-separated tag labels; or by Surf-curated category. At least one of `q`, `tags`, or `category` is required. Returns events with nested markets ranked by volume. Data refresh: ~30 minutes */
@@ -29,23 +29,23 @@ export const search = {
     get('search/polymarket', params as any),
 
   /** Search crypto projects by keyword. Returns matching projects with name, description, chains, and logo. */
-  project: (params?: SearchProjectParams): Promise<ApiResponse<SearchProjectItem>> =>
+  project: (params: SearchProjectParams): Promise<ApiResponse<SearchProjectItem>> =>
     get('search/project', params as any),
 
   /** Search X (Twitter) users by keyword. Returns user profiles with handle, display name, bio, follower count, and avatar. */
-  social_people: (params?: SearchSocialPeopleParams): Promise<ApiCursorResponse<SearchSocialPeopleItem>> =>
-    get('search/social-people', params as any),
+  social_people: (params: SearchSocialPeopleParams): Promise<ApiCursorResponse<SearchSocialPeopleItem>> =>
+    get('search/social/people', params as any),
 
   /** Search X (Twitter) posts by keyword or `from:handle` syntax. Returns posts with author, content, engagement metrics, and timestamp. To load more results, check `meta.has_more`; if true, pass `meta.next_cursor` as the `cursor` query parameter in the next request. */
-  social_posts: (params?: SearchSocialPostsParams): Promise<ApiCursorResponse<SearchSocialPostsItem>> =>
-    get('search/social-posts', params as any),
+  social_posts: (params: SearchSocialPostsParams): Promise<ApiCursorResponse<SearchSocialPostsItem>> =>
+    get('search/social/posts', params as any),
 
   /** Search wallets by ENS name, address label, or address prefix. Returns matching wallet addresses with entity labels. */
-  wallet: (params?: SearchWalletParams): Promise<ApiResponse<SearchWalletItem>> =>
+  wallet: (params: SearchWalletParams): Promise<ApiResponse<SearchWalletItem>> =>
     get('search/wallet', params as any),
 
   /** Search web pages, articles, and content by keyword. Filter by domain with `site` like `coindesk.com`. Returns titles, URLs, and content snippets. */
-  web: (params?: SearchWebParams): Promise<ApiResponse<SearchWebItem>> =>
+  web: (params: SearchWebParams): Promise<ApiResponse<SearchWebItem>> =>
     get('search/web', params as any),
 
 };

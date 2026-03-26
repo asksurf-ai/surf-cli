@@ -5,7 +5,7 @@ import type { ApiObjectResponse, ApiResponse, NewsDetailData, NewsDetailParams, 
 
 export const news = {
   /** Returns the full content of a single news article by its ID (returned as `id` in feed and search results). */
-  detail: (params?: NewsDetailParams): Promise<ApiObjectResponse<NewsDetailData>> =>
+  detail: (params: NewsDetailParams): Promise<ApiObjectResponse<NewsDetailData>> =>
     get('news/detail', params as any),
 
   /** Browse crypto news from major sources. Filter by `source` (enum), `project`, and time range (`from`/`to`). Sort by `recency` (default) or `trending`. Use the detail endpoint with article `id` for full content. */

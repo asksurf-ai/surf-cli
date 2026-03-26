@@ -6,31 +6,31 @@ import type { ApiObjectResponse, ApiResponse, OnchainBridgeRankingItem, OnchainB
 export const onchain = {
   /** List bridge protocols ranked by total USD volume over a time range. */
   bridge_ranking: (params?: OnchainBridgeRankingParams): Promise<ApiResponse<OnchainBridgeRankingItem>> =>
-    get('onchain/bridge-ranking', params as any),
+    get('onchain/bridge/ranking', params as any),
 
   /** Get the current gas price for an EVM chain via `eth_gasPrice` JSON-RPC. Returns gas price in both wei (raw) and Gwei (human-readable). **Supported chains:** `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, `cyber`. */
-  gas_price: (params?: OnchainGasPriceParams): Promise<ApiObjectResponse<OnchainGasPriceData>> =>
+  gas_price: (params: OnchainGasPriceParams): Promise<ApiObjectResponse<OnchainGasPriceData>> =>
     get('onchain/gas-price', params as any),
 
-  /** Execute a structured JSON query on blockchain data. No raw SQL needed — specify source, fields, filters, sort, and pagination. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns. - Source format: `agent.<table_name>` like `agent.ethereum_transactions` or `agent.ethereum_dex_trades` - Max 10,000 rows (default 20), 30s timeout. - **Always filter on block_date** — it is the partition key. Without it, queries scan billions of rows and will timeout. - **Data refresh:** ~24 hours. */
+  /** Execute a structured JSON query on blockchain data. No raw SQL needed — specify source, fields, filters, sort, and pagination. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns. - Source format: `agent.<table_name>` like `agent.ethereum_transactions` or `agent.ethereum_dex_trades` - Max 10,000 rows (default 20), 30s timeout. - **Always filter on block_date** — it is the partition key. Without it, queries scan billions of rows and will timeout. - **Data refresh:** ~24 hours. ## Example ```json { "source": "agent.ethereum_dex_trades", "fields": ["block_time", "project", "token_pair", "amount_usd", "taker"], "filters": [ {"field": "block_date", "op": "gte", "value": "2025-03-01"}, {"field": "project", "op": "eq", "value": "uniswap"}, {"field": "amount_usd", "op": "gte", "value": 100000} ], "sort": [{"field": "amount_usd", "order": "desc"}], "limit": 20 } ``` */
   structured_query: (body: OnchainStructuredQueryParams): Promise<ApiResponse<OnchainStructuredQueryItem>> =>
-    post('onchain/structured-query', body),
+    post('onchain/query', body),
 
   /** Get table metadata — database, table, column names, types, and comments for all available on-chain databases. */
   schema: (): Promise<ApiResponse<OnchainSchemaItem>> =>
     get('onchain/schema'),
 
-  /** Execute a raw SQL SELECT query against blockchain data. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns before writing queries. */
+  /** Execute a raw SQL SELECT query against blockchain data. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns before writing queries. ## Rules - Only SELECT/WITH statements allowed (read-only). - All table references must be database-qualified: `agent.<table_name>`. - Max 10,000 rows (default 1,000), 30s timeout. - **Always filter on block_date or block_number** — partition key, without it queries will timeout. - Avoid `SELECT *` on large tables. Specify only the columns you need. - **Data refresh:** ~24 hours. ## Example ```sql SELECT block_time, token_pair, amount_usd, taker, tx_hash FROM agent.ethereum_dex_trades WHERE block_date >= today() - 7 AND project = 'uniswap' AND amount_usd > 100000 ORDER BY amount_usd DESC LIMIT 20 ``` */
   sql: (body: OnchainSqlParams): Promise<ApiResponse<OnchainSqlItem>> =>
     post('onchain/sql', body),
 
   /** Get transaction details by hash. All numeric fields are hex-encoded — use parseInt(hex, 16) to convert. **Supported chains:** `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, `cyber`. Returns 404 if the transaction is not found. */
-  tx: (params?: OnchainTxParams): Promise<ApiResponse<OnchainTxItem>> =>
+  tx: (params: OnchainTxParams): Promise<ApiResponse<OnchainTxItem>> =>
     get('onchain/tx', params as any),
 
   /** List DeFi yield pools ranked by APY or TVL. Returns the latest snapshot. Filter by protocol. */
   yield_ranking: (params?: OnchainYieldRankingParams): Promise<ApiResponse<OnchainYieldRankingItem>> =>
-    get('onchain/yield-ranking', params as any),
+    get('onchain/yield/ranking', params as any),
 
 };
 

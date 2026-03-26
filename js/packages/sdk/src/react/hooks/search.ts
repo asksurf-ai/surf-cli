@@ -35,7 +35,7 @@ export function useInfiniteSearchEvents(params?: Omit<SearchEventsParams, 'offse
 }
 
 /** Search funds by keyword. Returns matching funds with name, tier, type, logo, and top invested projects. */
-export function useInfiniteSearchFund(params?: Omit<SearchFundParams, 'offset'>) {
+export function useInfiniteSearchFund(params: Omit<SearchFundParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-fund', params],
     queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<SearchFundItem>>('search/fund', { ...params!, offset: String(pageParam) }),
@@ -65,10 +65,17 @@ export function useInfiniteSearchKalshi(params?: Omit<SearchKalshiParams, 'offse
 }
 
 /** Search crypto news articles by keyword. Returns top 10 results ranked by relevance with highlighted matching fragments. */
-export function useSearchNews(params?: SearchNewsParams) {
-  return useQuery({
+export function useInfiniteSearchNews(params: Omit<SearchNewsParams, 'offset'>) {
+  return useInfiniteQuery({
     queryKey: ['search-news', params],
-    queryFn: () => proxyGet<ApiResponse<SearchNewsItem>>('search/news', params as any),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<SearchNewsItem>>('search/news', { ...params!, offset: String(pageParam) }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => {
+      const m = last?.meta;
+      if (!m?.total || !m?.limit) return undefined;
+      const next = (m.offset ?? 0) + m.limit;
+      return next < m.total ? next : undefined;
+    },
   });
 }
 
@@ -88,7 +95,7 @@ export function useInfiniteSearchPolymarket(params?: Omit<SearchPolymarketParams
 }
 
 /** Search crypto projects by keyword. Returns matching projects with name, description, chains, and logo. */
-export function useInfiniteSearchProject(params?: Omit<SearchProjectParams, 'offset'>) {
+export function useInfiniteSearchProject(params: Omit<SearchProjectParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-project', params],
     queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<SearchProjectItem>>('search/project', { ...params!, offset: String(pageParam) }),
@@ -103,27 +110,27 @@ export function useInfiniteSearchProject(params?: Omit<SearchProjectParams, 'off
 }
 
 /** Search X (Twitter) users by keyword. Returns user profiles with handle, display name, bio, follower count, and avatar. */
-export function useInfiniteSearchSocialPeople(params?: Omit<SearchSocialPeopleParams, 'cursor'>) {
+export function useInfiniteSearchSocialPeople(params: Omit<SearchSocialPeopleParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['search-social-people', params],
-    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SearchSocialPeopleItem>>('search/social-people', { ...params!, cursor: pageParam || undefined }),
+    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SearchSocialPeopleItem>>('search/social/people', { ...params!, cursor: pageParam || undefined }),
     initialPageParam: '',
     getNextPageParam: (last) => last?.meta?.has_more ? last.meta.next_cursor : undefined,
   });
 }
 
 /** Search X (Twitter) posts by keyword or `from:handle` syntax. Returns posts with author, content, engagement metrics, and timestamp. To load more results, check `meta.has_more`; if true, pass `meta.next_cursor` as the `cursor` query parameter in the next request. */
-export function useInfiniteSearchSocialPosts(params?: Omit<SearchSocialPostsParams, 'cursor'>) {
+export function useInfiniteSearchSocialPosts(params: Omit<SearchSocialPostsParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['search-social-posts', params],
-    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SearchSocialPostsItem>>('search/social-posts', { ...params!, cursor: pageParam || undefined }),
+    queryFn: ({ pageParam }) => proxyGet<ApiCursorResponse<SearchSocialPostsItem>>('search/social/posts', { ...params!, cursor: pageParam || undefined }),
     initialPageParam: '',
     getNextPageParam: (last) => last?.meta?.has_more ? last.meta.next_cursor : undefined,
   });
 }
 
 /** Search wallets by ENS name, address label, or address prefix. Returns matching wallet addresses with entity labels. */
-export function useInfiniteSearchWallet(params?: Omit<SearchWalletParams, 'offset'>) {
+export function useInfiniteSearchWallet(params: Omit<SearchWalletParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-wallet', params],
     queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<SearchWalletItem>>('search/wallet', { ...params!, offset: String(pageParam) }),
@@ -138,7 +145,7 @@ export function useInfiniteSearchWallet(params?: Omit<SearchWalletParams, 'offse
 }
 
 /** Search web pages, articles, and content by keyword. Filter by domain with `site` like `coindesk.com`. Returns titles, URLs, and content snippets. */
-export function useInfiniteSearchWeb(params?: Omit<SearchWebParams, 'offset'>) {
+export function useInfiniteSearchWeb(params: Omit<SearchWebParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-web', params],
     queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<SearchWebItem>>('search/web', { ...params!, offset: String(pageParam) }),

@@ -5,10 +5,10 @@ import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, ApiResponse, ProjectDefiMetricsItem, ProjectDefiMetricsParams, ProjectDefiRankingItem, ProjectDefiRankingParams, ProjectDetailData, ProjectDetailParams } from '../../data/types';
 
 /** Get time-series DeFi metrics for a project. Available metrics: `volume`, `fee`, `fees`, `revenue`, `tvl`, `users`. Lookup by UUID (`id`) or name (`q`). Filter by `chain` and date range (`from`/`to`). Returns 404 if the project is not found. **Note:** this endpoint only returns data for DeFi protocol projects (e.g. `aave`, `uniswap`, `lido`, `makerdao`). Use `q` with a DeFi protocol name. */
-export function useInfiniteProjectDefiMetrics(params?: Omit<ProjectDefiMetricsParams, 'offset'>) {
+export function useInfiniteProjectDefiMetrics(params: Omit<ProjectDefiMetricsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['project-defi-metrics', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<ProjectDefiMetricsItem>>('project/defi-metrics', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<ProjectDefiMetricsItem>>('project/defi/metrics', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
@@ -20,10 +20,10 @@ export function useInfiniteProjectDefiMetrics(params?: Omit<ProjectDefiMetricsPa
 }
 
 /** Get top DeFi projects ranked by a protocol metric. Available metrics: `tvl`, `revenue`, `fees`, `volume`, `users`. */
-export function useInfiniteProjectDefiRanking(params?: Omit<ProjectDefiRankingParams, 'offset'>) {
+export function useInfiniteProjectDefiRanking(params: Omit<ProjectDefiRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['project-defi-ranking', params],
-    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<ProjectDefiRankingItem>>('project/defi-ranking', { ...params!, offset: String(pageParam) }),
+    queryFn: ({ pageParam = 0 }) => proxyGet<ApiResponse<ProjectDefiRankingItem>>('project/defi/ranking', { ...params!, offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last) => {
       const m = last?.meta;
