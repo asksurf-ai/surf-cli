@@ -19,7 +19,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   update-and-publish:
@@ -91,14 +90,12 @@ jobs:
       - name: Publish @surf-ai/theme
         if: steps.diff.outputs.changed == 'true' && inputs.skip_publish != 'true'
         working-directory: js/packages/theme
-        run: npm publish --access public --provenance
-        env:
+        run: npm publish --access public         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @surf-ai/sdk
         if: steps.diff.outputs.changed == 'true' && inputs.skip_publish != 'true'
         working-directory: js/packages/sdk
-        run: npm install && npm run build && npm publish --access public --provenance
-        env:
+        run: npm install && npm run build && npm publish --access public         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
