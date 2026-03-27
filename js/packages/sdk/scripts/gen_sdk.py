@@ -738,7 +738,10 @@ def generate_react_hooks(endpoints: list[Endpoint], out_dir: Path):
                 else:
                     lines.append(f"export function useInfinite{pascal}() {{")
                 lines.append("  return useInfiniteQuery({")
-                lines.append(f"    queryKey: ['{ep.name}', params],")
+                if has_params:
+                    lines.append(f"    queryKey: ['{ep.name}', params],")
+                else:
+                    lines.append(f"    queryKey: ['{ep.name}'],")
                 if ep.pagination == "offset":
                     if has_params:
                         lines.append(f"    queryFn: ({{ pageParam = 0 }}) => proxyGet<{ret}>('{ep.path.lstrip('/')}', {{ ...params!, offset: String(pageParam) }}),")

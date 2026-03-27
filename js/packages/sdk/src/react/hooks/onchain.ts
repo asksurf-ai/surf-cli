@@ -45,7 +45,7 @@ export function useInfiniteOnchainStructuredQuery(params: Omit<OnchainStructured
 /** Get table metadata — database, table, column names, types, and comments for all available on-chain databases. */
 export function useInfiniteOnchainSchema() {
   return useInfiniteQuery({
-    queryKey: ['onchain-schema', params],
+    queryKey: ['onchain-schema'],
     queryFn: () => proxyGet<ApiResponse<OnchainSchemaItem>>('onchain/schema'),
     initialPageParam: 0,
     getNextPageParam: (last) => {
