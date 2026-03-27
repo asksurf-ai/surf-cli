@@ -62,7 +62,7 @@ jobs:
           fi
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           echo "SDK version: $VER"
-          for pkg in js/packages/sdk js/packages/theme js/packages/create-surf-app; do
+          for pkg in js/packages/sdk js/packages/theme; do
             jq --arg v "$VER" '.version = $v' "$pkg/package.json" > tmp && mv tmp "$pkg/package.json"
           done
 
@@ -102,9 +102,3 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish create-surf-app
-        if: steps.diff.outputs.changed == 'true' && inputs.skip_publish != 'true'
-        working-directory: js/packages/create-surf-app
-        run: npm install && npm run build && npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
