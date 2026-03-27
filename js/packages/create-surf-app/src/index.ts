@@ -3,8 +3,8 @@
  * create-surf-app — Scaffold a Surf app with @surf-ai/sdk.
  *
  * Usage:
- *   bunx create-surf-app my-app --port <frontend-port> --backend-port <backend-port>
- *   bunx create-surf-app . --port <frontend-port> --backend-port <backend-port>
+ *   npx create-surf-app my-app --port <frontend-port> --backend-port <backend-port>
+ *   npx create-surf-app . --port <frontend-port> --backend-port <backend-port>
  */
 
 import fs from 'fs'
@@ -353,7 +353,7 @@ The agent can also call \`POST /api/__sync-schema\` explicitly after editing.
 
 - Use \`@surf-ai/sdk/react\` hooks in frontend, \`@surf-ai/sdk/server\` dataApi in backend
 - Use Tailwind CSS classes for styling (Surf Design System theme via \`@surf-ai/theme\`)
-- Use shadcn/ui components — install with \`bunx shadcn@latest add button\`
+- Use shadcn/ui components — install with \`npx shadcn@latest add button\`
 - Use \`cn()\` from \`@surf-ai/sdk/react\` to merge Tailwind classes
 - Frontend packages are pre-installed — check \`package.json\` before installing
 - Dark theme is the default (configured in entry-client.tsx)
@@ -402,14 +402,14 @@ console.log(`
 Done! Next steps:
 
   cd ${name}
-  cd backend && bun install && cd ..
-  cd frontend && bun install && cd ..
+  cd backend && npm install && cd ..
+  cd frontend && npm install && cd ..
 
   # Start backend
-  cd backend && bun dev &
+  cd backend && npm run dev &
 
   # Start frontend
-  cd frontend && bun dev
+  cd frontend && npm run dev
 
   Open http://localhost:${frontendPort}
 `)

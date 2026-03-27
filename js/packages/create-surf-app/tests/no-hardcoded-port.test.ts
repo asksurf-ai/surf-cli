@@ -21,8 +21,8 @@ const hardcodedPortPatterns = [
 
 const allowedMatches = new Map<string, string[]>([
   ['src/index.ts', [
-    'bunx create-surf-app my-app --port <frontend-port> --backend-port <backend-port>',
-    'bunx create-surf-app . --port <frontend-port> --backend-port <backend-port>',
+    'npx create-surf-app my-app --port <frontend-port> --backend-port <backend-port>',
+    'npx create-surf-app . --port <frontend-port> --backend-port <backend-port>',
     'http://127.0.0.1:${BACKEND_PORT}',
     'Open http://localhost:${frontendPort}',
   ]],
