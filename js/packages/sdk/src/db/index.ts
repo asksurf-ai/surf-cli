@@ -31,13 +31,16 @@ export async function dbProvision(): Promise<{
 /**
  * Execute a SQL query via /proxy/db/query.
  * Uses pg-proxy driver under the hood — Drizzle ORM calls this automatically.
+ *
+ * @param options.arrayMode - When true, rows are returned as positional arrays
+ *   instead of objects. Required for Drizzle ORM pg-proxy compatibility.
  */
 export async function dbQuery(
   sql: string,
   params?: any[],
   options?: { arrayMode?: boolean },
 ): Promise<any> {
-  return post('db/query', { sql, params, method: options?.arrayMode ? 'all' : 'execute' })
+  return post('db/query', { sql, params, arrayMode: options?.arrayMode ?? false })
 }
 
 /**

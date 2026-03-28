@@ -1,11 +1,14 @@
 {
   "name": "@surf-ai/theme",
+
   "version": "0.1.5-beta",
   "description": "Surf Design System — Tailwind CSS theme, color tokens, and base styles",
   "main": "index.css",
   "style": "index.css",
   "files": [
-    "index.css"
+    "index.css",
+    "CHARTS.md",
+    "DESIGN-SYSTEM.md"
   ],
   "keywords": [
     "surf",

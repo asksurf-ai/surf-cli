@@ -78,6 +78,7 @@ const frontendPkg = {
     'next-themes': '0.4.6',
     'react': '19.2.4',
     'react-dom': '19.2.4',
+    'react-router-dom': '7.6.1',
     'sonner': '1.7.4',
     'tailwind-merge': '2.6.1',
     'vaul': '1.1.2',

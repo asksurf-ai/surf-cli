@@ -168,6 +168,229 @@ Public (local dev):
 | `kalshi` | `events`, `markets`, `prices`, `volumes` |
 | `prediction_market` | `category_metrics` |
 
+## Database
+
+Per-user PostgreSQL (Neon) with Drizzle ORM. Auto-provisioned, auto-synced on server startup.
+
+### Setup
+
+Define tables in `backend/db/schema.js`:
+
+```js
+const { pgTable, serial, text, integer, boolean, timestamp, real, jsonb } = require('drizzle-orm/pg-core')
+
+exports.users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+```
+
+Tables are auto-created when the server starts and when `schema.js` changes (file watcher). You can also call `POST /api/__sync-schema` explicitly.
+
+### Querying (in backend routes)
+
+```js
+// backend/routes/users.js
+const { drizzle } = require('drizzle-orm/neon-http')
+const { dbQuery } = require('@surf-ai/sdk/db')
+const { eq, desc, count } = require('drizzle-orm')
+const schema = require('../db/schema')
+
+// IMPORTANT: arrayMode must be true for Drizzle to work correctly
+const db = drizzle(async (sql, params, method) => {
+  const result = await dbQuery(sql, params, { arrayMode: true })
+  return { rows: result.rows || [] }
+})
+
+router.get('/', async (req, res) => {
+  const users = await db.select().from(schema.users).orderBy(desc(schema.users.created_at)).limit(20)
+  res.json(users)
+})
+
+router.post('/', async (req, res) => {
+  const [user] = await db.insert(schema.users).values(req.body).returning()
+  res.json(user)
+})
+
+router.patch('/:id', async (req, res) => {
+  const [user] = await db.update(schema.users).set(req.body).where(eq(schema.users.id, +req.params.id)).returning()
+  res.json(user)
+})
+
+router.delete('/:id', async (req, res) => {
+  await db.delete(schema.users).where(eq(schema.users.id, +req.params.id))
+  res.json({ ok: true })
+})
+```
+
+### Raw SQL (escape hatch)
+
+```js
+const { dbQuery } = require('@surf-ai/sdk/db')
+const result = await dbQuery('SELECT symbol, SUM(volume) FROM trades GROUP BY symbol ORDER BY 2 DESC LIMIT $1', [20])
+```
+
+### DB Proxy Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/proxy/db/provision` | Create database (idempotent) |
+| POST | `/proxy/db/query` | Execute SQL query |
+| GET | `/proxy/db/tables` | List all tables |
+| GET | `/proxy/db/table-schema?table=X` | Column definitions for table X |
+| GET | `/proxy/db/status` | Connection status |
+| POST | `/api/__sync-schema` | Force schema sync from `db/schema.js` |
+
+### Safety Rules
+
+- **NEVER** `DROP TABLE` or `TRUNCATE` with existing data — use `ALTER TABLE ADD COLUMN IF NOT EXISTS`
+- **NEVER** `DELETE FROM` without `WHERE`
+- **Always** call `GET /proxy/db/tables` before creating tables — check what exists first
+- **Never** seed data into non-empty tables — check row count first
+- Limits: 30s query timeout, 5000 max rows, 50 max tables
+
+## Cron Jobs
+
+Built-in cron system powered by `croner`. Managed via `cron.json` + handler files.
+
+### When to Use
+
+- **Side effects** (DB writes, alerts, cache refresh) → cron job
+- **Display refresh** (show latest price) → `useQuery({ refetchInterval: 30000 })`
+
+### Setup
+
+1. Create `backend/cron.json`:
+
+```json
+[
+  {
+    "id": "refresh-prices",
+    "name": "Refresh token prices",
+    "schedule": "*/5 * * * *",
+    "handler": "tasks/refresh-prices.js",
+    "enabled": true,
+    "timeout": 120
+  }
+]
+```
+
+2. Create handler in `backend/tasks/`:
+
+```js
+// backend/tasks/refresh-prices.js
+const { dataApi } = require('@surf-ai/sdk/server')
+
+module.exports = {
+  async handler() {
+    const data = await dataApi.market.price({ symbol: 'BTC' })
+    // process and store...
+  },
+}
+```
+
+### Cron fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | yes | Unique identifier |
+| `name` | string | yes | Display name |
+| `schedule` | string | yes | Cron expression (min 1-minute interval) |
+| `handler` | string | yes | Path from `backend/` to handler file |
+| `enabled` | boolean | yes | Active or not |
+| `timeout` | number | no | Max seconds (default 300) |
+
+### Common schedules
+
+| Expression | Meaning |
+|-----------|---------|
+| `*/5 * * * *` | Every 5 minutes |
+| `0 * * * *` | Every hour |
+| `0 0 * * *` | Daily at midnight |
+| `0 9 * * 1` | Monday at 9 AM |
+
+### Management API
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/cron` | List all jobs with status |
+| POST | `/api/cron` | Create/update jobs (updates cron.json) |
+| PATCH | `/api/cron/:id` | Update a single job |
+| DELETE | `/api/cron/:id` | Remove a job |
+| POST | `/api/cron/:id/run` | Manually trigger a job |
+
+Rules: handlers must be idempotent, never use `setInterval` in server.js, `croner` is pre-installed (never `npm install` it).
+
+## Web Search & Fetch
+
+Search the web and scrape pages through the data proxy:
+
+```js
+// Backend
+const { dataApi } = require('@surf-ai/sdk/server')
+
+// Search
+const results = await dataApi.search.web({ q: 'BTC ETF approval', limit: 10 })
+
+// Fetch page as markdown
+const page = await dataApi.web.fetch({ url: 'https://example.com', target_selector: '.article' })
+```
+
+```tsx
+// Frontend
+import { useSearchWeb, useWebFetch } from '@surf-ai/sdk/react'
+
+const { data } = useSearchWeb({ q: 'BTC ETF', limit: 5 })
+const { data: page } = useWebFetch({ url: 'https://example.com' })
+```
+
+Search params: `q` (required), `limit`, `offset`, `site` (domain filter). Fetch params: `url` (required), `target_selector`, `remove_selector`, `timeout`.
+
+## Data Strategy
+
+### Market vs Exchange
+
+- **`market`** = aggregated cross-exchange (market cap, total OI, Fear & Greed, ETF flows). Use for: "show BTC price", "market overview"
+- **`exchange`** = per-exchange real-time (order book, klines, funding rate). Use for: "Binance BTC order book", "compare funding rates"
+
+| Need | Use |
+|------|-----|
+| Price history, rankings, sentiment | `market` |
+| Total derivatives OI, liquidations, ETF flows | `market` |
+| Order book, klines from a specific exchange | `exchange` |
+| Funding rate, long/short for specific pair | `exchange` |
+
+### Data complexity tiers
+
+| Complexity | Approach |
+|-----------|----------|
+| Single endpoint, read-only | Frontend hook directly (`useMarketPrice`) |
+| Combine multiple endpoints | Backend route with `Promise.all` + multiple `dataApi` calls |
+| External API not in proxy | Backend route + `process.env` for API keys |
+| On-chain SQL analytics | `dataApi.onchain.sql()` (see `onchain` skill for ClickHouse schema) |
+
+### Backend composition pattern
+
+```js
+// backend/routes/overview.js — combine multiple data sources
+const { dataApi } = require('@surf-ai/sdk/server')
+const router = require('express').Router()
+
+router.get('/', async (req, res) => {
+  const { symbol } = req.query
+  const [price, holders, social] = await Promise.all([
+    dataApi.market.price({ symbol }),
+    dataApi.token.holders({ address: req.query.address, chain: 'ethereum', limit: 10 }),
+    dataApi.social.detail({ username: req.query.twitter }),
+  ])
+  res.json({ price: price.data?.[0], topHolders: holders.data, social: social.data })
+})
+
+module.exports = router
+```
+
 ## Codegen
 
 API methods and React hooks are auto-generated from hermod's OpenAPI spec via the surf CLI:
