@@ -183,8 +183,16 @@ export default defineConfig({
     port: FRONTEND_PORT,
     host: '0.0.0.0',
     proxy: {
-      '/proxy': { target: \`http://127.0.0.1:\${BACKEND_PORT}\`, changeOrigin: true },
-      '/api': { target: \`http://127.0.0.1:\${BACKEND_PORT}\`, changeOrigin: true },
+      [\`\${BASE}proxy\`]: {
+        target: \`http://127.0.0.1:\${BACKEND_PORT}\`,
+        changeOrigin: true,
+        rewrite: (p: string) => p.replace(new RegExp(\`^\${BASE.replace(/[.*+?^\${}()|[\\\\]\\\\\\\\]/g, '\\\\\\\\$&')}\`), '/'),
+      },
+      [\`\${BASE}api\`]: {
+        target: \`http://127.0.0.1:\${BACKEND_PORT}\`,
+        changeOrigin: true,
+        rewrite: (p: string) => p.replace(new RegExp(\`^\${BASE.replace(/[.*+?^\${}()|[\\\\]\\\\\\\\]/g, '\\\\\\\\$&')}\`), '/'),
+      },
     },
   },
   resolve: {
