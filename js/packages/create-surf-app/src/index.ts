@@ -148,6 +148,7 @@ createServer().start()
 
   'frontend/.env': `VITE_PORT=${frontendPort}
 VITE_BACKEND_PORT=${backendPort}
+VITE_BASE=${process.env.VITE_BASE || '/'}
 `,
 
   'frontend/vite.config.ts': `import { defineConfig, loadEnv } from 'vite'
@@ -173,8 +174,10 @@ function requiredPort(name: string) {
 
 const FRONTEND_PORT = requiredPort('VITE_PORT')
 const BACKEND_PORT = requiredPort('VITE_BACKEND_PORT')
+const BASE = env.VITE_BASE || '/'
 
 export default defineConfig({
+  base: BASE,
   plugins: [react(), tailwindcss()],
   server: {
     port: FRONTEND_PORT,
