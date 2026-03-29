@@ -380,7 +380,7 @@ The agent can also call \`POST /api/__sync-schema\` explicitly after editing.
 const root = path.resolve(projectName)
 const name = path.basename(root)
 
-console.log(`\n  Creating Surf app in ${root}\n`)
+console.log(`\n  Creating Surf app in ./${projectName === '.' ? '' : name}\n`)
 
 fs.mkdirSync(root, { recursive: true })
 
@@ -411,11 +411,11 @@ function copyDir(src: string, dest: string) {
   }
 }
 
+const cdStep = projectName === '.' ? '' : `  cd ${name}\n`
 console.log(`
 Done! Next steps:
 
-  cd ${name}
-  cd backend && npm install && cd ..
+${cdStep}  cd backend && npm install && cd ..
   cd frontend && npm install && cd ..
 
   # Start backend
