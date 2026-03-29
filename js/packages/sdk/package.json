@@ -1,7 +1,6 @@
 {
   "name": "@surf-ai/sdk",
-
-  "version": "0.1.5-beta",
+  "version": "0.1.4-beta",
   "description": "Surf platform SDK — data API client, server runtime, React hooks, and database helpers",
   "type": "module",
   "exports": {
