@@ -115,7 +115,7 @@ const templates: Record<string, string> = {
     private: true,
     scripts: {
       start: 'node server.js',
-      dev: 'node --watch server.js',
+      dev: 'node --env-file=.env --watch server.js',
     },
     dependencies: {
       '@surf-ai/sdk': 'latest',
@@ -137,6 +137,9 @@ createServer().start()
 //     name: text('name').notNull(),
 //     created_at: timestamp('created_at').defaultNow(),
 //   })
+`,
+
+  'backend/.env': `PORT=${backendPort}
 `,
 
   // ── Frontend ─────────────────────────────────────────────────────────────
@@ -340,9 +343,18 @@ exports.users = pgTable('users', {
 Tables are auto-created on startup and when \`schema.js\` changes (file watcher).
 The agent can also call \`POST /api/__sync-schema\` explicitly after editing.
 
+## Dev Servers
+
+- Frontend: \`cd frontend && npm run dev\` (port from \`.env\`, do NOT pass \`--port\`)
+- Backend: \`cd backend && npm run dev\` (port from \`.env\`)
+- After \`npm install\` new packages, do NOT restart servers — Vite auto-discovers deps, backend uses \`node --watch\`
+- If a server crashes, restart with \`npm run dev\` in that directory
+- NEVER use \`npx vite\` — always use \`npm run dev\`
+
 ## Do NOT modify
 
 - \`vite.config.ts\` — proxy and build config
+- \`frontend/.env\` — port configuration (auto-generated)
 - \`backend/server.js\` — uses @surf-ai/sdk/server
 - \`entry-client.tsx\` — app bootstrap with SSR hydration
 - \`entry-server.tsx\` — SSR render for deploy
