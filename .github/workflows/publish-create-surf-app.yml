@@ -45,6 +45,17 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Notify Urania to bump create-surf-app version
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_PAT }}
+        run: |
+          gh api repos/cyberconnecthq/urania/dispatches \
+            -f event_type=create_surf_app_published \
+            -f client_payload[package_name]=create-surf-app \
+            -f client_payload[version]=${{ steps.pkg.outputs.version }} \
+            -f client_payload[tag]=${{ inputs.tag || 'latest' }} \
+            -f client_payload[source_sha]=${{ github.sha }}
+
       - name: Commit version bump (if overridden)
         if: inputs.version != ''
         run: |
