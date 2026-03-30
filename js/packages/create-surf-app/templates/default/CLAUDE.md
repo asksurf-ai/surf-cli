@@ -5,8 +5,6 @@
 - `vite.config.ts` — pre-configured proxy chain; changing it breaks preview.
 - `.env` files — managed by the system; editing causes Vite restart & preview downtime.
 - `entry-client.tsx` `notifyParentReady` / `data-surf-placeholder` — hosting app depends on these.
-- Dev servers — NEVER start/stop/kill/restart them manually (`pkill`, `kill`, `node`, `npm run dev`). Causes EADDRINUSE.
-
 ## npm install Rules
 
 - **ALL packages in `frontend/package.json` are already installed.** Just import them directly — do NOT run `npm install` for them.
