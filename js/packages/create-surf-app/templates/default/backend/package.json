@@ -10,6 +10,7 @@
     "verify": "npm run lint && npm run check"
   },
   "dependencies": {
+    "@surf-ai/sdk": "0.1.4-beta",
     "express": "4.22.1",
     "cors": "2.8.6",
     "http-proxy-middleware": "3.0.5",
