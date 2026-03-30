@@ -129,23 +129,22 @@ function setupProxy(app: Express, port: number) {
     process.env.DATA_PROXY_BASE = loopback
   } else if (proxyBase) {
     // Sandbox: /proxy/* → OutboundProxy (set by urania executor)
+    // Direct passthrough — no selfHandleResponse/responseInterceptor needed.
+    // selfHandleResponse buffers the entire response body which breaks when
+    // upstream returns chunked/compressed responses (causes 500 + empty body).
     const target = proxyBase.replace(/\/proxy$/, '')
 
     app.use(createProxyMiddleware({
       target,
       changeOrigin: true,
-      selfHandleResponse: true,
       pathFilter: '/proxy',
       on: {
         proxyReq: (proxyReq, req) => {
           console.log(`[proxy] >> ${req.method} ${req.originalUrl}`)
         },
-        proxyRes: responseInterceptor(async (buf, proxyRes, req) => {
-          const status = proxyRes.statusCode
-          const tag = status && status >= 400 ? 'ERR' : 'OK'
-          console.log(`[proxy] << ${status} ${tag} ${req.method} ${req.originalUrl} bytes=${buf.length}`)
-          return buf
-        }),
+        proxyRes: (proxyRes, req) => {
+          console.log(`[proxy] << ${proxyRes.statusCode} ${req.method} ${req.originalUrl}`)
+        },
         error: (err: Error, req: any, res: any) => {
           console.error(`[proxy] !! ${req.method} ${req.originalUrl} error: ${err.message}`)
           if (!res.headersSent) res.status(502).json({ error: err.message })
