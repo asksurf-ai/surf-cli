@@ -41,6 +41,7 @@ async function boot() {
     const { createRoot, hydrateRoot } = await import('react-dom/client')
     const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query')
     const { default: App } = await import('./App')
+    const { default: ErrorBoundary } = await import('./ErrorBoundary')
 
     const queryClient = new QueryClient({
       defaultOptions: { queries: {
@@ -51,8 +52,10 @@ async function boot() {
       } },
     })
 
-    const children = createElement(QueryClientProvider, { client: queryClient },
-      createElement(App)
+    const children = createElement(ErrorBoundary, null,
+      createElement(QueryClientProvider, { client: queryClient },
+        createElement(App)
+      )
     )
 
     // Use hydrateRoot only when SSR rendered real app content. The scaffold's
@@ -87,9 +90,9 @@ async function boot() {
 
     if (count < MAX_RELOADS) {
       root.innerHTML = [
-        '<div style=\"padding:24px;text-align:center;font-family:system-ui,sans-serif\">',
-        '<p style=\"color:#3b82f6;font-weight:600;margin:0 0 4px\">Loading dependencies...</p>',
-        '<p style=\"color:#3b82f6;opacity:0.7;font-size:12px;margin:0\">Reloading automatically</p>',
+        '<div style="padding:24px;text-align:center;font-family:system-ui,sans-serif">',
+        '<p style="color:#3b82f6;font-weight:600;margin:0 0 4px">Loading dependencies...</p>',
+        '<p style="color:#3b82f6;opacity:0.7;font-size:12px;margin:0">Reloading automatically</p>',
         '</div>',
       ].join('')
       sessionStorage.setItem(RELOAD_KEY, JSON.stringify({ c: count + 1, t: Date.now() }))
@@ -97,9 +100,9 @@ async function boot() {
       setTimeout(() => location.reload(), 3000 + count * 1000)
     } else {
       root.innerHTML = [
-        '<div style=\"padding:24px;text-align:center;font-family:system-ui,sans-serif\">',
-        '<p style=\"color:#c0392b;font-weight:600;margin:0 0 4px\">Failed to load dependencies</p>',
-        '<p style=\"color:#c0392b;opacity:0.8;font-size:12px;margin:0\">Please refresh the page</p>',
+        '<div style="padding:24px;text-align:center;font-family:system-ui,sans-serif">',
+        '<p style="color:#c0392b;font-weight:600;margin:0 0 4px">Failed to load dependencies</p>',
+        '<p style="color:#c0392b;opacity:0.8;font-size:12px;margin:0">Please refresh the page</p>',
         '</div>',
       ].join('')
     }

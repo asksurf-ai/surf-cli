@@ -1,84 +1,212 @@
-import { describe, expect, test } from 'bun:test'
+import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { afterEach, beforeEach, describe, test } from 'node:test'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const packageRoot = path.resolve(__dirname, '..')
+import { FALLBACK_API_TS } from '../src/api-codegen'
+import { createSurfApp } from '../src/index'
 
-const hardcodedPortPatterns = [
-  /getFlag\('--port'\s*,/g,
-  /getFlag\('--backend-port'\s*,/g,
-  /--port\s+\d+\b/g,
-  /--backend-port\s+\d+\b/g,
-  /\bport\s*:\s*\d+\b/g,
-  /localhost:\d+\b/g,
-  /127\.0\.0\.1:\d+\b/g,
-  /VITE_PORT\s*\|\|\s*['"`]\d+['"`]/g,
-  /VITE_BACKEND_PORT\s*\|\|\s*['"`]\d+['"`]/g,
-]
+const tempDirs: string[] = []
 
-const allowedMatches = new Map<string, string[]>([
-  ['src/index.ts', [
-    'npx create-surf-app my-app --port <frontend-port> --backend-port <backend-port>',
-    'npx create-surf-app . --port <frontend-port> --backend-port <backend-port>',
-    'http://127.0.0.1:${BACKEND_PORT}',
-    'Open http://localhost:${frontendPort}',
-  ]],
-])
-
-function collectFiles(dir: string): string[] {
-  const files: string[] = []
-
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = path.join(dir, entry.name)
-    if (entry.isDirectory()) {
-      files.push(...collectFiles(fullPath))
-      continue
-    }
-    files.push(fullPath)
-  }
-
-  return files
+const mockSwaggerDocument = {
+  openapi: '3.1.0',
+  components: {
+    schemas: {
+      MarketPriceItem: {
+        type: 'object',
+        required: ['symbol', 'price'],
+        properties: {
+          symbol: { type: 'string' },
+          price: { type: 'number' },
+        },
+      },
+      DataResponseMarketPriceItem: {
+        type: 'object',
+        properties: {
+          data: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/MarketPriceItem' },
+          },
+          meta: { $ref: '#/components/schemas/ResponseMeta' },
+        },
+      },
+      ResponseMeta: {
+        type: 'object',
+        properties: {
+          total: { type: 'integer' },
+          limit: { type: 'integer' },
+          offset: { type: 'integer' },
+        },
+      },
+    },
+  },
+  paths: {
+    '/gateway/v1/market/price': {
+      get: {
+        tags: ['Market'],
+        summary: 'Fetch market price',
+        parameters: [
+          {
+            name: 'symbol',
+            in: 'query',
+            required: true,
+            schema: { type: 'string' },
+          },
+        ],
+        responses: {
+          '200': {
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/DataResponseMarketPriceItem' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 }
 
-function findUnexpectedMatches(relPath: string, content: string): string[] {
-  const allowed = allowedMatches.get(relPath) || []
-  const failures: string[] = []
+let originalFetch: typeof fetch
 
-  for (const pattern of hardcodedPortPatterns) {
-    for (const match of content.matchAll(pattern)) {
-      const value = match[0]
-      if (!allowed.includes(value)) {
-        failures.push(value)
-      }
-    }
+afterEach(() => {
+  globalThis.fetch = originalFetch
+  while (tempDirs.length > 0) {
+    fs.rmSync(tempDirs.pop()!, { recursive: true, force: true })
   }
+})
 
-  return failures
+beforeEach(() => {
+  originalFetch = globalThis.fetch
+})
+
+function makeTempProject() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'create-surf-app-'))
+  tempDirs.push(dir)
+  return path.join(dir, 'app')
 }
 
 describe('create-surf-app', () => {
-  test('does not hardcode ports in source or templates', () => {
-    const roots = [
-      path.join(packageRoot, 'src'),
-      path.join(packageRoot, 'templates'),
+  test('generates the canonical scaffold, env files, and API files', async () => {
+    const projectDir = makeTempProject()
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify(mockSwaggerDocument), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+    await createSurfApp({
+      projectName: projectDir,
+      frontendPort: '15042',
+      backendPort: '20042',
+      previewBase: '/preview/local/test/',
+      logger: () => {},
+    })
+
+    const expectedFiles = [
+      'CLAUDE.md',
+      'backend/server.js',
+      'backend/routes/proxy.js',
+      'backend/lib/db.js',
+      'backend/lib/api.js',
+      'backend/lib/api-market.js',
+      'frontend/index.html',
+      'frontend/src/entry-client.tsx',
+      'frontend/src/entry-server.tsx',
+      'frontend/src/components/ui/button.tsx',
+      'frontend/src/lib/api.ts',
+      'frontend/src/lib/api-market.ts',
+      'frontend/src/lib/types-common.ts',
+      'frontend/src/lib/types-market.ts',
+      'frontend/vite.config.ts',
     ]
 
-    const failures: string[] = []
-
-    for (const root of roots) {
-      for (const file of collectFiles(root)) {
-        const relPath = path.relative(packageRoot, file)
-        const content = fs.readFileSync(file, 'utf8')
-        const matches = findUnexpectedMatches(relPath, content)
-        for (const match of matches) {
-          failures.push(`${relPath}: ${match}`)
-        }
-      }
+    for (const relPath of expectedFiles) {
+      assert.equal(fs.existsSync(path.join(projectDir, relPath)), true)
     }
 
-    expect(failures).toEqual([])
+    assert.equal(fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8'), 'PORT=20042\n')
+    assert.equal(fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8'),
+      'VITE_PORT=15042\nVITE_BACKEND_PORT=20042\nVITE_BASE=/preview/local/test/\n',
+    )
+
+    const frontendPackageJson = JSON.parse(
+      fs.readFileSync(path.join(projectDir, 'frontend/package.json'), 'utf8'),
+    )
+    assert.equal(frontendPackageJson.scripts.build,
+      'npm run build:client && npm run build:server',
+    )
+    assert.equal(frontendPackageJson.scripts.dev, 'vite')
+
+    const apiTs = fs.readFileSync(path.join(projectDir, 'frontend/src/lib/api.ts'), 'utf8')
+    assert.match(apiTs, /export \* from '\.\/api-market'/)
+
+    const apiMarketTs = fs.readFileSync(
+      path.join(projectDir, 'frontend/src/lib/api-market.ts'),
+      'utf8',
+    )
+    assert.match(apiMarketTs, /export async function fetchMarketPrice/)
+    assert.match(apiMarketTs, /export function useMarketPrice/)
+
+    const viteConfig = fs.readFileSync(path.join(projectDir, 'frontend/vite.config.ts'), 'utf8')
+    assert.match(viteConfig, /readRequiredPort\('VITE_PORT'\)/)
+    assert.doesNotMatch(viteConfig, /'5173'/)
+    assert.doesNotMatch(viteConfig, /'3001'/)
+
+    const backendServer = fs.readFileSync(path.join(projectDir, 'backend/server.js'), 'utf8')
+    assert.doesNotMatch(backendServer, /'3001'/)
+    assert.match(backendServer, /PORT env var is required/)
+
+    const backendDb = fs.readFileSync(path.join(projectDir, 'backend/lib/db.js'), 'utf8')
+    assert.doesNotMatch(backendDb, /'3001'/)
+    assert.match(backendDb, /PORT env var is required/)
+  })
+
+  test('writes fallback api.ts when swagger generation fails', async () => {
+    const projectDir = makeTempProject()
+    globalThis.fetch = async () => {
+      throw new Error('network down')
+    }
+
+    await createSurfApp({
+      projectName: projectDir,
+      frontendPort: '15042',
+      backendPort: '20042',
+      logger: () => {},
+    })
+
+    assert.equal(fs.readFileSync(path.join(projectDir, 'frontend/src/lib/api.ts'), 'utf8'),
+      FALLBACK_API_TS,
+    )
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api-market.ts')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend/lib/api.js')), false)
+  })
+
+  test('uses env fallback ports when flags are omitted', async () => {
+    const originalFrontendPort = process.env.VITE_PORT
+    const originalBackendPort = process.env.VITE_BACKEND_PORT
+    const originalBase = process.env.VITE_BASE
+    const projectDir = makeTempProject()
+    globalThis.fetch = async () => {
+      throw new Error('network down')
+    }
+
+    process.env.VITE_PORT = '16000'
+    process.env.VITE_BACKEND_PORT = '26000'
+    process.env.VITE_BASE = '/preview/env/test/'
+
+    try {
+      await createSurfApp({ projectName: projectDir, logger: () => {} })
+    } finally {
+      process.env.VITE_PORT = originalFrontendPort
+      process.env.VITE_BACKEND_PORT = originalBackendPort
+      process.env.VITE_BASE = originalBase
+    }
+
+    const frontendEnv = fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8')
+    assert.match(frontendEnv, /VITE_PORT=16000/)
+    assert.match(frontendEnv, /VITE_BACKEND_PORT=26000/)
+    assert.match(frontendEnv, /VITE_BASE=\/preview\/env\/test\//)
   })
 })
