@@ -35,8 +35,8 @@ describe('create-surf-app', () => {
     const expectedFiles = [
       'CLAUDE.md',
       'backend/server.js',
-      'backend/routes/proxy.js',
-      'backend/lib/db.js',
+      'backend/routes/.gitkeep',
+      'backend/db/schema.js',
       'frontend/index.html',
       'frontend/src/entry-client.tsx',
       'frontend/src/entry-server.tsx',
@@ -67,13 +67,18 @@ describe('create-surf-app', () => {
     assert.doesNotMatch(viteConfig, /'5173'/)
     assert.doesNotMatch(viteConfig, /'3001'/)
 
-    const backendServer = fs.readFileSync(path.join(projectDir, 'backend/server.js'), 'utf8')
-    assert.doesNotMatch(backendServer, /'3001'/)
-    assert.match(backendServer, /PORT env var is required/)
+    const backendPackageJson = JSON.parse(
+      fs.readFileSync(path.join(projectDir, 'backend/package.json'), 'utf8'),
+    )
+    assert.equal(backendPackageJson.scripts.start, 'node server.js')
+    assert.equal(backendPackageJson.scripts.dev, 'node --watch server.js')
 
-    const backendDb = fs.readFileSync(path.join(projectDir, 'backend/lib/db.js'), 'utf8')
-    assert.doesNotMatch(backendDb, /'3001'/)
-    assert.match(backendDb, /PORT env var is required/)
+    const backendServer = fs.readFileSync(path.join(projectDir, 'backend/server.js'), 'utf8')
+    assert.match(backendServer, /createServer/)
+    assert.match(backendServer, /@surf-ai\/sdk\/server/)
+
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend/routes/proxy.js')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend/lib/db.js')), false)
   })
 
   test('does not generate swagger-derived API files', async () => {

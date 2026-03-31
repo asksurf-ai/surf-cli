@@ -1,26 +1,12 @@
 {
   "name": "backend",
   "private": true,
-  "version": "0.0.0",
   "scripts": {
-    "check": "node --check server.js && find routes lib db -type f -name '*.js' -print0 | xargs -0 -n1 node --check",
-    "lint": "eslint .",
     "start": "node server.js",
-    "dev": "node --watch --watch-path=./routes --watch-path=./lib --watch-path=./server.js server.js",
-    "verify": "npm run lint && npm run check"
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "@surf-ai/sdk": "0.1.4-beta",
-    "express": "4.22.1",
-    "cors": "2.8.6",
-    "http-proxy-middleware": "3.0.5",
-    "drizzle-orm": "0.44.7",
-    "drizzle-kit": "0.30.6",
-    "croner": "9.1.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "9.39.4",
-    "eslint": "9.39.4",
-    "globals": "16.5.0"
+    "express": "4.22.1"
   }
 }
