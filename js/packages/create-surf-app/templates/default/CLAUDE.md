@@ -86,3 +86,4 @@ The agent can also call `POST /api/__sync-schema` explicitly after editing.
 
 - Use `@surf-ai/sdk/react` hooks in frontend, `@surf-ai/sdk/server` dataApi in backend
 - Frontend packages are pre-installed - check `package.json` before installing
+- Default to a dark theme unless the user explicitly asks for a different visual direction.
