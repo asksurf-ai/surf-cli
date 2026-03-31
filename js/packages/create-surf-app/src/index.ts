@@ -9,6 +9,7 @@ const DEFAULT_TEMPLATE = 'default'
 
 type CreateSurfAppOptions = {
   projectName?: string
+  templateName?: string
   frontendPort?: string
   backendPort?: string
   previewBase?: string
@@ -17,6 +18,7 @@ type CreateSurfAppOptions = {
 
 export async function createSurfApp({
   projectName = '.',
+  templateName = DEFAULT_TEMPLATE,
   frontendPort = process.env.VITE_PORT || DEFAULT_FRONTEND_PORT,
   backendPort = process.env.VITE_BACKEND_PORT || DEFAULT_BACKEND_PORT,
   previewBase = process.env.VITE_BASE,
@@ -26,9 +28,9 @@ export async function createSurfApp({
   const name = path.basename(root)
   const validatedFrontendPort = validatePort('frontend', frontendPort)
   const validatedBackendPort = validatePort('backend', backendPort)
-  const templateDir = resolveTemplateDir(DEFAULT_TEMPLATE)
+  const templateDir = resolveTemplateDir(templateName)
 
-  logger(`\n  Creating Surf app in ${root}\n`)
+  logger(`\n  Creating Surf app in ${root} (${templateName})\n`)
   fs.mkdirSync(root, { recursive: true })
 
   copyDir(templateDir, root, root, logger)

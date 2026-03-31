@@ -114,4 +114,45 @@ describe('create-surf-app', () => {
     assert.match(frontendEnv, /VITE_BACKEND_PORT=26000/)
     assert.match(frontendEnv, /VITE_BASE=\/preview\/env\/test\//)
   })
+
+  test('can scaffold the legacy mini-surf template', async () => {
+    const projectDir = makeTempProject()
+
+    await createSurfApp({
+      projectName: projectDir,
+      templateName: 'mini-surf',
+      frontendPort: '15042',
+      backendPort: '20042',
+      logger: () => {},
+    })
+
+    const expectedFiles = [
+      'CLAUDE.md',
+      'backend/server.js',
+      'backend/eslint.config.mjs',
+      'backend/routes/.gitkeep',
+      'frontend/index.html',
+      'frontend/src/App.tsx',
+      'frontend/src/entry-client.tsx',
+      'frontend/src/entry-server.tsx',
+      'frontend/src/index.css',
+      'frontend/components.json',
+    ]
+
+    for (const relPath of expectedFiles) {
+      assert.equal(fs.existsSync(path.join(projectDir, relPath)), true)
+    }
+
+    const frontendPackageJson = JSON.parse(
+      fs.readFileSync(path.join(projectDir, 'frontend/package.json'), 'utf8'),
+    )
+    assert.equal(frontendPackageJson.scripts.dev, 'vite --port 5173')
+    assert.equal(frontendPackageJson.scripts.build, 'vite build')
+
+    const appTsx = fs.readFileSync(path.join(projectDir, 'frontend/src/App.tsx'), 'utf8')
+    assert.match(appTsx, /useMarketPrice/)
+    assert.match(appTsx, /BTC/)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api.ts')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend/routes/proxy.js')), false)
+  })
 })

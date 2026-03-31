@@ -3,6 +3,7 @@
 import { createSurfApp } from './index'
 
 const VALUE_FLAGS = new Set([
+  '--template',
   '--frontend-port',
   '--backend-port',
   '--preview-base',
@@ -38,6 +39,7 @@ function parseCliArgs(args: string[]) {
 
   return {
     projectName: positionalArgs[0] || '.',
+    templateName: getFlag(args, '--template'),
     frontendPort: getFlag(args, '--frontend-port'),
     backendPort: getFlag(args, '--backend-port'),
     previewBase: getFlag(args, '--preview-base'),
