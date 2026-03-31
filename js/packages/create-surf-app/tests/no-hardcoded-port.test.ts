@@ -2,83 +2,16 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, test } from 'node:test'
+import { afterEach, describe, test } from 'node:test'
 
-import { FALLBACK_API_TS } from '../src/api-codegen'
 import { createSurfApp } from '../src/index'
 
 const tempDirs: string[] = []
 
-const mockSwaggerDocument = {
-  openapi: '3.1.0',
-  components: {
-    schemas: {
-      MarketPriceItem: {
-        type: 'object',
-        required: ['symbol', 'price'],
-        properties: {
-          symbol: { type: 'string' },
-          price: { type: 'number' },
-        },
-      },
-      DataResponseMarketPriceItem: {
-        type: 'object',
-        properties: {
-          data: {
-            type: 'array',
-            items: { $ref: '#/components/schemas/MarketPriceItem' },
-          },
-          meta: { $ref: '#/components/schemas/ResponseMeta' },
-        },
-      },
-      ResponseMeta: {
-        type: 'object',
-        properties: {
-          total: { type: 'integer' },
-          limit: { type: 'integer' },
-          offset: { type: 'integer' },
-        },
-      },
-    },
-  },
-  paths: {
-    '/gateway/v1/market/price': {
-      get: {
-        tags: ['Market'],
-        summary: 'Fetch market price',
-        parameters: [
-          {
-            name: 'symbol',
-            in: 'query',
-            required: true,
-            schema: { type: 'string' },
-          },
-        ],
-        responses: {
-          '200': {
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/DataResponseMarketPriceItem' },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}
-
-let originalFetch: typeof fetch
-
 afterEach(() => {
-  globalThis.fetch = originalFetch
   while (tempDirs.length > 0) {
     fs.rmSync(tempDirs.pop()!, { recursive: true, force: true })
   }
-})
-
-beforeEach(() => {
-  originalFetch = globalThis.fetch
 })
 
 function makeTempProject() {
@@ -88,13 +21,8 @@ function makeTempProject() {
 }
 
 describe('create-surf-app', () => {
-  test('generates the canonical scaffold, env files, and API files', async () => {
+  test('generates the canonical scaffold and env files', async () => {
     const projectDir = makeTempProject()
-    globalThis.fetch = async () =>
-      new Response(JSON.stringify(mockSwaggerDocument), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
 
     await createSurfApp({
       projectName: projectDir,
@@ -109,16 +37,11 @@ describe('create-surf-app', () => {
       'backend/server.js',
       'backend/routes/proxy.js',
       'backend/lib/db.js',
-      'backend/lib/api.js',
-      'backend/lib/api-market.js',
       'frontend/index.html',
       'frontend/src/entry-client.tsx',
       'frontend/src/entry-server.tsx',
       'frontend/src/components/ui/button.tsx',
       'frontend/src/lib/api.ts',
-      'frontend/src/lib/api-market.ts',
-      'frontend/src/lib/types-common.ts',
-      'frontend/src/lib/types-market.ts',
       'frontend/vite.config.ts',
     ]
 
@@ -139,16 +62,6 @@ describe('create-surf-app', () => {
     )
     assert.equal(frontendPackageJson.scripts.dev, 'vite')
 
-    const apiTs = fs.readFileSync(path.join(projectDir, 'frontend/src/lib/api.ts'), 'utf8')
-    assert.match(apiTs, /export \* from '\.\/api-market'/)
-
-    const apiMarketTs = fs.readFileSync(
-      path.join(projectDir, 'frontend/src/lib/api-market.ts'),
-      'utf8',
-    )
-    assert.match(apiMarketTs, /export async function fetchMarketPrice/)
-    assert.match(apiMarketTs, /export function useMarketPrice/)
-
     const viteConfig = fs.readFileSync(path.join(projectDir, 'frontend/vite.config.ts'), 'utf8')
     assert.match(viteConfig, /readRequiredPort\('VITE_PORT'\)/)
     assert.doesNotMatch(viteConfig, /'5173'/)
@@ -163,11 +76,8 @@ describe('create-surf-app', () => {
     assert.match(backendDb, /PORT env var is required/)
   })
 
-  test('writes fallback api.ts when swagger generation fails', async () => {
+  test('does not generate swagger-derived API files', async () => {
     const projectDir = makeTempProject()
-    globalThis.fetch = async () => {
-      throw new Error('network down')
-    }
 
     await createSurfApp({
       projectName: projectDir,
@@ -176,11 +86,10 @@ describe('create-surf-app', () => {
       logger: () => {},
     })
 
-    assert.equal(fs.readFileSync(path.join(projectDir, 'frontend/src/lib/api.ts'), 'utf8'),
-      FALLBACK_API_TS,
-    )
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api.ts')), true)
     assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api-market.ts')), false)
     assert.equal(fs.existsSync(path.join(projectDir, 'backend/lib/api.js')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/types-common.ts')), false)
   })
 
   test('uses env fallback ports when flags are omitted', async () => {
@@ -188,10 +97,6 @@ describe('create-surf-app', () => {
     const originalBackendPort = process.env.VITE_BACKEND_PORT
     const originalBase = process.env.VITE_BASE
     const projectDir = makeTempProject()
-    globalThis.fetch = async () => {
-      throw new Error('network down')
-    }
-
     process.env.VITE_PORT = '16000'
     process.env.VITE_BACKEND_PORT = '26000'
     process.env.VITE_BASE = '/preview/env/test/'

@@ -6,7 +6,6 @@ const VALUE_FLAGS = new Set([
   '--frontend-port',
   '--backend-port',
   '--preview-base',
-  '--swagger-url',
 ])
 
 function getFlag(args: string[], name: string) {
@@ -42,7 +41,6 @@ function parseCliArgs(args: string[]) {
     frontendPort: getFlag(args, '--frontend-port'),
     backendPort: getFlag(args, '--backend-port'),
     previewBase: getFlag(args, '--preview-base'),
-    swaggerUrl: getFlag(args, '--swagger-url'),
   }
 }
 
