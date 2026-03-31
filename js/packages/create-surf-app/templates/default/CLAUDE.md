@@ -1,44 +1,88 @@
-# Project Rules
+# Project
 
-## Do NOT Touch
+Built with [Surf SDK](https://github.com/cyberconnecthq/urania/tree/main/packages/sdk).
 
-- `vite.config.ts` — pre-configured proxy chain; changing it breaks preview.
-- `.env` files — managed by the system; editing causes Vite restart & preview downtime.
-- `entry-client.tsx` `notifyParentReady` / `data-surf-placeholder` — hosting app depends on these.
-## npm install Rules
+## Imports from @surf-ai/sdk
 
-- **ALL packages in `frontend/package.json` are already installed.** Just import them directly — do NOT run `npm install` for them.
-- Running `npm install` on pre-installed packages corrupts the node_modules tmpfs mount, kills the Vite dev server, and causes 5+ minute preview downtime (white screen).
-- Only `npm install` packages that are NOT in package.json. When in doubt, read `frontend/package.json` first.
+Everything comes from `@surf-ai/sdk`. Do NOT create local utility files for these.
 
-## Editing Rules
+**Frontend (`@surf-ai/sdk/react`):**
 
-- **Read before edit** — always Read a file before using Edit or Write on it.
-- **Edit, don't rewrite** — use the Edit tool on scaffold files (marked SCAFFOLD). Never use Write to replace them entirely; it breaks infrastructure (proxy, HMR, cold-start guards).
-- **One file per tool call** — enables streaming progress and faster error recovery.
-- **200-line limit** — split components exceeding 200 lines into sub-components.
+```tsx
+import { useMarketPrice, useTokenHolders } from "@surf-ai/sdk/react"; // data hooks
+```
 
-## Storage Rules
+**Backend (`@surf-ai/sdk/server`):**
 
-- **Never use localStorage or in-memory arrays for persistent user data** (CRUD, todos, plans, bookmarks, notes, watchlists, etc.). Read `.claude/skills/database/SKILL.md` and use PostgreSQL + Drizzle ORM.
-- localStorage is ONLY acceptable for: theme preference, UI collapsed/expanded state, session tokens.
+```js
+const { dataApi } = require("@surf-ai/sdk/server");
+const data = await dataApi.market.price({ symbol: "BTC" });
+const holders = await dataApi.token.holders({
+  address: "0x...",
+  chain: "ethereum",
+});
+// Escape hatch for new endpoints:
+const raw = await dataApi.get("newcategory/endpoint", { foo: "bar" });
+```
 
-## Data Table Rules
+## Structure
 
-- **List tables need sorting + pagination + search.** Tables displaying browsable collections (token lists, tx history, leaderboards — unbounded row count) MUST use the SortableTable pattern from `component-reference/references/data-display.md`. Plain `<Table>` is fine for summary/comparison tables or small bounded-size API results (top-5, recent-3).
+```
+frontend/src/App.tsx       - build your UI here
+frontend/src/components/   - add components
+frontend/src/db/schema.ts  - frontend DB schema mirror
+backend/routes/*.js        - add API routes (auto-mounted at /api/{name})
+backend/db/schema.js       - define database tables
+```
 
-## First-Edit Checklist (do on every new project)
+## Built-in Endpoints (from @surf-ai/sdk/server)
 
-- **Page title** — ALWAYS update `<title>App</title>` in `frontend/index.html` to a meaningful title matching the website purpose. Never ship with `<title>App</title>`.
-- **Favicon** — `frontend/public/favicon.ico` is already provided; do NOT delete or overwrite it.
+`createServer()` provides these automatically - do NOT create routes for them:
 
-## Common Mistakes to Avoid
+| Endpoint             | Method | Purpose                                                |
+| -------------------- | ------ | ------------------------------------------------------ |
+| `/api/health`        | GET    | Health check - `{ status: 'ok' }`                      |
+| `/api/__sync-schema` | POST   | Sync `backend/db/schema.js` tables to database         |
+| `/api/cron`          | GET    | List cron jobs with status and next run time           |
+| `/api/cron`          | POST   | Create a new cron task                                 |
+| `/api/cron/:id`      | PATCH  | Update a cron task (schedule, enabled, etc.)           |
+| `/api/cron/:id`      | DELETE | Delete a cron task                                     |
+| `/api/cron/:id/run`  | POST   | Manually trigger a cron task                           |
+| `/proxy/*`           | ANY    | Data API passthrough - `/proxy/market/price` -> hermod |
 
-- **API URLs** — NEVER use bare `/proxy/...` or `/api/...`. Always use `${API_BASE}/proxy/...`, `${API_BASE}/api/...`, or the generated hooks in `api.ts`.
-- **No React.lazy / dynamic import()** — HMR is unavailable in preview; causes "Invalid hook call" crashes.
-- **Hooks at top level** — ALL React hooks MUST be called before any conditional `return`. Use `useQuery({ enabled: !!condition })` for conditional fetching.
-- **SSR safety** — NEVER access `document`, `window`, `localStorage` at module top level or during render. Use `typeof window !== 'undefined'` or `useEffect`.
-- **API response safety** — NEVER render API fields without type-checking. Objects as React children cause white-screen crashes: `typeof x === 'string' ? x : x?.name ?? ''`.
-- **ThemeProvider** — MUST set `storageKey="surf-studio-theme"` to avoid conflicts with the parent Surf app iframe.
-- **No mock data** — never hardcode data. Use real API calls; show proper error/empty states.
-- **ASCII only** — no curly quotes, en-dash, em-dash in code. Non-ASCII punctuation causes build failures.
+Auto-registered from `backend/routes/*.js`:
+| File | Endpoint |
+|------|----------|
+| `routes/btc.js` | `/api/btc` |
+| `routes/portfolio.js` | `/api/portfolio` |
+
+## Database
+
+Define tables in `backend/db/schema.js` using Drizzle ORM:
+
+```js
+const { pgTable, serial, text, timestamp } = require("drizzle-orm/pg-core");
+exports.users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
+```
+
+Tables are auto-created on startup and when `schema.js` changes (file watcher).
+The agent can also call `POST /api/__sync-schema` explicitly after editing.
+
+## Do NOT modify
+
+- `vite.config.ts` - proxy and build config
+- `backend/server.js` - uses @surf-ai/sdk/server
+- `entry-client.tsx` - app bootstrap with SSR hydration
+- `entry-server.tsx` - SSR render for deploy
+- `index.html` - cold-start guard and Surf badge
+- `eslint.config.*` - lint rules
+- `index.css` - only imports, do not add styles here (use Tailwind classes)
+
+## Rules
+
+- Use `@surf-ai/sdk/react` hooks in frontend, `@surf-ai/sdk/server` dataApi in backend
+- Frontend packages are pre-installed - check `package.json` before installing

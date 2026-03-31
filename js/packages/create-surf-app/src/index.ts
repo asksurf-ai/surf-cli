@@ -5,11 +5,9 @@ import { fileURLToPath } from 'node:url'
 
 const DEFAULT_FRONTEND_PORT = '5173'
 const DEFAULT_BACKEND_PORT = '3001'
-const DEFAULT_TEMPLATE = 'default'
 
 type CreateSurfAppOptions = {
   projectName?: string
-  templateName?: string
   frontendPort?: string
   backendPort?: string
   previewBase?: string
@@ -18,7 +16,6 @@ type CreateSurfAppOptions = {
 
 export async function createSurfApp({
   projectName = '.',
-  templateName = DEFAULT_TEMPLATE,
   frontendPort = process.env.VITE_PORT || DEFAULT_FRONTEND_PORT,
   backendPort = process.env.VITE_BACKEND_PORT || DEFAULT_BACKEND_PORT,
   previewBase = process.env.VITE_BASE,
@@ -28,9 +25,9 @@ export async function createSurfApp({
   const name = path.basename(root)
   const validatedFrontendPort = validatePort('frontend', frontendPort)
   const validatedBackendPort = validatePort('backend', backendPort)
-  const templateDir = resolveTemplateDir(templateName)
+  const templateDir = resolveTemplateDir()
 
-  logger(`\n  Creating Surf app in ${root} (${templateName})\n`)
+  logger(`\n  Creating Surf app in ${root}\n`)
   fs.mkdirSync(root, { recursive: true })
 
   copyDir(templateDir, root, root, logger)
@@ -55,18 +52,18 @@ Done! Next steps:
   return root
 }
 
-function resolveTemplateDir(templateName: string) {
+function resolveTemplateDir() {
   const here = path.dirname(fileURLToPath(import.meta.url))
   const candidates = [
-    path.join(here, 'templates', templateName),
-    path.join(here, '..', 'templates', templateName),
+    path.join(here, 'templates', 'default'),
+    path.join(here, '..', 'templates', 'default'),
   ]
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate
   }
 
-  throw new Error(`Could not find template "${templateName}" near ${here}`)
+  throw new Error(`Could not find default template near ${here}`)
 }
 
 function copyDir(src: string, dest: string, root: string, logger: (line: string) => void) {
