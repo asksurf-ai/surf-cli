@@ -12,7 +12,7 @@ export function useNewsDetail(params: NewsDetailParams) {
   });
 }
 
-/** Browse crypto news from major sources. Filter by `source` (enum), `project`, and time range (`from`/`to`). Sort by `recency` (default) or `trending`. Use the detail endpoint with article `id` for full content. */
+/** Returns crypto news from major sources. **Filters:** `source` (enum), `project`, and time range (`from`/`to`). **Sort:** `recency` (default) or `trending`. Use the detail endpoint with article `id` for full content. */
 export function useInfiniteNewsFeed(params?: Omit<NewsFeedParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['news-feed', params],

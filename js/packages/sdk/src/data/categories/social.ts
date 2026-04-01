@@ -4,47 +4,47 @@ import { get, post } from '../client';
 import type { ApiCursorResponse, ApiObjectResponse, ApiResponse, SocialDetailData, SocialDetailParams, SocialMindshareItem, SocialMindshareParams, SocialRankingItem, SocialRankingParams, SocialSmartFollowersHistoryItem, SocialSmartFollowersHistoryParams, SocialTweetRepliesItem, SocialTweetRepliesParams, SocialTweetsItem, SocialTweetsParams, SocialUserData, SocialUserFollowersItem, SocialUserFollowersParams, SocialUserFollowingItem, SocialUserFollowingParams, SocialUserParams, SocialUserPostsItem, SocialUserPostsParams, SocialUserRepliesItem, SocialUserRepliesParams } from '../types';
 
 export const social = {
-  /** Get a **point-in-time snapshot** of social analytics: sentiment score, follower geo breakdown, and top smart followers. Use `fields` to select: `sentiment`, `follower_geo`, `smart_followers`. Lookup by X account ID (`x_id`) or project name (`q`, e.g. `uniswap`, `solana`). The `q` parameter must be a crypto project name, not a personal Twitter handle. Returns 404 if the project has no linked Twitter account. For sentiment **trends over time**, use `/social/mindshare` instead. */
+  /** Returns a **point-in-time snapshot** of social analytics for a project. **Available fields** (via `fields`): `sentiment`, `follower_geo`, `smart_followers`. **Lookup:** by X account ID (`x_id`) or project name (`q`, e.g. `uniswap`, `solana`). The `q` parameter must be a crypto project name, not a personal Twitter handle. Returns 404 if the project has no linked Twitter account. For sentiment **trends over time**, use `/social/mindshare` instead. */
   detail: (params?: SocialDetailParams): Promise<ApiObjectResponse<SocialDetailData>> =>
     get('social/detail', params as any),
 
-  /** Get mindshare (social view count) **time-series trend** for a project, aggregated by `interval`. Use this when the user asks about sentiment **trends**, mindshare **over time**, or social momentum changes. `interval` can be `5m`, `1h`, `1d`, or `7d`. Filter by date range with `from`/`to` (Unix seconds). Lookup by name (`q`). For a **point-in-time snapshot** of social analytics (sentiment score, follower geo, smart followers), use `/social/detail` instead. */
+  /** Returns mindshare (social view count) **time-series trend** for a project, aggregated by `interval`. **Intervals:** `5m`, `1h`, `1d`, `7d`. **Filters:** date range with `from`/`to` (Unix seconds). Lookup by name (`q`). Use this for sentiment **trends**, mindshare **over time**, or social momentum changes. For a **point-in-time snapshot** of social analytics (sentiment score, follower geo, smart followers), use `/social/detail` instead. */
   mindshare: (params: SocialMindshareParams): Promise<ApiResponse<SocialMindshareItem>> =>
     get('social/mindshare', params as any),
 
-  /** Get top crypto projects ranked by mindshare (social view count), sourced directly from Argus real-time data (refreshed every 5 minutes). Filter by `tag` to scope to a category (e.g. `dex`, `l1`, `meme`). Use `time_range` (`24h`, `48h`, `7d`, `30d`) to control the ranking window. Supports `limit`/`offset` pagination. */
+  /** Returns top crypto projects ranked by mindshare (social view count), refreshed every 5 minutes. **Filters:** - `tag` — scope to a category (e.g. `dex`, `l1`, `meme`) - `time_range` — ranking window (`24h`, `48h`, `7d`, `30d`) Supports `limit`/`offset` pagination. */
   ranking: (params?: SocialRankingParams): Promise<ApiResponse<SocialRankingItem>> =>
     get('social/ranking', params as any),
 
-  /** Get smart follower count time-series for a project, sorted by date descending. Lookup by X account ID (`x_id`) or project name (`q`). The `q` parameter must be a project name (e.g. `uniswap`, `ethereum`), not a personal X handle — use `x_id` for individual accounts. Returns 404 if the project has no linked X account. */
+  /** Returns smart follower count time-series for a project, sorted by date descending. **Lookup:** by X account ID (`x_id`) or project name (`q`). The `q` parameter must be a project name (e.g. `uniswap`, `ethereum`), not a personal X handle — use `x_id` for individual accounts. Returns 404 if the project has no linked X account. */
   smart_followers_history: (params?: SocialSmartFollowersHistoryParams): Promise<ApiResponse<SocialSmartFollowersHistoryItem>> =>
     get('social/smart-followers/history', params as any),
 
-  /** Returns replies/comments on a specific tweet. Lookup by `tweet_id`. */
+  /** Returns replies/comments on a specific tweet. **Lookup:** by `tweet_id`. */
   tweet_replies: (params: SocialTweetRepliesParams): Promise<ApiCursorResponse<SocialTweetRepliesItem>> =>
     get('social/tweet/replies', params as any),
 
-  /** Get X (Twitter) posts by numeric post ID strings. Pass up to 100 comma-separated IDs via the `ids` query parameter. */
+  /** Returns X (Twitter) posts by numeric post ID strings. Pass up to 100 comma-separated IDs via the `ids` query parameter. */
   tweets: (params: SocialTweetsParams): Promise<ApiResponse<SocialTweetsItem>> =>
     get('social/tweets', params as any),
 
-  /** Get an X (Twitter) user profile — display name, follower count, following count, and bio. Lookup by `handle` (without @). */
+  /** Returns an X (Twitter) user profile. **Included fields:** display name, follower count, following count, and bio. **Lookup:** by `handle` (without @). */
   user: (params: SocialUserParams): Promise<ApiObjectResponse<SocialUserData>> =>
     get('social/user', params as any),
 
-  /** Returns a list of followers for the specified handle on X (Twitter). Lookup by `handle` (without @). */
+  /** Returns a list of followers for the specified handle on X (Twitter). **Lookup:** by `handle` (without @). */
   user_followers: (params: SocialUserFollowersParams): Promise<ApiCursorResponse<SocialUserFollowersItem>> =>
     get('social/user/followers', params as any),
 
-  /** Returns a list of users that the specified handle follows on X (Twitter). Lookup by `handle` (without @). */
+  /** Returns a list of users that the specified handle follows on X (Twitter). **Lookup:** by `handle` (without @). */
   user_following: (params: SocialUserFollowingParams): Promise<ApiCursorResponse<SocialUserFollowingItem>> =>
     get('social/user/following', params as any),
 
-  /** Get recent X (Twitter) posts by a specific user, ordered by recency. Lookup by `handle` (without @). Use `filter=original` to exclude retweets. To load more results, check `meta.has_more`; if true, pass `meta.next_cursor` as the `cursor` query parameter in the next request. */
+  /** Returns recent X (Twitter) posts by a specific user, ordered by recency. **Lookup:** by `handle` (without @). Use `filter=original` to exclude retweets. **Pagination:** check `meta.has_more`; if true, pass `meta.next_cursor` as the `cursor` query parameter in the next request. */
   user_posts: (params: SocialUserPostsParams): Promise<ApiCursorResponse<SocialUserPostsItem>> =>
     get('social/user/posts', params as any),
 
-  /** Returns recent replies by the specified handle on X (Twitter). Lookup by `handle` (without @). */
+  /** Returns recent replies by the specified handle on X (Twitter). **Lookup:** by `handle` (without @). */
   user_replies: (params: SocialUserRepliesParams): Promise<ApiCursorResponse<SocialUserRepliesItem>> =>
     get('social/user/replies', params as any),
 

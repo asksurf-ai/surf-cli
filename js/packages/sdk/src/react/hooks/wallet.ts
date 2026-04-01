@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, ApiResponse, WalletDetailData, WalletDetailParams, WalletHistoryItem, WalletHistoryParams, WalletLabelsBatchItem, WalletLabelsBatchParams, WalletNetWorthItem, WalletNetWorthParams, WalletProtocolsItem, WalletProtocolsParams, WalletTransfersItem, WalletTransfersParams } from '../../data/types';
 
-/** Get multiple wallet sub-resources in a single request. Lookup by `address`. Use `fields` to select: `balance`, `tokens`, `labels`, `nft`. Partial failures return available fields with per-field error info. Returns 422 if `fields` is invalid. */
+/** Returns multiple wallet sub-resources in a single request. **Available fields** (via `fields`): `balance`, `tokens`, `labels`, `nft`. **Lookup:** by `address`. Partial failures return available fields with per-field error info. Returns 422 if `fields` is invalid. */
 export function useWalletDetail(params: WalletDetailParams) {
   return useQuery({
     queryKey: ['wallet-detail', params],
@@ -12,7 +12,7 @@ export function useWalletDetail(params: WalletDetailParams) {
   });
 }
 
-/** Get full transaction history for a wallet — swaps, transfers, and contract interactions. Lookup by `address`. Filter by `chain` — supports `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `avalanche`, `fantom`, `base`. */
+/** Returns full transaction history for a wallet — swaps, transfers, and contract interactions. **Lookup:** by `address`. Filter by `chain` — supports `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `avalanche`, `fantom`, `base`. */
 export function useInfiniteWalletHistory(params: Omit<WalletHistoryParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['wallet-history', params],
@@ -27,7 +27,7 @@ export function useInfiniteWalletHistory(params: Omit<WalletHistoryParams, 'offs
   });
 }
 
-/** Get entity labels for multiple wallet addresses. Pass up to 100 comma-separated addresses via the `addresses` query parameter. Returns entity name, type, and labels per address. */
+/** Returns entity labels for multiple wallet addresses. Pass up to 100 comma-separated addresses via the `addresses` query parameter. **Included fields:** entity name, type, and labels per address. */
 export function useInfiniteWalletLabelsBatch(params: Omit<WalletLabelsBatchParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['wallet-labels-batch', params],
@@ -42,7 +42,7 @@ export function useInfiniteWalletLabelsBatch(params: Omit<WalletLabelsBatchParam
   });
 }
 
-/** Get a time-series of the wallet's total net worth in USD. Returns ~288 data points at 5-minute intervals covering the last 24 hours. Fixed window — no custom time range supported. */
+/** Returns a time-series of the wallet's total net worth in USD. Returns ~288 data points at 5-minute intervals covering the last 24 hours. Fixed window — no custom time range supported. */
 export function useInfiniteWalletNetWorth(params: Omit<WalletNetWorthParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['wallet-net-worth', params],
@@ -57,7 +57,7 @@ export function useInfiniteWalletNetWorth(params: Omit<WalletNetWorthParams, 'of
   });
 }
 
-/** Get all DeFi protocol positions for a wallet — lending, staking, LP, and farming with token breakdowns and USD values. Lookup by `address`. */
+/** Returns all DeFi protocol positions for a wallet — lending, staking, LP, and farming with token breakdowns and USD values. **Lookup:** by `address`. */
 export function useInfiniteWalletProtocols(params: Omit<WalletProtocolsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['wallet-protocols', params],
@@ -72,7 +72,7 @@ export function useInfiniteWalletProtocols(params: Omit<WalletProtocolsParams, '
   });
 }
 
-/** Get recent token transfers **sent or received by a wallet**. Pass the **wallet address** in `address` — returns all ERC-20/SPL token transfers where this wallet is the sender or receiver. Each record includes token contract, counterparty, raw amount, and block timestamp. Use this to audit a wallet's token flow (e.g. inflows, outflows, airdrop receipts). Lookup: `address` (wallet, raw 0x hex or base58 — ENS not supported). Filter by `chain` — supports `ethereum`, `base`, `solana`. Data refresh: ~24 hours · Chain: Ethereum, Base (Solana uses a different source with no delay) */
+/** Returns recent token transfers **sent or received by a wallet**. Pass the **wallet address** in `address` — returns all ERC-20/SPL token transfers where this wallet is the sender or receiver. **Included fields:** token contract, counterparty, raw amount, block timestamp. Use this to audit a wallet's token flow (e.g. inflows, outflows, airdrop receipts). **Lookup:** `address` (wallet, raw 0x hex or base58 — ENS not supported). Filter by `chain` — supports `ethereum`, `base`, `solana`. **Data refresh:** ~24 hours · **Chains:** Ethereum, Base (Solana uses a different source with no delay) */
 export function useInfiniteWalletTransfers(params: Omit<WalletTransfersParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['wallet-transfers', params],

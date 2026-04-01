@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, ApiResponse, OnchainBridgeRankingItem, OnchainBridgeRankingParams, OnchainGasPriceData, OnchainGasPriceParams, OnchainSchemaItem, OnchainSqlItem, OnchainSqlParams, OnchainStructuredQueryItem, OnchainStructuredQueryParams, OnchainTxItem, OnchainTxParams, OnchainYieldRankingItem, OnchainYieldRankingParams } from '../../data/types';
 
-/** List bridge protocols ranked by total USD volume over a time range. */
+/** Returns bridge protocols ranked by total USD volume over a specified time range. */
 export function useInfiniteOnchainBridgeRanking(params?: Omit<OnchainBridgeRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['onchain-bridge-ranking', params],
@@ -19,7 +19,7 @@ export function useInfiniteOnchainBridgeRanking(params?: Omit<OnchainBridgeRanki
   });
 }
 
-/** Get the current gas price for an EVM chain via `eth_gasPrice` JSON-RPC. Returns gas price in both wei (raw) and Gwei (human-readable). **Supported chains:** `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, `cyber`. */
+/** Returns the current gas price for an EVM chain via `eth_gasPrice` JSON-RPC. **Included fields:** gas price in both wei (raw) and Gwei (human-readable). **Supported chains:** `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, `cyber`. */
 export function useOnchainGasPrice(params: OnchainGasPriceParams) {
   return useQuery({
     queryKey: ['onchain-gas-price', params],
@@ -27,7 +27,7 @@ export function useOnchainGasPrice(params: OnchainGasPriceParams) {
   });
 }
 
-/** Execute a structured JSON query on blockchain data. No raw SQL needed — specify source, fields, filters, sort, and pagination. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns. - Source format: `agent.<table_name>` like `agent.ethereum_transactions` or `agent.ethereum_dex_trades` - Max 10,000 rows (default 20), 30s timeout. - **Always filter on block_date** — it is the partition key. Without it, queries scan billions of rows and will timeout. - **Data refresh:** ~24 hours. ## Example ```json { "source": "agent.ethereum_dex_trades", "fields": ["block_time", "project", "token_pair", "amount_usd", "taker"], "filters": [ {"field": "block_date", "op": "gte", "value": "2025-03-01"}, {"field": "project", "op": "eq", "value": "uniswap"}, {"field": "amount_usd", "op": "gte", "value": 100000} ], "sort": [{"field": "amount_usd", "order": "desc"}], "limit": 20 } ``` */
+/** Executes a structured JSON query on blockchain data. No raw SQL needed — specify source, fields, filters, sort, and pagination. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns. **Key rules:** - **Source format:** `agent.<table_name>` (e.g. `agent.ethereum_transactions`, `agent.ethereum_dex_trades`) - Max 10,000 rows (default 20), 30s timeout - **Always filter on block_date** — it is the partition key. Without it, queries scan billions of rows and will timeout **Data refresh:** ~24 hours. ## Example ```json { "source": "agent.ethereum_dex_trades", "fields": ["block_time", "project", "token_pair", "amount_usd", "taker"], "filters": [ {"field": "block_date", "op": "gte", "value": "2025-03-01"}, {"field": "project", "op": "eq", "value": "uniswap"}, {"field": "amount_usd", "op": "gte", "value": 100000} ], "sort": [{"field": "amount_usd", "order": "desc"}], "limit": 20 } ``` */
 export function useInfiniteOnchainStructuredQuery(params: Omit<OnchainStructuredQueryParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['onchain-structured-query', params],
@@ -42,7 +42,7 @@ export function useInfiniteOnchainStructuredQuery(params: Omit<OnchainStructured
   });
 }
 
-/** Get table metadata — database, table, column names, types, and comments for all available on-chain databases. */
+/** Returns table metadata for all available on-chain databases. **Included fields:** database name, table name, column names, types, and comments. */
 export function useInfiniteOnchainSchema() {
   return useInfiniteQuery({
     queryKey: ['onchain-schema'],
@@ -57,7 +57,7 @@ export function useInfiniteOnchainSchema() {
   });
 }
 
-/** Execute a raw SQL SELECT query against blockchain data. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns before writing queries. ## Rules - Only SELECT/WITH statements allowed (read-only). - All table references must be database-qualified: `agent.<table_name>`. - Max 10,000 rows (default 1,000), 30s timeout. - **Always filter on block_date or block_number** — partition key, without it queries will timeout. - Avoid `SELECT *` on large tables. Specify only the columns you need. - **Data refresh:** ~24 hours. ## Example ```sql SELECT block_time, token_pair, amount_usd, taker, tx_hash FROM agent.ethereum_dex_trades WHERE block_date >= today() - 7 AND project = 'uniswap' AND amount_usd > 100000 ORDER BY amount_usd DESC LIMIT 20 ``` */
+/** Executes a raw SQL SELECT query against blockchain data. All tables live in the **agent** database. Use `GET /v1/onchain/schema` to discover available tables and their columns before writing queries. ## Rules - Only SELECT/WITH statements allowed (read-only) - All table references must be database-qualified: `agent.<table_name>` - Max 10,000 rows (default 1,000), 30s timeout - **Always filter on block_date or block_number** — partition key, without it queries will timeout - Avoid `SELECT *` on large tables — specify only the columns you need **Data refresh:** ~24 hours. ## Example ```sql SELECT block_time, token_pair, amount_usd, taker, tx_hash FROM agent.ethereum_dex_trades WHERE block_date >= today() - 7 AND project = 'uniswap' AND amount_usd > 100000 ORDER BY amount_usd DESC LIMIT 20 ``` */
 export function useInfiniteOnchainSql(params: Omit<OnchainSqlParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['onchain-sql', params],
@@ -72,7 +72,7 @@ export function useInfiniteOnchainSql(params: Omit<OnchainSqlParams, 'offset'>) 
   });
 }
 
-/** Get transaction details by hash. All numeric fields are hex-encoded — use parseInt(hex, 16) to convert. **Supported chains:** `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, `cyber`. Returns 404 if the transaction is not found. */
+/** Returns transaction details by hash. All numeric fields are hex-encoded — use parseInt(hex, 16) to convert. **Supported chains:** `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `base`, `avalanche`, `fantom`, `linea`, `cyber`. Returns 404 if the transaction is not found. */
 export function useInfiniteOnchainTx(params: Omit<OnchainTxParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['onchain-tx', params],
@@ -87,7 +87,7 @@ export function useInfiniteOnchainTx(params: Omit<OnchainTxParams, 'offset'>) {
   });
 }
 
-/** List DeFi yield pools ranked by APY or TVL. Returns the latest snapshot. Filter by protocol. */
+/** Returns DeFi yield pools ranked by APY or TVL. Returns the latest snapshot. Filter by protocol. */
 export function useInfiniteOnchainYieldRanking(params?: Omit<OnchainYieldRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['onchain-yield-ranking', params],

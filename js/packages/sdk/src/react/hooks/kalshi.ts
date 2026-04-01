@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiResponse, KalshiEventsItem, KalshiEventsParams, KalshiMarketsItem, KalshiMarketsParams, KalshiOpenInterestItem, KalshiOpenInterestParams, KalshiPricesItem, KalshiPricesParams, KalshiRankingItem, KalshiRankingParams, KalshiTradesItem, KalshiTradesParams, KalshiVolumesItem, KalshiVolumesParams } from '../../data/types';
 
-/** Get Kalshi events with nested markets, optionally filtered by `event_ticker`. Each event includes market count and a list of markets. Data refresh: ~30 minutes */
+/** Returns Kalshi events with nested markets, optionally filtered by `event_ticker`. Each event includes market count and a list of markets. **Data refresh:** ~30 minutes */
 export function useInfiniteKalshiEvents(params: Omit<KalshiEventsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-events', params],
@@ -19,7 +19,7 @@ export function useInfiniteKalshiEvents(params: Omit<KalshiEventsParams, 'offset
   });
 }
 
-/** Get Kalshi markets, optionally filtered by `market_ticker`. Each market includes price, volume, and status. Data refresh: ~30 minutes */
+/** Returns Kalshi markets, optionally filtered by `market_ticker`. Each market includes price, volume, and status. **Data refresh:** ~30 minutes */
 export function useInfiniteKalshiMarkets(params: Omit<KalshiMarketsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-markets', params],
@@ -34,7 +34,7 @@ export function useInfiniteKalshiMarkets(params: Omit<KalshiMarketsParams, 'offs
   });
 }
 
-/** Get daily open interest history for a Kalshi market filtered by `time_range`. Data refresh: ~30 minutes */
+/** Returns daily open interest history for a Kalshi market, filtered by `time_range`. **Data refresh:** ~30 minutes */
 export function useInfiniteKalshiOpenInterest(params: Omit<KalshiOpenInterestParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-open-interest', params],
@@ -49,7 +49,7 @@ export function useInfiniteKalshiOpenInterest(params: Omit<KalshiOpenInterestPar
   });
 }
 
-/** Get price history for a Kalshi market. Use `interval=1d` for daily OHLC from market reports (~30 min delay), or `interval=latest` for real-time price from trades. Data refresh: ~30 minutes (daily), real-time (latest) */
+/** Returns price history for a Kalshi market. **Interval options:** - `interval=1d` — daily OHLC from market reports (~30 min delay) - `interval=latest` — real-time price from trades **Data refresh:** ~30 minutes (daily), real-time (latest) */
 export function useInfiniteKalshiPrices(params: Omit<KalshiPricesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-prices', params],
@@ -64,7 +64,7 @@ export function useInfiniteKalshiPrices(params: Omit<KalshiPricesParams, 'offset
   });
 }
 
-/** Get top-ranked Kalshi markets by last day's `notional_volume_usd` or `open_interest`. Filter by `status`. Data refresh: ~30 minutes */
+/** Returns top-ranked Kalshi markets by last day's `notional_volume_usd` or `open_interest`. **Filters:** `status`. **Data refresh:** ~30 minutes */
 export function useInfiniteKalshiRanking(params?: Omit<KalshiRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-ranking', params],
@@ -79,7 +79,7 @@ export function useInfiniteKalshiRanking(params?: Omit<KalshiRankingParams, 'off
   });
 }
 
-/** Get individual trade records for a Kalshi market. Filter by `taker_side`, `min_contracts`, and date range. Sort by `timestamp` or `num_contracts`. Data refresh: real-time */
+/** Returns individual trade records for a Kalshi market. **Filters:** `taker_side`, `min_contracts`, and date range. **Sort:** `timestamp` or `num_contracts`. **Data refresh:** real-time */
 export function useInfiniteKalshiTrades(params: Omit<KalshiTradesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-trades', params],
@@ -94,7 +94,7 @@ export function useInfiniteKalshiTrades(params: Omit<KalshiTradesParams, 'offset
   });
 }
 
-/** Get daily trading volume history for a Kalshi market filtered by `time_range`. Data refresh: ~30 minutes */
+/** Returns daily trading volume history for a Kalshi market, filtered by `time_range`. **Data refresh:** ~30 minutes */
 export function useInfiniteKalshiVolumes(params: Omit<KalshiVolumesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['kalshi-volumes', params],

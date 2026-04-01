@@ -4,47 +4,47 @@ import { get, post } from '../client';
 import type { ApiResponse, MarketEtfItem, MarketEtfParams, MarketFearGreedItem, MarketFearGreedParams, MarketFuturesItem, MarketFuturesParams, MarketLiquidationChartItem, MarketLiquidationChartParams, MarketLiquidationExchangeListItem, MarketLiquidationExchangeListParams, MarketLiquidationOrderItem, MarketLiquidationOrderParams, MarketOnchainIndicatorItem, MarketOnchainIndicatorParams, MarketOptionsItem, MarketOptionsParams, MarketPriceIndicatorItem, MarketPriceIndicatorParams, MarketPriceItem, MarketPriceParams, MarketRankingItem, MarketRankingParams } from '../types';
 
 export const market = {
-  /** Get daily ETF flow history for US spot ETFs — net flow (USD), token price, and per-ticker breakdown. Sorted by date descending. `symbol`: `BTC` or `ETH`. */
+  /** Returns daily ETF flow history for US spot ETFs. **Included fields:** net flow (USD), token price, per-ticker breakdown. Sorted by date descending. `symbol`: `BTC` or `ETH`. */
   etf: (params: MarketEtfParams): Promise<ApiResponse<MarketEtfItem>> =>
     get('market/etf', params as any),
 
-  /** Get Bitcoin Fear & Greed Index history — index value (0-100), classification label, and BTC price at each data point. Sorted newest-first. Use `from`/`to` to filter by date range. */
+  /** Returns Bitcoin Fear & Greed Index history. **Included fields:** index value (0-100), classification label, BTC price at each data point. Sorted newest-first. Use `from`/`to` to filter by date range. */
   fear_greed: (params?: MarketFearGreedParams): Promise<ApiResponse<MarketFearGreedItem>> =>
     get('market/fear-greed', params as any),
 
-  /** Get futures market data across all tracked tokens — open interest, funding rate, long/short ratio, and 24h volume. Sort by `sort_by` (default: volume_24h). */
+  /** Returns futures market data across all tracked tokens. **Included fields:** open interest, funding rate, long/short ratio, 24h volume. Sorted by `volume_24h` by default — use `sort_by` to change. */
   futures: (params?: MarketFuturesParams): Promise<ApiResponse<MarketFuturesItem>> =>
     get('market/futures', params as any),
 
-  /** Get OHLC-style aggregated liquidation data for a token on a specific exchange. Filter by `symbol`, `exchange`, and `interval`. Useful for charting liquidation volume over time. */
+  /** Returns OHLC-style aggregated liquidation data for a token on a specific exchange. **Filters:** `symbol`, `exchange`, `interval`. Useful for charting liquidation volume over time. */
   liquidation_chart: (params: MarketLiquidationChartParams): Promise<ApiResponse<MarketLiquidationChartItem>> =>
     get('market/liquidation/chart', params as any),
 
-  /** Get liquidation breakdown by exchange — total, long, and short volumes in USD. Filter by `symbol` and `time_range` (`1h`, `4h`, `12h`, `24h`). */
+  /** Returns liquidation breakdown by exchange. **Included fields:** total, long, and short volumes in USD. **Filters:** `symbol` and `time_range` (`1h`, `4h`, `12h`, `24h`). */
   liquidation_exchange_list: (params?: MarketLiquidationExchangeListParams): Promise<ApiResponse<MarketLiquidationExchangeListItem>> =>
     get('market/liquidation/exchange-list', params as any),
 
-  /** Get individual large liquidation orders above a USD threshold (`min_amount`, default 10000). Filter by `exchange` and `symbol`. For aggregate totals and long/short breakdown by exchange, use `/market/liquidation/exchange-list`. For historical liquidation charts, use `/market/liquidation/chart`. */
+  /** Returns individual large liquidation orders above a USD threshold (`min_amount`, default 10000). **Filters:** `exchange` and `symbol`. For aggregate totals and long/short breakdown by exchange, use `/market/liquidation/exchange-list`. For historical liquidation charts, use `/market/liquidation/chart`. */
   liquidation_order: (params?: MarketLiquidationOrderParams): Promise<ApiResponse<MarketLiquidationOrderItem>> =>
     get('market/liquidation/order', params as any),
 
-  /** Get on-chain indicator time-series for BTC or ETH. Metrics: `nupl`, `sopr`, `mvrv`, `puell-multiple`, `nvm`, `nvt`, `nvt-golden-cross`, `exchange-flows` (inflow/outflow/netflow/reserve). */
+  /** Returns on-chain indicator time-series for BTC or ETH. **Available metrics:** `nupl`, `sopr`, `mvrv`, `puell-multiple`, `nvm`, `nvt`, `nvt-golden-cross`, `exchange-flows` (inflow/outflow/netflow/reserve). */
   onchain_indicator: (params: MarketOnchainIndicatorParams): Promise<ApiResponse<MarketOnchainIndicatorItem>> =>
     get('market/onchain-indicator', params as any),
 
-  /** Get options market data — open interest, volume, put/call ratio, and max pain price for a `symbol`. */
+  /** Returns options market data for a `symbol`. **Included fields:** open interest, volume, put/call ratio, max pain price. */
   options: (params: MarketOptionsParams): Promise<ApiResponse<MarketOptionsItem>> =>
     get('market/options', params as any),
 
-  /** Get historical price data points for a token. Use `time_range` for predefined windows (`1d`, `7d`, `14d`, `30d`, `90d`, `180d`, `365d`, `max`) or `from`/`to` for a custom date range (Unix timestamp or YYYY-MM-DD). Granularity is automatic: 5-min for 1d, hourly for 7-90d, daily for 180d+. */
+  /** Returns historical price data points for a token over a specified time range. **Time range options:** - Predefined: `1d`, `7d`, `14d`, `30d`, `90d`, `180d`, `365d`, `max` - Custom: use `from` / `to` (Unix seconds or `YYYY-MM-DD`) **Granularity** is automatic based on range: - `1d` → 5-minute intervals - `7d`–`90d` → hourly - `180d`+ → daily */
   price: (params: MarketPriceParams): Promise<ApiResponse<MarketPriceItem>> =>
     get('market/price', params as any),
 
-  /** Get a technical indicator for a trading pair on a given exchange and interval. Set `from`/`to` for time-series mode, omit for latest value. Use `options` for indicator-specific tuning (e.g. `period:7`, `fast_period:8,slow_period:21,signal_period:5`, `period:10,stddev:1.5`). Indicators: `rsi`, `macd`, `ema`, `sma`, `bbands`, `stoch`, `adx`, `atr`, `cci`, `obv`, `vwap`, `dmi`, `ichimoku`, `supertrend`. */
+  /** Returns a technical indicator for a trading pair on a given exchange and interval. **Modes:** - Set `from`/`to` for time-series - Omit for latest value only **Indicator-specific tuning** via `options` (e.g. `period:7`, `fast_period:8,slow_period:21,signal_period:5`, `period:10,stddev:1.5`). **Available indicators:** `rsi`, `macd`, `ema`, `sma`, `bbands`, `stoch`, `adx`, `atr`, `cci`, `obv`, `vwap`, `dmi`, `ichimoku`, `supertrend`. */
   price_indicator: (params: MarketPriceIndicatorParams): Promise<ApiResponse<MarketPriceIndicatorItem>> =>
     get('market/price-indicator', params as any),
 
-  /** List tokens ranked by metric. Available metrics: `market_cap`, `top_gainers`, `top_losers`, `volume`. Note: `top_gainers` and `top_losers` rank by 24h price change within the top 250 coins by market cap. For circulating supply, FDV, ATH/ATL, use `/project/detail?fields=token_info`. */
+  /** Returns tokens ranked by a specified metric. **Available metrics:** `market_cap`, `top_gainers`, `top_losers`, `volume`. **Note:** `top_gainers` and `top_losers` rank by 24h price change within the top 250 coins by market cap. For circulating supply, FDV, ATH/ATL, use `/project/detail?fields=token_info`. */
   ranking: (params?: MarketRankingParams): Promise<ApiResponse<MarketRankingItem>> =>
     get('market/ranking', params as any),
 

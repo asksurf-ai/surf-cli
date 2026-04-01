@@ -4,7 +4,7 @@ import { get, post } from '../client';
 import type { ApiObjectResponse, WebFetchData, WebFetchParams } from '../types';
 
 export const web = {
-  /** Fetch a web page and convert it to clean, LLM-friendly markdown. Use `target_selector` to extract specific page sections and `remove_selector` to strip unwanted elements. Returns 400 if the URL is invalid or unreachable. */
+  /** Fetches a web page and converts it to clean, LLM-friendly markdown. **Options:** - `target_selector` — extract specific page sections - `remove_selector` — strip unwanted elements Returns 400 if the URL is invalid or unreachable. */
   fetch: (params: WebFetchParams): Promise<ApiObjectResponse<WebFetchData>> =>
     get('web/fetch', params as any),
 

@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiResponse, PredictionMarketCategoryMetricsItem, PredictionMarketCategoryMetricsParams } from '../../data/types';
 
-/** Get daily notional volume and open interest aggregated by category across Kalshi and Polymarket. Filter by `source` or `category`. Data refresh: daily */
+/** Returns daily notional volume and open interest aggregated by category across Kalshi and Polymarket. **Filters:** `source` or `category`. **Data refresh:** daily */
 export function useInfinitePredictionMarketCategoryMetrics(params?: Omit<PredictionMarketCategoryMetricsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['prediction-market-category-metrics', params],

@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, ApiResponse, ExchangeDepthItem, ExchangeDepthParams, ExchangeFundingHistoryItem, ExchangeFundingHistoryParams, ExchangeKlinesItem, ExchangeKlinesParams, ExchangeLongShortRatioItem, ExchangeLongShortRatioParams, ExchangeMarketsItem, ExchangeMarketsParams, ExchangePerpData, ExchangePerpParams, ExchangePriceItem, ExchangePriceParams } from '../../data/types';
 
-/** Get order book bid/ask levels with computed stats: spread, spread percentage, mid-price, and total bid/ask depth. Use `limit` to control the number of price levels (1–100, default 20). Set `type=swap` to query perpetual contract order books instead of spot. */
+/** Returns order book bid/ask levels with computed stats. **Included fields:** spread, spread percentage, mid-price, and total bid/ask depth. Use `limit` to control the number of price levels (1–100, default 20). Set `type=swap` to query perpetual contract order books instead of spot. */
 export function useExchangeDepth(params: ExchangeDepthParams) {
   return useQuery({
     queryKey: ['exchange-depth', params],
@@ -12,7 +12,7 @@ export function useExchangeDepth(params: ExchangeDepthParams) {
   });
 }
 
-/** Get historical funding rate records for a perpetual contract. Use `from` to set the start time and `limit` to control result count. For longer history, paginate by using the last returned timestamp as the next `from` value. Note: not all exchanges support historical queries via `from`; some only return recent data regardless. For the latest funding rate snapshot, see `/exchange/perp?fields=funding`. */
+/** Returns historical funding rate records for a perpetual contract. **Pagination:** use `from` to set the start time and `limit` to control result count. For longer history, pass the last returned timestamp as the next `from` value. **Note:** not all exchanges support historical queries via `from`; some only return recent data regardless. For the latest funding rate snapshot, see `/exchange/perp?fields=funding`. */
 export function useExchangeFundingHistory(params: ExchangeFundingHistoryParams) {
   return useQuery({
     queryKey: ['exchange-funding-history', params],
@@ -20,7 +20,7 @@ export function useExchangeFundingHistory(params: ExchangeFundingHistoryParams) 
   });
 }
 
-/** Get OHLCV candlestick data with period summary stats (high, low, total volume). Supports 15 intervals from `1m` to `1M`. Use `from` to set the start time and `limit` to control how many candles to return. For longer ranges, paginate by using the last returned candle's timestamp as the next `from` value. Exchange-side limits vary (200–1000 per request). Set `type=swap` to query perpetual contract candles instead of spot. */
+/** Returns OHLCV candlestick data with period summary stats (high, low, total volume). **Intervals:** 15 options from `1m` to `1M`. **Pagination:** use `from` to set the start time and `limit` to control candle count. For longer ranges, pass the last returned candle's timestamp as the next `from` value. Exchange-side limits vary (200–1000 per request). Set `type=swap` to query perpetual contract candles instead of spot. */
 export function useExchangeKlines(params: ExchangeKlinesParams) {
   return useQuery({
     queryKey: ['exchange-klines', params],
@@ -28,7 +28,7 @@ export function useExchangeKlines(params: ExchangeKlinesParams) {
   });
 }
 
-/** Get historical long/short ratio for a perpetual contract — ratio value, long account percentage, and short account percentage. Use `interval` (`1h`, `4h`, `1d`) for granularity, `from` for start time, and `limit` for result count. For longer history, paginate by using the last returned timestamp as the next `from` value. Note: not all exchanges support historical queries via `from`; some only return recent data regardless. Just pass the base pair (e.g. `pair=BTC/USDT`). For aggregated cross-exchange long/short ratio, see `/market/futures`. */
+/** Returns historical long/short ratio for a perpetual contract. **Included fields:** ratio value, long account percentage, short account percentage. **Granularity:** `interval` supports `1h`, `4h`, `1d`. **Pagination:** use `from` for start time and `limit` for result count. For longer history, pass the last returned timestamp as the next `from` value. **Note:** not all exchanges support historical queries via `from`; some only return recent data regardless. Just pass the base pair (e.g. `pair=BTC/USDT`). For aggregated cross-exchange long/short ratio, see `/market/futures`. */
 export function useExchangeLongShortRatio(params: ExchangeLongShortRatioParams) {
   return useQuery({
     queryKey: ['exchange-long-short-ratio', params],
@@ -36,7 +36,7 @@ export function useExchangeLongShortRatio(params: ExchangeLongShortRatioParams) 
   });
 }
 
-/** List trading pairs available on an exchange. Filter by `type` (`spot`, `swap`, `future`, `option`) or free-text `search`. Returns pair name, base/quote currencies, market type, active status, and default fee rates. Use the returned `pair` values as the `pair` parameter in other exchange endpoints. */
+/** Returns trading pairs available on an exchange. **Filters:** `type` (`spot`, `swap`, `future`, `option`) or free-text `search`. **Included fields:** pair name, base/quote currencies, market type, active status, and default fee rates. Use the returned `pair` values as the `pair` parameter in other exchange endpoints. */
 export function useExchangeMarkets(params?: ExchangeMarketsParams) {
   return useQuery({
     queryKey: ['exchange-markets', params],
@@ -44,7 +44,7 @@ export function useExchangeMarkets(params?: ExchangeMarketsParams) {
   });
 }
 
-/** Get a combined snapshot of perpetual contract data for a pair. Use `fields` to select which sub-resources to fetch: `funding` (current funding rate, next settlement, mark/index price) and/or `oi` (open interest in contracts and USD). Just pass the base pair (e.g. `pair=BTC/USDT`). The `:USDT` swap suffix is added automatically. */
+/** Returns a combined snapshot of perpetual contract data for a pair. **Available fields** (via `fields`): - `funding` — current funding rate, next settlement, mark/index price - `oi` — open interest in contracts and USD Just pass the base pair (e.g. `pair=BTC/USDT`). The `:USDT` swap suffix is added automatically. */
 export function useExchangePerp(params: ExchangePerpParams) {
   return useQuery({
     queryKey: ['exchange-perp', params],
@@ -52,7 +52,7 @@ export function useExchangePerp(params: ExchangePerpParams) {
   });
 }
 
-/** Get the real-time ticker for a trading pair — last price, bid/ask, 24h high/low, 24h volume, and 24h price change. Set `type=swap` to query perpetual contract prices instead of spot. For historical price trends, use `/market/price`. */
+/** Returns the real-time ticker for a trading pair. **Included fields:** last price, bid/ask, 24h high/low, 24h volume, 24h price change. Set `type=swap` to query perpetual contract prices instead of spot. For historical price trends, use `/market/price`. */
 export function useExchangePrice(params: ExchangePriceParams) {
   return useQuery({
     queryKey: ['exchange-price', params],

@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, ApiResponse, ProjectDefiMetricsItem, ProjectDefiMetricsParams, ProjectDefiRankingItem, ProjectDefiRankingParams, ProjectDetailData, ProjectDetailParams } from '../../data/types';
 
-/** Get time-series DeFi metrics for a project. Available metrics: `volume`, `fee`, `fees`, `revenue`, `tvl`, `users`. Lookup by UUID (`id`) or name (`q`). Filter by `chain` and date range (`from`/`to`). Returns 404 if the project is not found. **Note:** this endpoint only returns data for DeFi protocol projects (e.g. `aave`, `uniswap`, `lido`, `makerdao`). Use `q` with a DeFi protocol name. */
+/** Returns time-series DeFi metrics for a project. **Available metrics:** `volume`, `fee`, `fees`, `revenue`, `tvl`, `users`. **Lookup:** by UUID (`id`) or name (`q`). Filter by `chain` and date range (`from`/`to`). Returns 404 if the project is not found. **Note:** this endpoint only returns data for DeFi protocol projects (e.g. `aave`, `uniswap`, `lido`, `makerdao`). Use `q` with a DeFi protocol name. */
 export function useInfiniteProjectDefiMetrics(params: Omit<ProjectDefiMetricsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['project-defi-metrics', params],
@@ -19,7 +19,7 @@ export function useInfiniteProjectDefiMetrics(params: Omit<ProjectDefiMetricsPar
   });
 }
 
-/** Get top DeFi projects ranked by a protocol metric. Available metrics: `tvl`, `revenue`, `fees`, `volume`, `users`. */
+/** Returns top DeFi projects ranked by a protocol metric. **Available metrics:** `tvl`, `revenue`, `fees`, `volume`, `users`. */
 export function useInfiniteProjectDefiRanking(params: Omit<ProjectDefiRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['project-defi-ranking', params],
@@ -34,7 +34,7 @@ export function useInfiniteProjectDefiRanking(params: Omit<ProjectDefiRankingPar
   });
 }
 
-/** Get multiple project sub-resources in a single request. Use `fields` to select: `overview`, `token_info`, `tokenomics`, `funding`, `team`, `contracts`, `social`, `tge_status`. **Accepts project names directly** via `q` (e.g. `?q=aave`) — no need to call `/search/project` first. Also accepts UUID via `id`. Returns 404 if not found. For DeFi metrics (TVL, fees, revenue, volume, users) and per-chain breakdown, use `/project/defi/metrics`. */
+/** Returns multiple project sub-resources in a single request. **Available fields** (via `fields`): `overview`, `token_info`, `tokenomics`, `funding`, `team`, `contracts`, `social`, `tge_status`. **Lookup:** accepts project names directly via `q` (e.g. `?q=aave`) — no need to call `/search/project` first. Also accepts UUID via `id`. Returns 404 if not found. For DeFi metrics (TVL, fees, revenue, volume, users) and per-chain breakdown, use `/project/defi/metrics`. */
 export function useProjectDetail(params?: ProjectDetailParams) {
   return useQuery({
     queryKey: ['project-detail', params],

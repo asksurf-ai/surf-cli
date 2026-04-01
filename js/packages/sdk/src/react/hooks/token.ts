@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiResponse, TokenDexTradesItem, TokenDexTradesParams, TokenHoldersItem, TokenHoldersParams, TokenTokenomicsItem, TokenTokenomicsParams, TokenTransfersItem, TokenTransfersParams } from '../../data/types';
 
-/** Get recent DEX swap events for a token contract address. Covers DEXes like `uniswap`, `sushiswap`, `curve`, and `balancer` on `ethereum` and `base`. Returns trading pair, amounts, USD value, and taker address. Data refresh: ~24 hours · Chain: Ethereum, Base */
+/** Returns recent DEX swap events for a token contract address. **Covered DEXes:** `uniswap`, `sushiswap`, `curve`, `balancer`. **Included fields:** trading pair, amounts, USD value, taker address. **Data refresh:** ~24 hours · **Chains:** Ethereum, Base */
 export function useInfiniteTokenDexTrades(params: Omit<TokenDexTradesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['token-dex-trades', params],
@@ -19,7 +19,7 @@ export function useInfiniteTokenDexTrades(params: Omit<TokenDexTradesParams, 'of
   });
 }
 
-/** Get top token holders for a contract address — wallet address, balance, and percentage. Lookup by `address` and `chain`. Supports EVM chains and Solana. */
+/** Returns top token holders for a contract address. **Included fields:** wallet address, balance, and percentage. **Lookup:** by `address` and `chain`. Supports EVM chains and Solana. */
 export function useInfiniteTokenHolders(params: Omit<TokenHoldersParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['token-holders', params],
@@ -34,7 +34,7 @@ export function useInfiniteTokenHolders(params: Omit<TokenHoldersParams, 'offset
   });
 }
 
-/** Get token unlock time-series — unlock events with amounts and allocation breakdowns. Lookup by project UUID (`id`) or token `symbol`. Filter by date range with `from`/`to`. Defaults to the current calendar month when omitted. Returns 404 if no token found. */
+/** Returns token unlock time-series with amounts and allocation breakdowns. **Lookup:** by project UUID (`id`) or token `symbol`. Filter by date range with `from`/`to` — defaults to the current calendar month when omitted. Returns 404 if no token found. */
 export function useInfiniteTokenTokenomics(params?: Omit<TokenTokenomicsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['token-tokenomics', params],
@@ -49,7 +49,7 @@ export function useInfiniteTokenTokenomics(params?: Omit<TokenTokenomicsParams, 
   });
 }
 
-/** Get recent transfer events **for a specific token** (ERC-20/TRC-20 contract). Pass the **token contract address** in `address` — returns every on-chain transfer of that token regardless of sender/receiver. Each record includes sender, receiver, raw amount, and block timestamp. Use this to analyze a token's on-chain activity (e.g. large movements, distribution patterns). Lookup: `address` (token contract) + `chain`. Sort by `asc` or `desc`. Data refresh: ~24 hours · Chain: Ethereum, Base, TRON (Solana uses a different source with no delay) */
+/** Returns recent transfer events **for a specific token** (ERC-20/TRC-20 contract). Pass the **token contract address** in `address` — returns every on-chain transfer of that token regardless of sender/receiver. **Included fields:** sender, receiver, raw amount, block timestamp. Use this to analyze a token's on-chain activity (e.g. large movements, distribution patterns). **Lookup:** `address` (token contract) + `chain`. Sort by `asc` or `desc`. **Data refresh:** ~24 hours · **Chains:** Ethereum, Base, TRON (Solana uses a different source with no delay) */
 export function useInfiniteTokenTransfers(params: Omit<TokenTransfersParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['token-transfers', params],

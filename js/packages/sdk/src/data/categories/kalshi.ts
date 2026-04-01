@@ -4,31 +4,31 @@ import { get, post } from '../client';
 import type { ApiResponse, KalshiEventsItem, KalshiEventsParams, KalshiMarketsItem, KalshiMarketsParams, KalshiOpenInterestItem, KalshiOpenInterestParams, KalshiPricesItem, KalshiPricesParams, KalshiRankingItem, KalshiRankingParams, KalshiTradesItem, KalshiTradesParams, KalshiVolumesItem, KalshiVolumesParams } from '../types';
 
 export const kalshi = {
-  /** Get Kalshi events with nested markets, optionally filtered by `event_ticker`. Each event includes market count and a list of markets. Data refresh: ~30 minutes */
+  /** Returns Kalshi events with nested markets, optionally filtered by `event_ticker`. Each event includes market count and a list of markets. **Data refresh:** ~30 minutes */
   events: (params: KalshiEventsParams): Promise<ApiResponse<KalshiEventsItem>> =>
     get('prediction-market/kalshi/events', params as any),
 
-  /** Get Kalshi markets, optionally filtered by `market_ticker`. Each market includes price, volume, and status. Data refresh: ~30 minutes */
+  /** Returns Kalshi markets, optionally filtered by `market_ticker`. Each market includes price, volume, and status. **Data refresh:** ~30 minutes */
   markets: (params: KalshiMarketsParams): Promise<ApiResponse<KalshiMarketsItem>> =>
     get('prediction-market/kalshi/markets', params as any),
 
-  /** Get daily open interest history for a Kalshi market filtered by `time_range`. Data refresh: ~30 minutes */
+  /** Returns daily open interest history for a Kalshi market, filtered by `time_range`. **Data refresh:** ~30 minutes */
   open_interest: (params: KalshiOpenInterestParams): Promise<ApiResponse<KalshiOpenInterestItem>> =>
     get('prediction-market/kalshi/open-interest', params as any),
 
-  /** Get price history for a Kalshi market. Use `interval=1d` for daily OHLC from market reports (~30 min delay), or `interval=latest` for real-time price from trades. Data refresh: ~30 minutes (daily), real-time (latest) */
+  /** Returns price history for a Kalshi market. **Interval options:** - `interval=1d` — daily OHLC from market reports (~30 min delay) - `interval=latest` — real-time price from trades **Data refresh:** ~30 minutes (daily), real-time (latest) */
   prices: (params: KalshiPricesParams): Promise<ApiResponse<KalshiPricesItem>> =>
     get('prediction-market/kalshi/prices', params as any),
 
-  /** Get top-ranked Kalshi markets by last day's `notional_volume_usd` or `open_interest`. Filter by `status`. Data refresh: ~30 minutes */
+  /** Returns top-ranked Kalshi markets by last day's `notional_volume_usd` or `open_interest`. **Filters:** `status`. **Data refresh:** ~30 minutes */
   ranking: (params?: KalshiRankingParams): Promise<ApiResponse<KalshiRankingItem>> =>
     get('prediction-market/kalshi/ranking', params as any),
 
-  /** Get individual trade records for a Kalshi market. Filter by `taker_side`, `min_contracts`, and date range. Sort by `timestamp` or `num_contracts`. Data refresh: real-time */
+  /** Returns individual trade records for a Kalshi market. **Filters:** `taker_side`, `min_contracts`, and date range. **Sort:** `timestamp` or `num_contracts`. **Data refresh:** real-time */
   trades: (params: KalshiTradesParams): Promise<ApiResponse<KalshiTradesItem>> =>
     get('prediction-market/kalshi/trades', params as any),
 
-  /** Get daily trading volume history for a Kalshi market filtered by `time_range`. Data refresh: ~30 minutes */
+  /** Returns daily trading volume history for a Kalshi market, filtered by `time_range`. **Data refresh:** ~30 minutes */
   volumes: (params: KalshiVolumesParams): Promise<ApiResponse<KalshiVolumesItem>> =>
     get('prediction-market/kalshi/volumes', params as any),
 

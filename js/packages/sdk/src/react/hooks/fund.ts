@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, ApiResponse, FundDetailData, FundDetailParams, FundPortfolioItem, FundPortfolioParams, FundRankingItem, FundRankingParams } from '../../data/types';
 
-/** Get a fund's **profile metadata**: X accounts, team members, recent research, and invested project count. This does NOT return the list of investments — use `/fund/portfolio` for that. Lookup by UUID (`id`) or name (`q`). Returns 404 if not found. */
+/** Returns a fund's **profile metadata**. **Included fields:** X accounts, team members, recent research, invested project count. This does NOT return the list of investments — use `/fund/portfolio` for that. **Lookup:** by UUID (`id`) or name (`q`). Returns 404 if not found. */
 export function useFundDetail(params?: FundDetailParams) {
   return useQuery({
     queryKey: ['fund-detail', params],
@@ -12,7 +12,7 @@ export function useFundDetail(params?: FundDetailParams) {
   });
 }
 
-/** List investment rounds for a fund's portfolio, sorted by date (newest first). A project may appear multiple times if the fund participated in multiple rounds. Each entry includes project name, logo, date, raise amount, and lead investor status. Lookup by UUID (`id`) or name (`q`). */
+/** Returns investment rounds for a fund's portfolio, sorted by date (newest first). A project may appear multiple times if the fund participated in multiple rounds. **Included fields:** project name, logo, date, raise amount, lead investor status. **Lookup:** by UUID (`id`) or name (`q`). */
 export function useInfiniteFundPortfolio(params?: Omit<FundPortfolioParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['fund-portfolio', params],
@@ -27,7 +27,7 @@ export function useInfiniteFundPortfolio(params?: Omit<FundPortfolioParams, 'off
   });
 }
 
-/** List top-ranked funds by metric. Available metrics: `tier` (lower is better), `portfolio_count` (number of invested projects). */
+/** Returns top-ranked funds by a specified metric. **Available metrics:** `tier` (lower is better), `portfolio_count` (number of invested projects). */
 export function useInfiniteFundRanking(params: Omit<FundRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['fund-ranking', params],

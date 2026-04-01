@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiObjectResponse, WebFetchData, WebFetchParams } from '../../data/types';
 
-/** Fetch a web page and convert it to clean, LLM-friendly markdown. Use `target_selector` to extract specific page sections and `remove_selector` to strip unwanted elements. Returns 400 if the URL is invalid or unreachable. */
+/** Fetches a web page and converts it to clean, LLM-friendly markdown. **Options:** - `target_selector` — extract specific page sections - `remove_selector` — strip unwanted elements Returns 400 if the URL is invalid or unreachable. */
 export function useWebFetch(params: WebFetchParams) {
   return useQuery({
     queryKey: ['web-fetch', params],

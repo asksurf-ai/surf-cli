@@ -4,15 +4,15 @@ import { get, post } from '../client';
 import type { ApiObjectResponse, ApiResponse, FundDetailData, FundDetailParams, FundPortfolioItem, FundPortfolioParams, FundRankingItem, FundRankingParams } from '../types';
 
 export const fund = {
-  /** Get a fund's **profile metadata**: X accounts, team members, recent research, and invested project count. This does NOT return the list of investments — use `/fund/portfolio` for that. Lookup by UUID (`id`) or name (`q`). Returns 404 if not found. */
+  /** Returns a fund's **profile metadata**. **Included fields:** X accounts, team members, recent research, invested project count. This does NOT return the list of investments — use `/fund/portfolio` for that. **Lookup:** by UUID (`id`) or name (`q`). Returns 404 if not found. */
   detail: (params?: FundDetailParams): Promise<ApiObjectResponse<FundDetailData>> =>
     get('fund/detail', params as any),
 
-  /** List investment rounds for a fund's portfolio, sorted by date (newest first). A project may appear multiple times if the fund participated in multiple rounds. Each entry includes project name, logo, date, raise amount, and lead investor status. Lookup by UUID (`id`) or name (`q`). */
+  /** Returns investment rounds for a fund's portfolio, sorted by date (newest first). A project may appear multiple times if the fund participated in multiple rounds. **Included fields:** project name, logo, date, raise amount, lead investor status. **Lookup:** by UUID (`id`) or name (`q`). */
   portfolio: (params?: FundPortfolioParams): Promise<ApiResponse<FundPortfolioItem>> =>
     get('fund/portfolio', params as any),
 
-  /** List top-ranked funds by metric. Available metrics: `tier` (lower is better), `portfolio_count` (number of invested projects). */
+  /** Returns top-ranked funds by a specified metric. **Available metrics:** `tier` (lower is better), `portfolio_count` (number of invested projects). */
   ranking: (params: FundRankingParams): Promise<ApiResponse<FundRankingItem>> =>
     get('fund/ranking', params as any),
 

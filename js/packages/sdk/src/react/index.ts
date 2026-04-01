@@ -9,6 +9,7 @@ export * from './hooks/exchange';
 export * from './hooks/fund';
 export * from './hooks/kalshi';
 export * from './hooks/market';
+export * from './hooks/matching';
 export * from './hooks/news';
 export * from './hooks/onchain';
 export * from './hooks/polymarket';
@@ -17,6 +18,7 @@ export * from './hooks/project';
 export * from './hooks/search';
 export * from './hooks/social';
 export * from './hooks/token';
+export * from './hooks/v2';
 export * from './hooks/wallet';
 export * from './hooks/web';
 

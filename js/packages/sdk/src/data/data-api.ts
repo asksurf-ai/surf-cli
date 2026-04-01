@@ -5,6 +5,7 @@ import { exchange } from './categories/exchange';
 import { fund } from './categories/fund';
 import { kalshi } from './categories/kalshi';
 import { market } from './categories/market';
+import { matching } from './categories/matching';
 import { news } from './categories/news';
 import { onchain } from './categories/onchain';
 import { polymarket } from './categories/polymarket';
@@ -13,6 +14,7 @@ import { project } from './categories/project';
 import { search } from './categories/search';
 import { social } from './categories/social';
 import { token } from './categories/token';
+import { v2 } from './categories/v2';
 import { wallet } from './categories/wallet';
 import { web } from './categories/web';
 
@@ -25,6 +27,7 @@ export const dataApi = {
   fund,
   kalshi,
   market,
+  matching,
   news,
   onchain,
   polymarket,
@@ -33,6 +36,7 @@ export const dataApi = {
   search,
   social,
   token,
+  v2,
   wallet,
   web,
 };

@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiCursorResponse, ApiResponse, SearchAirdropItem, SearchAirdropParams, SearchEventsItem, SearchEventsParams, SearchFundItem, SearchFundParams, SearchKalshiItem, SearchKalshiParams, SearchNewsItem, SearchNewsParams, SearchPolymarketItem, SearchPolymarketParams, SearchProjectItem, SearchProjectParams, SearchSocialPeopleItem, SearchSocialPeopleParams, SearchSocialPostsItem, SearchSocialPostsParams, SearchWalletItem, SearchWalletParams, SearchWebItem, SearchWebParams } from '../../data/types';
 
-/** Search and filter airdrop opportunities by keyword, status, reward type, and task type. Returns paginated results with optional task details. */
+/** Searches and filters airdrop opportunities. **Filters:** keyword, status, reward type, task type. Returns paginated results with optional task details. */
 export function useInfiniteSearchAirdrop(params?: Omit<SearchAirdropParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-airdrop', params],
@@ -19,7 +19,7 @@ export function useInfiniteSearchAirdrop(params?: Omit<SearchAirdropParams, 'off
   });
 }
 
-/** Search project events by keyword, optionally filtered by `type`. Valid types: `launch`, `upgrade`, `partnership`, `news`, `airdrop`, `listing`, `twitter`. Lookup by UUID (`id`) or name (`q`). Returns 404 if the project is not found. */
+/** Searches project events by keyword, optionally filtered by `type`. **Valid types:** `launch`, `upgrade`, `partnership`, `news`, `airdrop`, `listing`, `twitter`. **Lookup:** by UUID (`id`) or name (`q`). Returns 404 if the project is not found. */
 export function useInfiniteSearchEvents(params?: Omit<SearchEventsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-events', params],
@@ -34,7 +34,7 @@ export function useInfiniteSearchEvents(params?: Omit<SearchEventsParams, 'offse
   });
 }
 
-/** Search funds by keyword. Returns matching funds with name, tier, type, logo, and top invested projects. */
+/** Searches funds by keyword. **Included fields:** name, tier, type, logo, top invested projects. */
 export function useInfiniteSearchFund(params: Omit<SearchFundParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-fund', params],
@@ -49,7 +49,7 @@ export function useInfiniteSearchFund(params: Omit<SearchFundParams, 'offset'>) 
   });
 }
 
-/** Search Kalshi events by keyword and/or category. Filter by keyword matching event title, subtitle, or market title; or by category. At least one of `q` or `category` is required. Returns events with nested markets. Data refresh: ~30 minutes */
+/** Searches Kalshi events by keyword and/or category. **Filters:** - Keyword matching event title, subtitle, or market title - Category At least one of `q` or `category` is required. Returns events with nested markets. **Data refresh:** ~30 minutes */
 export function useInfiniteSearchKalshi(params?: Omit<SearchKalshiParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-kalshi', params],
@@ -64,7 +64,7 @@ export function useInfiniteSearchKalshi(params?: Omit<SearchKalshiParams, 'offse
   });
 }
 
-/** Search crypto news articles by keyword. Returns top 10 results ranked by relevance with highlighted matching fragments. */
+/** Searches crypto news articles by keyword. Returns top 10 results ranked by relevance with highlighted matching fragments. */
 export function useInfiniteSearchNews(params: Omit<SearchNewsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-news', params],
@@ -79,7 +79,7 @@ export function useInfiniteSearchNews(params: Omit<SearchNewsParams, 'offset'>) 
   });
 }
 
-/** Search Polymarket events by keyword, tags, and/or category. Filter by keyword matching market question, event title, or description; by comma-separated tag labels; or by Surf-curated category. At least one of `q`, `tags`, or `category` is required. Returns events with nested markets ranked by volume. Data refresh: ~30 minutes */
+/** Searches Polymarket events by keyword, tags, and/or category. **Filters:** - Keyword matching market question, event title, or description - Comma-separated tag labels - Surf-curated category At least one of `q`, `tags`, or `category` is required. Returns events with nested markets ranked by volume. **Data refresh:** ~30 minutes */
 export function useInfiniteSearchPolymarket(params?: Omit<SearchPolymarketParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-polymarket', params],
@@ -94,7 +94,7 @@ export function useInfiniteSearchPolymarket(params?: Omit<SearchPolymarketParams
   });
 }
 
-/** Search crypto projects by keyword. Returns matching projects with name, description, chains, and logo. */
+/** Searches crypto projects by keyword. **Included fields:** name, description, chains, logo. */
 export function useInfiniteSearchProject(params: Omit<SearchProjectParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-project', params],
@@ -109,7 +109,7 @@ export function useInfiniteSearchProject(params: Omit<SearchProjectParams, 'offs
   });
 }
 
-/** Search X (Twitter) users by keyword. Returns user profiles with handle, display name, bio, follower count, and avatar. */
+/** Searches X (Twitter) users by keyword. **Included fields:** handle, display name, bio, follower count, avatar. */
 export function useInfiniteSearchSocialPeople(params: Omit<SearchSocialPeopleParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['search-social-people', params],
@@ -119,7 +119,7 @@ export function useInfiniteSearchSocialPeople(params: Omit<SearchSocialPeoplePar
   });
 }
 
-/** Search X (Twitter) posts by keyword or `from:handle` syntax. Returns posts with author, content, engagement metrics, and timestamp. To load more results, check `meta.has_more`; if true, pass `meta.next_cursor` as the `cursor` query parameter in the next request. */
+/** Searches X (Twitter) posts by keyword or `from:handle` syntax. **Included fields:** author, content, engagement metrics, timestamp. **Pagination:** check `meta.has_more`; if true, pass `meta.next_cursor` as the `cursor` query parameter in the next request. */
 export function useInfiniteSearchSocialPosts(params: Omit<SearchSocialPostsParams, 'cursor'>) {
   return useInfiniteQuery({
     queryKey: ['search-social-posts', params],
@@ -129,7 +129,7 @@ export function useInfiniteSearchSocialPosts(params: Omit<SearchSocialPostsParam
   });
 }
 
-/** Search wallets by ENS name, address label, or address prefix. Returns matching wallet addresses with entity labels. */
+/** Searches wallets by ENS name, address label, or address prefix. Returns matching wallet addresses with entity labels. */
 export function useInfiniteSearchWallet(params: Omit<SearchWalletParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-wallet', params],
@@ -144,7 +144,7 @@ export function useInfiniteSearchWallet(params: Omit<SearchWalletParams, 'offset
   });
 }
 
-/** Search web pages, articles, and content by keyword. Filter by domain with `site` like `coindesk.com`. Returns titles, URLs, and content snippets. */
+/** Searches web pages, articles, and content by keyword. **Filters:** domain via `site` (e.g. `coindesk.com`). **Included fields:** titles, URLs, content snippets. */
 export function useInfiniteSearchWeb(params: Omit<SearchWebParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['search-web', params],

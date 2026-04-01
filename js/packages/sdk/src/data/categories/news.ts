@@ -8,7 +8,7 @@ export const news = {
   detail: (params: NewsDetailParams): Promise<ApiObjectResponse<NewsDetailData>> =>
     get('news/detail', params as any),
 
-  /** Browse crypto news from major sources. Filter by `source` (enum), `project`, and time range (`from`/`to`). Sort by `recency` (default) or `trending`. Use the detail endpoint with article `id` for full content. */
+  /** Returns crypto news from major sources. **Filters:** `source` (enum), `project`, and time range (`from`/`to`). **Sort:** `recency` (default) or `trending`. Use the detail endpoint with article `id` for full content. */
   feed: (params?: NewsFeedParams): Promise<ApiResponse<NewsFeedItem>> =>
     get('news/feed', params as any),
 

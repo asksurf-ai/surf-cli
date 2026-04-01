@@ -161,7 +161,7 @@ export interface ExchangeLongShortRatioParams {
   from?: string;
   /** Max number of records. For longer history, paginate using the last returned timestamp as the next from value. — @default '50' */
   limit?: number;
-  /** Exchange identifier — @default 'binance' */
+  /** Exchange identifier — @default 'bitget' */
   exchange?: 'binance' | 'okx' | 'bybit' | 'bitget';
 }
 
@@ -1331,6 +1331,140 @@ export interface KalshiVolumesParams {
   ticker: string;
   /** Predefined time range: `7d`, `30d`, `90d`, `180d`, or `1y` — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
+}
+
+export interface MatchingMarketDailyItem {
+  /** Kalshi open interest (contracts) */
+  kalshi_oi_contracts: number;
+  /** Kalshi daily volume (contracts) */
+  kalshi_volume_contracts: number;
+  /** Polymarket open interest (USD) */
+  polymarket_oi_usd: number;
+  /** Polymarket daily volume (USD) */
+  polymarket_volume_usd: number;
+  /** Unix timestamp (midnight UTC) */
+  timestamp: number;
+}
+
+export interface MatchingMarketDailyParams {
+  /** Polymarket condition ID */
+  polymarket_condition_id: string;
+  /** Kalshi market ticker */
+  kalshi_market_ticker: string;
+  /** Time range — @default '30d' */
+  time_range?: '1d' | '7d' | '30d' | '90d' | '180d' | '1y' | 'all';
+  /** Maximum rows — @default '200' */
+  limit?: number;
+  /** Pagination offset — @default '0' */
+  offset?: number;
+}
+
+export interface MatchingMarketFindItem {
+  /** Market category */
+  category: string;
+  /** Match confidence score (75-100) */
+  confidence: number;
+  kalshi: MatchingMarketFindItemKalshi;
+  /** Match type: exact or related */
+  match_type: string;
+  polymarket: MatchingMarketFindItemPolymarket;
+}
+
+export interface MatchingMarketFindItemKalshi {
+  /** Kalshi event ticker */
+  event_ticker: string;
+  /** Kalshi market ticker */
+  market_ticker: string;
+  /** Open interest in contracts */
+  open_interest: number;
+  /** Market status */
+  status: string;
+  /** Market title */
+  title: string;
+  /** Total volume in contracts */
+  volume_contracts: number;
+}
+
+export interface MatchingMarketFindItemPolymarket {
+  /** Polymarket condition identifier */
+  condition_id: string;
+  /** Event slug identifier */
+  event_slug: string;
+  /** Whether the market is currently active */
+  is_active: boolean;
+  /** Market question text */
+  question: string;
+  /** Total trading volume (USD) */
+  volume_usd: number;
+}
+
+export interface MatchingMarketFindParams {
+  /** Polymarket condition ID to find match for */
+  polymarket_condition_id?: string;
+  /** Kalshi market ticker to find match for */
+  kalshi_market_ticker?: string;
+  /** Maximum rows to return — @default '20' */
+  limit?: number;
+  /** Pagination offset — @default '0' */
+  offset?: number;
+}
+
+export interface MatchingMarketPairsItem {
+  /** Market category */
+  category: string;
+  /** Match confidence score (75-100) */
+  confidence: number;
+  kalshi: MatchingMarketPairsItemKalshi;
+  /** Match type: exact or related */
+  match_type: string;
+  polymarket: MatchingMarketPairsItemPolymarket;
+}
+
+export interface MatchingMarketPairsItemKalshi {
+  /** Kalshi event ticker */
+  event_ticker: string;
+  /** Kalshi market ticker */
+  market_ticker: string;
+  /** Open interest in contracts */
+  open_interest: number;
+  /** Market status */
+  status: string;
+  /** Market title */
+  title: string;
+  /** Total volume in contracts */
+  volume_contracts: number;
+}
+
+export interface MatchingMarketPairsItemPolymarket {
+  /** Polymarket condition identifier */
+  condition_id: string;
+  /** Event slug identifier */
+  event_slug: string;
+  /** Whether the market is currently active */
+  is_active: boolean;
+  /** Market question text */
+  question: string;
+  /** Total trading volume (USD) */
+  volume_usd: number;
+}
+
+export interface MatchingMarketPairsParams {
+  /** Filter by category */
+  category?: 'crypto' | 'culture' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports';
+  /** Filter by match type */
+  match_type?: 'exact' | 'related';
+  /** Only return pairs where both markets are currently active — @default 'False' */
+  active_only?: boolean;
+  /** Minimum confidence score (0-100) — @default '0' */
+  min_confidence?: number;
+  /** Sort field — @default 'confidence' */
+  sort_by?: 'confidence' | 'polymarket_volume' | 'kalshi_volume';
+  /** Sort order — @default 'desc' */
+  order?: 'asc' | 'desc';
+  /** Maximum rows to return — @default '20' */
+  limit?: number;
+  /** Pagination offset — @default '0' */
+  offset?: number;
 }
 
 export interface PolymarketActivityItem {
@@ -3496,5 +3630,73 @@ export interface WebFetchParams {
   wait_for_selector?: string;
   /** Request timeout in milliseconds — @default '30000' */
   timeout?: number;
+}
+
+export interface V2KalshiOrderbooksItem {
+}
+
+export interface V2KalshiOrderbooksParams {
+  /** Kalshi market ticker */
+  ticker: string;
+  /** Start time in Unix milliseconds. 0 means 7 days ago. */
+  start_time?: number;
+  /** End time in Unix milliseconds. 0 means current time. */
+  end_time?: number;
+  /** Maximum number of snapshots to return — @default '100' */
+  limit?: number;
+  /** Base64 cursor for pagination */
+  pagination_key?: string;
+}
+
+export interface V2PolymarketCandlesticksItem {
+}
+
+export interface V2PolymarketCandlesticksParams {
+  /** Start time (Unix seconds). 0 means no lower bound. */
+  start_time?: number;
+  /** End time (Unix seconds). 0 means current time. */
+  end_time?: number;
+  /** Candle interval in minutes: 1=1min, 60=1hour, 1440=1day — @default '60' */
+  interval?: number;
+}
+
+export interface V2PolymarketVolumeTimeseriesItem {
+}
+
+export interface V2PolymarketVolumeTimeseriesParams {
+  /** Time granularity for aggregation — @default 'day' */
+  granularity?: 'day' | 'week' | 'month' | 'year' | 'all';
+  /** Start time (Unix seconds). 0 means no lower bound. */
+  start_time?: number;
+  /** End time (Unix seconds). 0 means current time. */
+  end_time?: number;
+}
+
+export interface V2PolymarketOrderbooksItem {
+}
+
+export interface V2PolymarketOrderbooksParams {
+  /** Token identifier */
+  token_id: string;
+  /** Start time in Unix milliseconds. 0 means 7 days ago. */
+  start_time?: number;
+  /** End time in Unix milliseconds. 0 means current time. */
+  end_time?: number;
+  /** Maximum number of snapshots to return — @default '100' */
+  limit?: number;
+  /** Base64 cursor for pagination */
+  pagination_key?: string;
+}
+
+export interface V2PolymarketVolumeChartItem {
+}
+
+export interface V2PolymarketVolumeChartParams {
+  /** Time granularity for volume aggregation — @default 'hour' */
+  granularity?: 'hour' | 'day' | 'week';
+  /** Start time (Unix seconds). 0 means no lower bound. */
+  start_time?: number;
+  /** End time (Unix seconds). 0 means current time. */
+  end_time?: number;
 }
 

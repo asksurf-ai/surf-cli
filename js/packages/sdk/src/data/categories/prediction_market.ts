@@ -4,7 +4,7 @@ import { get, post } from '../client';
 import type { ApiResponse, PredictionMarketCategoryMetricsItem, PredictionMarketCategoryMetricsParams } from '../types';
 
 export const prediction_market = {
-  /** Get daily notional volume and open interest aggregated by category across Kalshi and Polymarket. Filter by `source` or `category`. Data refresh: daily */
+  /** Returns daily notional volume and open interest aggregated by category across Kalshi and Polymarket. **Filters:** `source` or `category`. **Data refresh:** daily */
   category_metrics: (params?: PredictionMarketCategoryMetricsParams): Promise<ApiResponse<PredictionMarketCategoryMetricsItem>> =>
     get('prediction-market/category-metrics', params as any),
 

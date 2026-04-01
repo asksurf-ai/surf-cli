@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { proxyGet, proxyPost } from '../fetch';
 import type { ApiResponse, PolymarketActivityItem, PolymarketActivityParams, PolymarketEventsItem, PolymarketEventsParams, PolymarketMarketsItem, PolymarketMarketsParams, PolymarketOpenInterestItem, PolymarketOpenInterestParams, PolymarketPositionsItem, PolymarketPositionsParams, PolymarketPricesItem, PolymarketPricesParams, PolymarketRankingItem, PolymarketRankingParams, PolymarketTradesItem, PolymarketTradesParams, PolymarketVolumesItem, PolymarketVolumesParams } from '../../data/types';
 
-/** Get trade and redemption activity for a Polymarket wallet. Data refresh: ~30 minutes */
+/** Returns trade and redemption activity for a Polymarket wallet. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketActivity(params: Omit<PolymarketActivityParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-activity', params],
@@ -19,7 +19,7 @@ export function useInfinitePolymarketActivity(params: Omit<PolymarketActivityPar
   });
 }
 
-/** Get Polymarket events with nested markets, optionally filtered by `event_slug`. Each event includes aggregated status, volume, and a list of markets with `side_a`/`side_b` outcomes. Data refresh: ~30 minutes */
+/** Returns Polymarket events with nested markets, optionally filtered by `event_slug`. Each event includes aggregated status, volume, and a list of markets with `side_a`/`side_b` outcomes. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketEvents(params: Omit<PolymarketEventsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-events', params],
@@ -34,7 +34,7 @@ export function useInfinitePolymarketEvents(params: Omit<PolymarketEventsParams,
   });
 }
 
-/** Get Polymarket markets, optionally filtered by `market_slug`. Each market includes `side_a` and `side_b` outcomes. Current prices are available via `/polymarket/prices` using the `condition_id`. Data refresh: ~30 minutes */
+/** Returns Polymarket markets, optionally filtered by `market_slug`. Each market includes `side_a` and `side_b` outcomes. Current prices are available via `/polymarket/prices` using the `condition_id`. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketMarkets(params: Omit<PolymarketMarketsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-markets', params],
@@ -49,7 +49,7 @@ export function useInfinitePolymarketMarkets(params: Omit<PolymarketMarketsParam
   });
 }
 
-/** Get daily open interest history for a Polymarket market. Data refresh: ~30 minutes */
+/** Returns daily open interest history for a Polymarket market. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketOpenInterest(params: Omit<PolymarketOpenInterestParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-open-interest', params],
@@ -64,7 +64,7 @@ export function useInfinitePolymarketOpenInterest(params: Omit<PolymarketOpenInt
   });
 }
 
-/** Get wallet positions on Polymarket markets. Data refresh: ~30 minutes */
+/** Returns wallet positions on Polymarket markets. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketPositions(params: Omit<PolymarketPositionsParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-positions', params],
@@ -79,7 +79,7 @@ export function useInfinitePolymarketPositions(params: Omit<PolymarketPositionsP
   });
 }
 
-/** Get aggregated price history for a Polymarket market. Use `interval=latest` for the most recent price snapshot. Data refresh: ~30 minutes */
+/** Returns aggregated price history for a Polymarket market. Use `interval=latest` for the most recent price snapshot. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketPrices(params: Omit<PolymarketPricesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-prices', params],
@@ -94,7 +94,7 @@ export function useInfinitePolymarketPrices(params: Omit<PolymarketPricesParams,
   });
 }
 
-/** Get top-ranked Polymarket markets by `volume_24h`, `volume_7d`, `open_interest`, or `trade_count`. Filter by `status` and `end_before`. Data refresh: ~30 minutes */
+/** Returns top-ranked Polymarket markets. **Sort by:** `volume_24h`, `volume_7d`, `open_interest`, or `trade_count`. **Filters:** `status` and `end_before`. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketRanking(params?: Omit<PolymarketRankingParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-ranking', params],
@@ -109,7 +109,7 @@ export function useInfinitePolymarketRanking(params?: Omit<PolymarketRankingPara
   });
 }
 
-/** Get paginated trade records for a Polymarket market or wallet. Filter by `condition_id` (market) or `address` (wallet), plus `outcome_label`, `min_amount`, and date range. At least one of `condition_id` or `address` is required. Sort by `newest`, `oldest`, or `largest`. Data refresh: ~30 minutes */
+/** Returns paginated trade records for a Polymarket market or wallet. **Filters:** `condition_id` (market) or `address` (wallet), plus `outcome_label`, `min_amount`, and date range. At least one of `condition_id` or `address` is required. **Sort:** `newest`, `oldest`, or `largest`. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketTrades(params?: Omit<PolymarketTradesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-trades', params],
@@ -124,7 +124,7 @@ export function useInfinitePolymarketTrades(params?: Omit<PolymarketTradesParams
   });
 }
 
-/** Get trading volume and trade count history for a Polymarket market. Data refresh: ~30 minutes */
+/** Returns trading volume and trade count history for a Polymarket market. **Data refresh:** ~30 minutes */
 export function useInfinitePolymarketVolumes(params: Omit<PolymarketVolumesParams, 'offset'>) {
   return useInfiniteQuery({
     queryKey: ['polymarket-volumes', params],
