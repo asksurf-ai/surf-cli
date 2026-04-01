@@ -1,6 +1,6 @@
 # @surf-ai/sdk
 
-Surf platform SDK — data API client, Express server runtime, React hooks, and database helpers.
+Surf platform SDK — data API client, Express server runtime, React utilities, and database helpers.
 
 ## Install
 
@@ -10,16 +10,15 @@ bun add @surf-ai/sdk
 
 ## Usage
 
-### Frontend (React hooks)
+### Frontend (React utilities)
 
 ```tsx
-import { useMarketPrice, cn, useToast } from '@surf-ai/sdk/react'
+import { cn, toast } from '@surf-ai/sdk/react'
 
 function App() {
-  const { data, isLoading } = useMarketPrice({ symbol: 'BTC', time_range: '1d' })
   return (
-    <div className={cn('p-4', isLoading && 'opacity-50')}>
-      BTC: ${data?.data?.[0]?.value}
+    <div className={cn('p-4', 'rounded-xl')}>
+      <button onClick={() => toast({ title: 'Saved' })}>Notify</button>
     </div>
   )
 }
@@ -68,7 +67,7 @@ module.exports = router
 | Import | What |
 |--------|------|
 | `@surf-ai/sdk/server` | `createServer()`, `dataApi` — Express runtime + typed data API |
-| `@surf-ai/sdk/react` | `useMarketPrice()`, `cn()`, `useToast()` — React hooks + utilities |
+| `@surf-ai/sdk/react` | `cn()`, `useToast()`, `toast()` — React utilities |
 | `@surf-ai/sdk/db` | `dbQuery()`, `dbProvision()`, `dbTables()` — Drizzle/Neon database |
 
 ## Built-in Endpoints
@@ -123,28 +122,16 @@ else → public (api.ask.surf, no auth)
 
 ```
 Sandbox (urania preview):
-  Frontend hook: useMarketPrice()
-    → fetch /proxy/market/price (same-origin to Vite)
-      → Vite proxy → Express /proxy/* → OutboundProxy (JWT) → hermod
-
   Backend route: dataApi.market.price()
     → fetch SURF_SANDBOX_PROXY_BASE/market/price
       → OutboundProxy (JWT) → hermod
 
 Deployed (surf.computer):
-  Frontend hook: useMarketPrice()
-    → fetch /proxy/market/price (same-origin to Express)
-      → Express /proxy/* → hermod (APP_TOKEN)
-
   Backend route: dataApi.market.price()
     → fetch http://127.0.0.1:PORT/proxy/market/price (loopback)
       → Express /proxy/* → hermod (APP_TOKEN)
 
 Public (local dev):
-  Frontend hook: useMarketPrice()
-    → fetch /proxy/market/price (same-origin to Vite)
-      → Vite proxy → Express /proxy/* → hermod (GATEWAY_URL + APP_TOKEN)
-
   Backend route: dataApi.market.price()
     → fetch SURF_DEPLOYED_GATEWAY_URL/gateway/v1/market/price (Bearer APP_TOKEN)
 ```
@@ -258,7 +245,7 @@ Built-in cron system powered by `croner`. Managed via `cron.json` + handler file
 ### When to Use
 
 - **Side effects** (DB writes, alerts, cache refresh) → cron job
-- **Display refresh** (show latest price) → `useQuery({ refetchInterval: 30000 })`
+- **Display refresh** (show latest price) → backend route + polling from your frontend
 
 ### Setup
 
@@ -338,14 +325,6 @@ const results = await dataApi.search.web({ q: 'BTC ETF approval', limit: 10 })
 const page = await dataApi.web.fetch({ url: 'https://example.com', target_selector: '.article' })
 ```
 
-```tsx
-// Frontend
-import { useSearchWeb, useWebFetch } from '@surf-ai/sdk/react'
-
-const { data } = useSearchWeb({ q: 'BTC ETF', limit: 5 })
-const { data: page } = useWebFetch({ url: 'https://example.com' })
-```
-
 Search params: `q` (required), `limit`, `offset`, `site` (domain filter). Fetch params: `url` (required), `target_selector`, `remove_selector`, `timeout`.
 
 ## Data Strategy
@@ -366,7 +345,7 @@ Search params: `q` (required), `limit`, `offset`, `site` (domain filter). Fetch 
 
 | Complexity | Approach |
 |-----------|----------|
-| Single endpoint, read-only | Frontend hook directly (`useMarketPrice`) |
+| Single endpoint, read-only | Backend route returning one `dataApi` call |
 | Combine multiple endpoints | Backend route with `Promise.all` + multiple `dataApi` calls |
 | External API not in proxy | Backend route + `process.env` for API keys |
 | On-chain SQL analytics | `dataApi.onchain.sql()` (see `onchain` skill for ClickHouse schema) |
@@ -393,7 +372,7 @@ module.exports = router
 
 ## Codegen
 
-API methods and React hooks are auto-generated from hermod's OpenAPI spec via the surf CLI:
+API methods are auto-generated from hermod's OpenAPI spec:
 
 ```bash
 # Regenerate all endpoints

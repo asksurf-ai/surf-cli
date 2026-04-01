@@ -1,2 +1,2 @@
 const { createServer } = require('@surf-ai/sdk/server')
-createServer().start()
+createServer({ proxy: false }).start()

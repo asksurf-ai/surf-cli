@@ -41,6 +41,7 @@ describe('create-surf-app', () => {
       'frontend/src/entry-client.tsx',
       'frontend/src/entry-server.tsx',
       'frontend/src/components/ui/button.tsx',
+      'frontend/src/lib/api.ts',
       'frontend/vite.config.ts',
     ]
 
@@ -60,9 +61,17 @@ describe('create-surf-app', () => {
       'npm run build:client && npm run build:server',
     )
     assert.equal(frontendPackageJson.scripts.dev, 'vite')
+    assert.equal(frontendPackageJson.dependencies['@surf-ai/sdk'], undefined)
 
     const viteConfig = fs.readFileSync(path.join(projectDir, 'frontend/vite.config.ts'), 'utf8')
-    assert.match(viteConfig, /readRequiredPort\('VITE_PORT'\)/)
+    assert.match(viteConfig, /defineConfig\(\(\{ mode \}\) =>/)
+    assert.match(viteConfig, /const env = loadEnv\(mode, process\.cwd\(\)\)/)
+    assert.match(viteConfig, /readRequiredPort\(env, 'VITE_PORT'\)/)
+    assert.match(viteConfig, /\[\`\$\{apiBasePrefix\}\/api\`\]: backendProxy/)
+    assert.match(viteConfig, /const apiBasePrefix = hasAbsBase \? base\.replace/)
+    assert.doesNotMatch(viteConfig, /apiProxyKey/)
+    assert.doesNotMatch(viteConfig, /\/proxy/)
+    assert.doesNotMatch(viteConfig, /warmup:/)
     assert.doesNotMatch(viteConfig, /'5173'/)
     assert.doesNotMatch(viteConfig, /'3001'/)
 
@@ -74,10 +83,28 @@ describe('create-surf-app', () => {
 
     const backendServer = fs.readFileSync(path.join(projectDir, 'backend/server.js'), 'utf8')
     assert.match(backendServer, /createServer/)
+    assert.match(backendServer, /proxy:\s*false/)
     assert.match(backendServer, /@surf-ai\/sdk\/server/)
 
     assert.equal(fs.existsSync(path.join(projectDir, 'backend/routes/proxy.js')), false)
     assert.equal(fs.existsSync(path.join(projectDir, 'backend/lib/db.js')), false)
+
+    const appTsx = fs.readFileSync(path.join(projectDir, 'frontend/src/App.tsx'), 'utf8')
+    assert.match(appTsx, /src\/lib\/api\.ts/)
+
+    const apiHelper = fs.readFileSync(path.join(projectDir, 'frontend/src/lib/api.ts'), 'utf8')
+    assert.match(apiHelper, /export function api\(path: string\)/)
+    assert.match(apiHelper, /import\.meta\.env\.BASE_URL/)
+    assert.match(apiHelper, /path\.replace\(/)
+
+    const claudeMd = fs.readFileSync(path.join(projectDir, 'CLAUDE.md'), 'utf8')
+    assert.match(claudeMd, /fetch\(api\('wallet'\)\)/)
+    assert.match(claudeMd, /frontend\/src\/lib\/api\.ts/)
+    assert.match(claudeMd, /Use the scaffolded `api\(path\)` helper/)
+    assert.match(claudeMd, /Never use absolute `\/api\/\.\.\.` URLs in frontend fetch calls/)
+    assert.match(claudeMd, /Use `@surf-ai\/sdk\/server` `dataApi` in backend code/)
+    assert.doesNotMatch(claudeMd, /@surf-ai\/sdk\/react/)
+    assert.doesNotMatch(claudeMd, /\/proxy\/\*/)
   })
 
   test('does not generate placeholder frontend API or schema files', async () => {
@@ -90,7 +117,6 @@ describe('create-surf-app', () => {
       logger: () => {},
     })
 
-    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api.ts')), false)
     assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/fetch.ts')), false)
     assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/db/schema.ts')), false)
     assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api-market.ts')), false)

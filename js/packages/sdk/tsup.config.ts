@@ -15,7 +15,7 @@ export default defineConfig([
     format: ['esm'],
     dts: true,
     outDir: 'dist',
-    external: ['react', 'react-dom', '@tanstack/react-query', 'clsx', 'tailwind-merge'],
+    external: ['react', 'clsx', 'tailwind-merge'],
   },
   // DB: CJS + ESM
   {

@@ -4,13 +4,12 @@ Built with [Surf SDK](https://github.com/cyberconnecthq/urania/tree/main/package
 
 ## Imports from @surf-ai/sdk
 
-Everything comes from `@surf-ai/sdk`. Do NOT create local utility files for these.
-
-**Frontend (`@surf-ai/sdk/react`):**
-
-```tsx
-import { useMarketPrice, useTokenHolders } from "@surf-ai/sdk/react"; // data hooks
-```
+The frontend should call your own backend routes under the Vite base path.
+Reuse the scaffolded `frontend/src/lib/api.ts` helper for frontend API requests.
+Call routes like `fetch(api('wallet'))`.
+Do not use absolute `/api/...` fetch URLs in the frontend.
+Do not use Surf SDK React hooks in the frontend.
+Use `@surf-ai/sdk/server` in backend routes to talk to Surf data APIs.
 
 **Backend (`@surf-ai/sdk/server`):**
 
@@ -30,6 +29,7 @@ const raw = await dataApi.get("newcategory/endpoint", { foo: "bar" });
 ```
 frontend/src/App.tsx       - build your UI here
 frontend/src/components/   - add components
+frontend/src/lib/api.ts    - base-aware helper for frontend API calls
 backend/routes/*.js        - add API routes (auto-mounted at /api/{name})
 backend/db/schema.js       - define database tables
 ```
@@ -47,7 +47,6 @@ backend/db/schema.js       - define database tables
 | `/api/cron/:id`      | PATCH  | Update a cron task (schedule, enabled, etc.)           |
 | `/api/cron/:id`      | DELETE | Delete a cron task                                     |
 | `/api/cron/:id/run`  | POST   | Manually trigger a cron task                           |
-| `/proxy/*`           | ANY    | Data API passthrough - `/proxy/market/price` -> hermod |
 
 Auto-registered from `backend/routes/*.js`:
 | File | Endpoint |
@@ -73,7 +72,7 @@ The agent can also call `POST /api/__sync-schema` explicitly after editing.
 
 ## Do NOT modify
 
-- `vite.config.ts` - proxy and build config
+- `vite.config.ts` - API proxy and build config
 - `backend/server.js` - uses @surf-ai/sdk/server
 - `entry-client.tsx` - app bootstrap with SSR hydration
 - `entry-server.tsx` - SSR render for deploy
@@ -83,6 +82,9 @@ The agent can also call `POST /api/__sync-schema` explicitly after editing.
 
 ## Rules
 
-- Use `@surf-ai/sdk/react` hooks in frontend, `@surf-ai/sdk/server` dataApi in backend
+- Use the scaffolded `api(path)` helper from `frontend/src/lib/api.ts` for frontend API calls
+- Never use absolute `/api/...` URLs in frontend fetch calls
+- Use `@surf-ai/sdk/server` `dataApi` in backend code when you need Surf data
+- Do not bypass your backend routes from the frontend
 - Frontend packages are pre-installed - check `package.json` before installing
 - Default to a dark theme unless the user explicitly asks for a different visual direction.

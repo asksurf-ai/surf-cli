@@ -8,6 +8,7 @@ function SurfLogo() {
   )
 }
 
+// Frontend API calls should use `src/lib/api.ts`, not absolute `/api/...` URLs.
 export default function App() {
   return (
     <div data-surf-placeholder className="min-h-screen flex flex-col items-center justify-center gap-4 rounded-[14px]" style={{ background: 'var(--bg-chat-nav, #f4f4f4)', border: '1px solid var(--border-strong, rgba(42,42,42,0.08))' }}>
