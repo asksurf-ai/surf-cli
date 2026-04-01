@@ -41,7 +41,6 @@ describe('create-surf-app', () => {
       'frontend/src/entry-client.tsx',
       'frontend/src/entry-server.tsx',
       'frontend/src/components/ui/button.tsx',
-      'frontend/src/lib/api.ts',
       'frontend/vite.config.ts',
     ]
 
@@ -81,7 +80,7 @@ describe('create-surf-app', () => {
     assert.equal(fs.existsSync(path.join(projectDir, 'backend/lib/db.js')), false)
   })
 
-  test('does not generate swagger-derived API files', async () => {
+  test('does not generate placeholder frontend API or schema files', async () => {
     const projectDir = makeTempProject()
 
     await createSurfApp({
@@ -91,7 +90,9 @@ describe('create-surf-app', () => {
       logger: () => {},
     })
 
-    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api.ts')), true)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api.ts')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/fetch.ts')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/db/schema.ts')), false)
     assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/api-market.ts')), false)
     assert.equal(fs.existsSync(path.join(projectDir, 'backend/lib/api.js')), false)
     assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/types-common.ts')), false)

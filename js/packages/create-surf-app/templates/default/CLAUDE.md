@@ -30,7 +30,6 @@ const raw = await dataApi.get("newcategory/endpoint", { foo: "bar" });
 ```
 frontend/src/App.tsx       - build your UI here
 frontend/src/components/   - add components
-frontend/src/db/schema.ts  - frontend DB schema mirror
 backend/routes/*.js        - add API routes (auto-mounted at /api/{name})
 backend/db/schema.js       - define database tables
 ```
