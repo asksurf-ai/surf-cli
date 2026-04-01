@@ -26,7 +26,6 @@ describe('create-surf-app', () => {
 
     await createSurfApp({
       projectName: projectDir,
-      frontendPort: '15042',
       backendPort: '20042',
       previewBase: '/preview/local/test/',
       logger: () => {},
@@ -51,7 +50,7 @@ describe('create-surf-app', () => {
 
     assert.equal(fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8'), 'PORT=20042\n')
     assert.equal(fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8'),
-      'VITE_PORT=15042\nVITE_BACKEND_PORT=20042\nVITE_BASE=/preview/local/test/\n',
+      'VITE_BACKEND_PORT=20042\nVITE_BASE=/preview/local/test/\n',
     )
 
     const frontendPackageJson = JSON.parse(
@@ -66,12 +65,13 @@ describe('create-surf-app', () => {
     const viteConfig = fs.readFileSync(path.join(projectDir, 'frontend/vite.config.ts'), 'utf8')
     assert.match(viteConfig, /defineConfig\(\(\{ mode \}\) =>/)
     assert.match(viteConfig, /const env = loadEnv\(mode, process\.cwd\(\)\)/)
-    assert.match(viteConfig, /readRequiredPort\(env, 'VITE_PORT'\)/)
+    assert.match(viteConfig, /readRequiredPort\(env, 'VITE_BACKEND_PORT'\)/)
     assert.match(viteConfig, /\[\`\$\{apiBasePrefix\}\/api\`\]: backendProxy/)
     assert.match(viteConfig, /const apiBasePrefix = hasAbsBase \? base\.replace/)
     assert.doesNotMatch(viteConfig, /apiProxyKey/)
     assert.doesNotMatch(viteConfig, /\/proxy/)
     assert.doesNotMatch(viteConfig, /warmup:/)
+    assert.doesNotMatch(viteConfig, /server:\s*\{[\s\S]*port:/)
     assert.doesNotMatch(viteConfig, /'5173'/)
     assert.doesNotMatch(viteConfig, /'3001'/)
 
@@ -112,7 +112,6 @@ describe('create-surf-app', () => {
 
     await createSurfApp({
       projectName: projectDir,
-      frontendPort: '15042',
       backendPort: '20042',
       logger: () => {},
     })
@@ -125,25 +124,22 @@ describe('create-surf-app', () => {
   })
 
   test('uses env fallback ports when flags are omitted', async () => {
-    const originalFrontendPort = process.env.VITE_PORT
     const originalBackendPort = process.env.VITE_BACKEND_PORT
     const originalBase = process.env.VITE_BASE
     const projectDir = makeTempProject()
-    process.env.VITE_PORT = '16000'
     process.env.VITE_BACKEND_PORT = '26000'
     process.env.VITE_BASE = '/preview/env/test/'
 
     try {
       await createSurfApp({ projectName: projectDir, logger: () => {} })
     } finally {
-      process.env.VITE_PORT = originalFrontendPort
       process.env.VITE_BACKEND_PORT = originalBackendPort
       process.env.VITE_BASE = originalBase
     }
 
     const frontendEnv = fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8')
-    assert.match(frontendEnv, /VITE_PORT=16000/)
     assert.match(frontendEnv, /VITE_BACKEND_PORT=26000/)
     assert.match(frontendEnv, /VITE_BASE=\/preview\/env\/test\//)
+    assert.doesNotMatch(frontendEnv, /VITE_PORT=/)
   })
 })

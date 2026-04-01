@@ -3,12 +3,10 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const DEFAULT_FRONTEND_PORT = '5173'
 const DEFAULT_BACKEND_PORT = '3001'
 
 type CreateSurfAppOptions = {
   projectName?: string
-  frontendPort?: string
   backendPort?: string
   previewBase?: string
   logger?: (line: string) => void
@@ -16,14 +14,12 @@ type CreateSurfAppOptions = {
 
 export async function createSurfApp({
   projectName = '.',
-  frontendPort = process.env.VITE_PORT || DEFAULT_FRONTEND_PORT,
   backendPort = process.env.VITE_BACKEND_PORT || DEFAULT_BACKEND_PORT,
   previewBase = process.env.VITE_BASE,
   logger = console.log,
 }: CreateSurfAppOptions = {}) {
   const root = path.resolve(projectName)
   const name = path.basename(root)
-  const validatedFrontendPort = validatePort('frontend', frontendPort)
   const validatedBackendPort = validatePort('backend', backendPort)
   const templateDir = resolveTemplateDir()
 
@@ -31,7 +27,7 @@ export async function createSurfApp({
   fs.mkdirSync(root, { recursive: true })
 
   copyDir(templateDir, root, root, logger)
-  writeEnvFiles(root, validatedFrontendPort, validatedBackendPort, previewBase)
+  writeEnvFiles(root, validatedBackendPort, previewBase)
 
   logger(`
 Done! Next steps:
@@ -46,7 +42,7 @@ Done! Next steps:
   # Start frontend
   cd frontend && npm run dev
 
-  Open http://localhost:${validatedFrontendPort}
+  Open the local URL printed by Vite
 `)
 
   return root
@@ -93,7 +89,6 @@ function validatePort(label: string, value: string) {
 
 function writeEnvFiles(
   root: string,
-  frontendPort: string,
   backendPort: string,
   previewBase?: string,
 ) {
@@ -102,7 +97,7 @@ function writeEnvFiles(
 
   fs.writeFileSync(backendEnvPath, `PORT=${backendPort}${os.EOL}`)
 
-  let frontendEnv = `VITE_PORT=${frontendPort}${os.EOL}VITE_BACKEND_PORT=${backendPort}${os.EOL}`
+  let frontendEnv = `VITE_BACKEND_PORT=${backendPort}${os.EOL}`
   if (previewBase) {
     frontendEnv += `VITE_BASE=${previewBase}${os.EOL}`
   }
