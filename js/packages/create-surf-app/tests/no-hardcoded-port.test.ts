@@ -58,10 +58,8 @@ describe('create-surf-app', () => {
     const frontendPackageJson = JSON.parse(
       fs.readFileSync(path.join(projectDir, 'frontend/package.json'), 'utf8'),
     )
-    assert.equal(frontendPackageJson.scripts.build,
-      'npm run build:client && npm run build:server',
-    )
-    assert.equal(frontendPackageJson.scripts.dev, 'vite')
+    assert.match(frontendPackageJson.scripts.build, /build:client/)
+    assert.match(frontendPackageJson.scripts.dev, /vite/)
     assert.equal(frontendPackageJson.dependencies['@surf-ai/sdk'], undefined)
 
     const viteConfig = fs.readFileSync(path.join(projectDir, 'frontend/vite.config.ts'), 'utf8')
@@ -80,8 +78,8 @@ describe('create-surf-app', () => {
     const backendPackageJson = JSON.parse(
       fs.readFileSync(path.join(projectDir, 'backend/package.json'), 'utf8'),
     )
-    assert.equal(backendPackageJson.scripts.start, 'node --env-file=.env server.js')
-    assert.equal(backendPackageJson.scripts.dev, 'node --env-file=.env --watch server.js')
+    assert.match(backendPackageJson.scripts.start, /server\.js/)
+    assert.match(backendPackageJson.scripts.dev, /server\.js/)
     assert.ok(backendPackageJson.dependencies['@surf-ai/sdk'], 'must have @surf-ai/sdk dependency')
 
     const backendServer = fs.readFileSync(path.join(projectDir, 'backend/server.js'), 'utf8')

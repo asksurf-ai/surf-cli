@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "npm run build:client && npm run build:server",
+    "dev": "node scripts/check-env.cjs vite",
+    "build": "node scripts/check-env.cjs npm run build:client && npm run build:server",
     "build:client": "vite build --outDir dist/client",
     "build:server": "vite build --ssr src/entry-server.tsx --outDir dist/server",
     "lint": "eslint .",
