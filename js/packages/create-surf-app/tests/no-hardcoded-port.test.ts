@@ -48,12 +48,11 @@ describe('create-surf-app', () => {
       assert.equal(fs.existsSync(path.join(projectDir, relPath)), true)
     }
 
-    assert.equal(
-      fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8'),
-      'PORT=20042\nSURF_API_KEY=REPLACE_WITH_SURF_API_KEY\n# Optional: override the default Surf API host\n# SURF_API_BASE_URL=https://api.ask.surf/gateway/v1\n',
-    )
+    const backendEnv = fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8')
+    assert.match(backendEnv, /^BACKEND_PORT=20042/m)
+    assert.match(backendEnv, /SURF_API_KEY=/)
     assert.equal(fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8'),
-      'VITE_BACKEND_PORT=20042\nVITE_BASE=/preview/local/test/\n',
+      'FRONTEND_PORT=5173\nBACKEND_PORT=20042\nBASE_PATH=/preview/local/test/\n',
     )
 
     const frontendPackageJson = JSON.parse(
@@ -67,14 +66,14 @@ describe('create-surf-app', () => {
 
     const viteConfig = fs.readFileSync(path.join(projectDir, 'frontend/vite.config.ts'), 'utf8')
     assert.match(viteConfig, /defineConfig\(\(\{ mode \}\) =>/)
-    assert.match(viteConfig, /const env = loadEnv\(mode, process\.cwd\(\)\)/)
-    assert.match(viteConfig, /readRequiredPort\(env, 'VITE_BACKEND_PORT'\)/)
+    assert.match(viteConfig, /const env = loadEnv\(mode, process\.cwd\(\), ''\)/)
+    assert.match(viteConfig, /readRequiredPort\(env, 'BACKEND_PORT'\)/)
     assert.match(viteConfig, /\[\`\$\{apiBasePrefix\}\/api\`\]: backendProxy/)
     assert.match(viteConfig, /const apiBasePrefix = hasAbsBase \? base\.replace/)
     assert.doesNotMatch(viteConfig, /apiProxyKey/)
     assert.doesNotMatch(viteConfig, /\/proxy/)
     assert.doesNotMatch(viteConfig, /warmup:/)
-    assert.doesNotMatch(viteConfig, /server:\s*\{[\s\S]*port:/)
+    assert.match(viteConfig, /port: frontendPort/)
     assert.doesNotMatch(viteConfig, /'5173'/)
     assert.doesNotMatch(viteConfig, /'3001'/)
 
@@ -127,23 +126,173 @@ describe('create-surf-app', () => {
     assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/types-common.ts')), false)
   })
 
-  test('uses env fallback ports when flags are omitted', async () => {
-    const originalBackendPort = process.env.VITE_BACKEND_PORT
-    const originalBase = process.env.VITE_BASE
+  test('vite scaffold env files contain all required env vars', async () => {
     const projectDir = makeTempProject()
-    process.env.VITE_BACKEND_PORT = '26000'
-    process.env.VITE_BASE = '/preview/env/test/'
+
+    await createSurfApp({
+      projectName: projectDir,
+      backendPort: '4000',
+      logger: () => {},
+    })
+
+    const backendEnv = fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8')
+    assert.match(backendEnv, /^BACKEND_PORT=4000/m, 'backend .env must have BACKEND_PORT')
+    assert.match(backendEnv, /^SURF_API_KEY=/m, 'backend .env must have SURF_API_KEY')
+    assert.doesNotMatch(backendEnv, /SURF_API_BASE_URL/, 'backend .env must not have optional vars')
+
+    const frontendEnv = fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8')
+    assert.match(frontendEnv, /^FRONTEND_PORT=5173/m, 'frontend .env must have FRONTEND_PORT')
+    assert.match(frontendEnv, /^BACKEND_PORT=4000/m, 'frontend .env must have BACKEND_PORT')
+  })
+
+  test('generates nextjs template with correct structure', async () => {
+    const projectDir = makeTempProject()
+
+    await createSurfApp({
+      projectName: projectDir,
+      template: 'nextjs',
+      logger: () => {},
+    })
+
+    // Core files must exist
+    const expectedFiles = [
+      'CLAUDE.md',
+      'package.json',
+      'next.config.ts',
+      'tsconfig.json',
+      'instrumentation.ts',
+      'app/layout.tsx',
+      'app/page.tsx',
+      'app/providers.tsx',
+      'app/globals.css',
+      'app/api/health/route.ts',
+      'app/api/__sync-schema/route.ts',
+      'app/api/cron/route.ts',
+      'app/api/market/price/route.ts',
+      'db/index.ts',
+      'db/schema.ts',
+      'lib/boot.ts',
+      'lib/utils.ts',
+      'hooks/use-toast.ts',
+      'components/ui/button.tsx',
+      'components/ui/dialog.tsx',
+      'components/ui/form.tsx',
+    ]
+
+    for (const relPath of expectedFiles) {
+      assert.equal(
+        fs.existsSync(path.join(projectDir, relPath)),
+        true,
+        `Expected ${relPath} to exist`,
+      )
+    }
+
+    // Must NOT have Vite template artifacts
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'vite.config.ts')), false)
+  })
+
+  test('nextjs scaffold env file contains all required env vars', async () => {
+    const projectDir = makeTempProject()
+
+    await createSurfApp({
+      projectName: projectDir,
+      template: 'nextjs',
+      backendPort: '5000',
+      logger: () => {},
+    })
+
+    const envFile = fs.readFileSync(path.join(projectDir, '.env'), 'utf8')
+    assert.match(envFile, /^FRONTEND_PORT=5000/m, '.env must have FRONTEND_PORT')
+    assert.match(envFile, /^SURF_API_KEY=/m, '.env must have SURF_API_KEY')
+    assert.doesNotMatch(envFile, /SURF_API_BASE_URL/, '.env must not have optional vars')
+  })
+
+  test('nextjs scaffold package.json has correct name and deps', async () => {
+    const projectDir = makeTempProject()
+
+    await createSurfApp({
+      projectName: projectDir,
+      template: 'nextjs',
+      logger: () => {},
+    })
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(projectDir, 'package.json'), 'utf8'))
+    assert.match(pkg.scripts.dev, /next dev/)
+    assert.match(pkg.scripts.build, /next build/)
+    assert.match(pkg.scripts.start, /next start/)
+    assert.equal(pkg.dependencies['@surf-ai/sdk'], '1.0.0-alpha.0')
+    assert.equal(pkg.dependencies.next != null, true, 'must have next dependency')
+    assert.equal(pkg.dependencies.react != null, true, 'must have react dependency')
+    assert.equal(pkg.dependencies['drizzle-orm'] != null, true, 'must have drizzle-orm')
+    assert.equal(pkg.dependencies.croner != null, true, 'must have croner')
+    assert.equal(pkg.dependencies['@tanstack/react-query'] != null, true, 'must have react-query')
+  })
+
+  test('nextjs CLAUDE.md has correct agent instructions', async () => {
+    const projectDir = makeTempProject()
+
+    await createSurfApp({
+      projectName: projectDir,
+      template: 'nextjs',
+      logger: () => {},
+    })
+
+    const claudeMd = fs.readFileSync(path.join(projectDir, 'CLAUDE.md'), 'utf8')
+    assert.match(claudeMd, /@surf-ai\/sdk\/server/, 'must reference SDK server import')
+    assert.match(claudeMd, /dataApi/, 'must reference dataApi')
+    assert.match(claudeMd, /use client/, 'must mention use client directive')
+    assert.match(claudeMd, /app\/api\//, 'must reference API route pattern')
+    assert.match(claudeMd, /Do NOT modify/, 'must have do-not-modify section')
+    assert.match(claudeMd, /instrumentation\.ts/, 'must list instrumentation.ts as do-not-modify')
+    assert.match(claudeMd, /db\/schema\.ts/, 'must reference schema file')
+  })
+
+  test('nextjs instrumentation.ts checks for SURF_API_KEY', async () => {
+    const projectDir = makeTempProject()
+
+    await createSurfApp({
+      projectName: projectDir,
+      template: 'nextjs',
+      logger: () => {},
+    })
+
+    const instrumentation = fs.readFileSync(path.join(projectDir, 'instrumentation.ts'), 'utf8')
+    assert.match(instrumentation, /SURF_API_KEY/, 'must check for SURF_API_KEY')
+    assert.match(instrumentation, /syncSchema/, 'must call syncSchema')
+    assert.match(instrumentation, /watchSchema/, 'must call watchSchema')
+    assert.match(instrumentation, /startCron/, 'must call startCron')
+  })
+
+  test('rejects unknown templates', async () => {
+    await assert.rejects(
+      () => createSurfApp({
+        projectName: makeTempProject(),
+        template: 'nope',
+        logger: () => {},
+      }),
+      /Unknown template: nope/,
+    )
+  })
+
+  test('uses env fallback ports when flags are omitted', async () => {
+    const originalBackendPort = process.env.BACKEND_PORT
+    const originalBase = process.env.BASE_PATH
+    const projectDir = makeTempProject()
+    process.env.BACKEND_PORT = '26000'
+    process.env.BASE_PATH = '/preview/env/test/'
 
     try {
       await createSurfApp({ projectName: projectDir, logger: () => {} })
     } finally {
-      process.env.VITE_BACKEND_PORT = originalBackendPort
-      process.env.VITE_BASE = originalBase
+      process.env.BACKEND_PORT = originalBackendPort
+      process.env.BASE_PATH = originalBase
     }
 
     const frontendEnv = fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8')
-    assert.match(frontendEnv, /VITE_BACKEND_PORT=26000/)
-    assert.match(frontendEnv, /VITE_BASE=\/preview\/env\/test\//)
-    assert.doesNotMatch(frontendEnv, /VITE_PORT=/)
+    assert.match(frontendEnv, /FRONTEND_PORT=5173/)
+    assert.match(frontendEnv, /BACKEND_PORT=26000/)
+    assert.match(frontendEnv, /BASE_PATH=\/preview\/env\/test\//)
   })
 })

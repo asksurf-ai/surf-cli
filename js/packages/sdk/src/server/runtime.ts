@@ -14,6 +14,7 @@ import fs from 'fs'
 import path from 'path'
 import { Cron } from 'croner'
 import { readAdminApiKey } from '../core/config'
+import { syncSchema as syncSchemaShared, watchSchema as watchSchemaShared } from '../db/schema-sync'
 
 export interface ServerOptions {
   /** Port to listen on. Falls back to the PORT env var when omitted. */
@@ -38,9 +39,10 @@ function requireBearerAuth(req: Request, res: Response, next: () => void) {
 }
 
 export function createServer(options: ServerOptions = {}) {
-  const port = options.port ?? (process.env.PORT ? Number.parseInt(process.env.PORT, 10) : undefined)
+  const rawPort = process.env.BACKEND_PORT
+  const port = options.port ?? (rawPort ? Number.parseInt(rawPort, 10) : undefined)
   if (!Number.isInteger(port)) {
-    throw new Error('createServer requires a port via options.port or process.env.PORT')
+    throw new Error('createServer requires a port via options.port or BACKEND_PORT env var')
   }
   const routesDir = options.routesDir || path.join(process.cwd(), 'routes')
   const cronDir = options.cronDir || process.cwd()
@@ -104,124 +106,13 @@ export function createServer(options: ServerOptions = {}) {
 const schemaSync = { run: async () => {}, watch: () => {} }
 
 function setupSchemaSync(app: Express, schemaDir: string) {
-  let syncing = false
   let schemaReady = false
-
-  async function doSyncSchema() {
-    if (syncing) return
-    syncing = true
-    try {
-      const schemaPath = path.join(schemaDir, 'schema.js')
-      if (!fs.existsSync(schemaPath)) return
-
-      // Clear require cache to pick up latest schema
-      try { delete require.cache[require.resolve(schemaPath)] } catch { /* not cached */ }
-
-      let schema: any
-      try {
-        schema = require(schemaPath)
-      } catch (err: any) {
-        if (err instanceof SyntaxError) {
-          console.log('DB: schema.js has syntax error, waiting for next change...')
-          return
-        }
-        if (err.message.includes('Cannot find module') || err.message.includes('is not a function')) {
-          return
-        }
-        throw err
-      }
-
-      let getTableConfig: any
-      try {
-        getTableConfig = require('drizzle-orm/pg-core').getTableConfig
-      } catch {
-        return // drizzle-orm not installed
-      }
-
-      const tables = Object.values(schema).filter((t: any) =>
-        t && typeof t === 'object' && Symbol.for('drizzle:Name') in t
-      )
-      if (tables.length === 0) return
-
-      const { get: dbGet, post: dbPost } = await import('../data/client')
-
-      // Provision database
-      await dbPost('db/provision')
-
-      // Get existing tables
-      const existing: string[] = ((await dbGet('db/tables')) as any[]).map((t: any) => t.name)
-      const missing = tables.filter((t: any) => !existing.includes(getTableConfig(t).name))
-
-      if (missing.length > 0) {
-        // Generate DDL with drizzle-kit
-        const { generateDrizzleJson, generateMigration } = require('drizzle-kit/api')
-        const missingSchema: any = {}
-        for (const t of missing) missingSchema[getTableConfig(t as any).name] = t
-        const sqls: string[] = await generateMigration(generateDrizzleJson({}), generateDrizzleJson(missingSchema))
-
-        for (const sql of sqls) {
-          for (let attempt = 0; attempt < 2; attempt++) {
-            try {
-              await dbPost('db/query', { sql, params: [] })
-              console.log(`DB: Executed: ${sql.slice(0, 80)}...`)
-              break
-            } catch (err: any) {
-              if (attempt === 0) {
-                console.warn(`DB: Retrying after: ${err.message}`)
-                await new Promise(r => setTimeout(r, 1500))
-              } else {
-                console.error(`DB: Failed: ${sql.slice(0, 80)}... — ${err.message}`)
-              }
-            }
-          }
-        }
-      }
-
-      // Check existing tables for missing columns
-      const existingTables = tables.filter((t: any) => existing.includes(getTableConfig(t).name))
-      for (const t of existingTables) {
-        const cfg = getTableConfig(t as any)
-        try {
-          const live: any = await dbGet('db/table-schema', { table: cfg.name })
-          const liveCols = new Set((live.columns || []).map((c: any) => c.name))
-          for (const col of cfg.columns) {
-            if (!liveCols.has(col.name)) {
-              const colType = col.getSQLType()
-              const ddl = `ALTER TABLE "${cfg.name}" ADD COLUMN IF NOT EXISTS "${col.name}" ${colType}`
-              try {
-                await dbPost('db/query', { sql: ddl, params: [] })
-                console.log(`DB: Added column ${col.name} to ${cfg.name}`)
-              } catch (err: any) {
-                console.warn(`DB: Failed to add column ${col.name} to ${cfg.name}: ${err.message}`)
-              }
-            }
-          }
-        } catch (err: any) {
-          console.warn(`DB: Column check failed for ${cfg.name}: ${err.message}`)
-        }
-      }
-    } finally {
-      syncing = false
-    }
-  }
-
-  async function syncWithRetry(retries = 3, delay = 2000) {
-    for (let i = 0; i < retries; i++) {
-      try {
-        await doSyncSchema()
-        return
-      } catch (err: any) {
-        console.error(`DB schema sync attempt ${i + 1}/${retries} failed: ${err.message}`)
-        if (i < retries - 1) await new Promise(r => setTimeout(r, delay * (i + 1)))
-      }
-    }
-    console.error('DB schema sync failed after all retries')
-  }
+  const schemaPath = path.join(schemaDir, 'schema.js')
 
   // Explicit sync endpoint
   app.post('/api/__sync-schema', requireBearerAuth, async (_req: Request, res: Response) => {
     try {
-      await syncWithRetry(2, 1500)
+      await syncSchemaShared({ schemaPath, retries: 2, retryDelay: 1500 })
       res.json({ ok: true })
     } catch (err: any) {
       res.status(500).json({ ok: false, error: err.message })
@@ -237,7 +128,7 @@ function setupSchemaSync(app: Express, schemaDir: string) {
   // Wire up for startup
   schemaSync.run = async () => {
     try {
-      await syncWithRetry()
+      await syncSchemaShared({ schemaPath })
       schemaReady = true
       console.log('Schema sync complete, API ready')
     } catch {
@@ -247,21 +138,7 @@ function setupSchemaSync(app: Express, schemaDir: string) {
   }
 
   schemaSync.watch = () => {
-    const schemaPath = path.join(schemaDir, 'schema.js')
-    if (!fs.existsSync(schemaPath)) return
-    let debounce: any = null
-    fs.watchFile(schemaPath, { interval: 2000 }, () => {
-      if (debounce) clearTimeout(debounce)
-      debounce = setTimeout(async () => {
-        console.log('DB: schema.js changed, re-syncing tables...')
-        try {
-          await syncWithRetry(2, 1500)
-          console.log('DB: schema re-sync complete')
-        } catch (err: any) {
-          console.error(`DB: schema re-sync failed: ${err.message}`)
-        }
-      }, 1000)
-    })
+    watchSchemaShared(schemaPath)
   }
 }
 

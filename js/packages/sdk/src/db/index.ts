@@ -15,6 +15,10 @@
 
 import { get, post } from '../data/client'
 
+// Re-export schema sync utilities for use in Next.js and other runtimes
+export { syncSchema, watchSchema } from './schema-sync'
+export type { SchemaSyncOptions } from './schema-sync'
+
 /**
  * Provision a database for the current user via db/provision.
  * Returns connection metadata. Neon auto-creates the DB if it doesn't exist.
@@ -25,7 +29,7 @@ export async function dbProvision(): Promise<{
   user: string
   password: string
 }> {
-  return post('db/provision')
+  return post('db/provision', {})
 }
 
 /**

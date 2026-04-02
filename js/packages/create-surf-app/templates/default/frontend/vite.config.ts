@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 function readRequiredPort(
   env: Record<string, string>,
-  name: 'VITE_BACKEND_PORT',
+  name: 'BACKEND_PORT' | 'FRONTEND_PORT',
 ) {
   const value = env[name]
   const port = Number.parseInt(value || '', 10)
@@ -16,9 +16,10 @@ function readRequiredPort(
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd())
-  const backendPort = readRequiredPort(env, 'VITE_BACKEND_PORT')
-  const base = env.VITE_BASE || './'
+  const env = loadEnv(mode, process.cwd(), '')
+  const frontendPort = readRequiredPort(env, 'FRONTEND_PORT')
+  const backendPort = readRequiredPort(env, 'BACKEND_PORT')
+  const base = env.BASE_PATH || './'
   const hasAbsBase = base.startsWith('/')
   const apiBasePrefix = hasAbsBase ? base.replace(/\/$/, '') : ''
 
@@ -34,6 +35,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     server: {
       host: '0.0.0.0',
+      port: frontendPort,
       proxy: {
         [`${apiBasePrefix}/api`]: backendProxy,
       },

@@ -4,32 +4,50 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const DEFAULT_BACKEND_PORT = '3001'
+const VALID_TEMPLATES = ['vite', 'nextjs'] as const
+type Template = (typeof VALID_TEMPLATES)[number]
 
 type CreateSurfAppOptions = {
   projectName?: string
   backendPort?: string
   previewBase?: string
+  template?: string
   logger?: (line: string) => void
 }
 
 export async function createSurfApp({
   projectName = '.',
-  backendPort = process.env.VITE_BACKEND_PORT || DEFAULT_BACKEND_PORT,
-  previewBase = process.env.VITE_BASE,
+  backendPort = process.env.BACKEND_PORT || DEFAULT_BACKEND_PORT,
+  previewBase = process.env.BASE_PATH,
+  template: templateArg,
   logger = console.log,
 }: CreateSurfAppOptions = {}) {
   const root = path.resolve(projectName)
   const name = path.basename(root)
+  const template = validateTemplate(templateArg)
   const validatedBackendPort = validatePort('backend', backendPort)
-  const templateDir = resolveTemplateDir()
+  const templateDir = resolveTemplateDir(template)
 
-  logger(`\n  Creating Surf app in ${root}\n`)
+  logger(`\n  Creating Surf app (${template}) in ${root}\n`)
   fs.mkdirSync(root, { recursive: true })
 
   copyDir(templateDir, root, root, logger)
-  writeEnvFiles(root, validatedBackendPort, previewBase)
 
-  logger(`
+  if (template === 'nextjs') {
+    writeNextjsEnvFile(root, validatedBackendPort, previewBase)
+    finalizePackageName(root, name)
+    logger(`
+Done! Next steps:
+
+  cd ${name}
+  npm install
+  npm run dev
+
+  Open http://localhost:3000
+`)
+  } else {
+    writeEnvFiles(root, validatedBackendPort, previewBase)
+    logger(`
 Done! Next steps:
 
   cd ${name}
@@ -44,22 +62,32 @@ Done! Next steps:
 
   Open the local URL printed by Vite
 `)
+  }
 
   return root
 }
 
-function resolveTemplateDir() {
+function validateTemplate(template?: string): Template {
+  if (!template) return 'vite'
+  if (!VALID_TEMPLATES.includes(template as Template)) {
+    throw new Error(`Unknown template: ${template}. Valid templates: ${VALID_TEMPLATES.join(', ')}`)
+  }
+  return template as Template
+}
+
+function resolveTemplateDir(template: Template = 'vite') {
+  const dirName = template === 'vite' ? 'default' : template
   const here = path.dirname(fileURLToPath(import.meta.url))
   const candidates = [
-    path.join(here, 'templates', 'default'),
-    path.join(here, '..', 'templates', 'default'),
+    path.join(here, 'templates', dirName),
+    path.join(here, '..', 'templates', dirName),
   ]
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate
   }
 
-  throw new Error(`Could not find default template near ${here}`)
+  throw new Error(`Could not find ${template} template near ${here}`)
 }
 
 function copyDir(src: string, dest: string, root: string, logger: (line: string) => void) {
@@ -87,6 +115,28 @@ function validatePort(label: string, value: string) {
   return String(port)
 }
 
+function finalizePackageName(root: string, projectName: string) {
+  const pkgPath = path.join(root, 'package.json')
+  if (!fs.existsSync(pkgPath)) return
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+  pkg.name = projectName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'surf-app'
+  fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}${os.EOL}`)
+}
+
+function writeNextjsEnvFile(root: string, port: string, basePath?: string) {
+  const envPath = path.join(root, '.env')
+  const envContent = [
+    `FRONTEND_PORT=${port}`,
+    `BASE_PATH=${basePath || ''}`,
+    'SURF_API_KEY=',
+  ].join(os.EOL)
+  fs.writeFileSync(envPath, `${envContent}${os.EOL}`)
+}
+
 function writeEnvFiles(
   root: string,
   backendPort: string,
@@ -96,17 +146,16 @@ function writeEnvFiles(
   const frontendEnvPath = path.join(root, 'frontend', '.env')
 
   const backendEnv = [
-    `PORT=${backendPort}`,
-    'SURF_API_KEY=REPLACE_WITH_SURF_API_KEY',
-    '# Optional: override the default Surf API host',
-    '# SURF_API_BASE_URL=https://api.ask.surf/gateway/v1',
+    `BACKEND_PORT=${backendPort}`,
+    'SURF_API_KEY=',
   ].join(os.EOL)
 
   fs.writeFileSync(backendEnvPath, `${backendEnv}${os.EOL}`)
 
-  let frontendEnv = `VITE_BACKEND_PORT=${backendPort}${os.EOL}`
-  if (previewBase) {
-    frontendEnv += `VITE_BASE=${previewBase}${os.EOL}`
-  }
-  fs.writeFileSync(frontendEnvPath, frontendEnv)
+  const frontendEnv = [
+    'FRONTEND_PORT=5173',
+    `BACKEND_PORT=${backendPort}`,
+    `BASE_PATH=${previewBase || ''}`,
+  ].join(os.EOL)
+  fs.writeFileSync(frontendEnvPath, `${frontendEnv}${os.EOL}`)
 }

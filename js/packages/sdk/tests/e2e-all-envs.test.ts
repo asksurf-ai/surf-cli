@@ -73,13 +73,17 @@ describe('@surf-ai/sdk e2e [1.0 direct auth]', () => {
     api.clear()
   })
 
-  test('createServer throws when no port is provided and PORT is unset', () => {
+  test('createServer throws when no port is provided and BACKEND_PORT is unset', () => {
+    const previousBackendPort = process.env.BACKEND_PORT
     const previousPort = process.env.PORT
+    delete process.env.BACKEND_PORT
     delete process.env.PORT
 
     try {
-      expect(() => createServer()).toThrow('createServer requires a port via options.port or process.env.PORT')
+      expect(() => createServer()).toThrow('createServer requires a port via options.port or BACKEND_PORT env var')
     } finally {
+      if (previousBackendPort === undefined) delete process.env.BACKEND_PORT
+      else process.env.BACKEND_PORT = previousBackendPort
       if (previousPort === undefined) delete process.env.PORT
       else process.env.PORT = previousPort
     }
