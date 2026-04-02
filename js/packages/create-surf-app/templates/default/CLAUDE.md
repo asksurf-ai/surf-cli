@@ -88,3 +88,23 @@ The agent can also call `POST /api/__sync-schema` explicitly after editing.
 - Do not bypass your backend routes from the frontend
 - Frontend packages are pre-installed - check `package.json` before installing
 - Default to a dark theme unless the user explicitly asks for a different visual direction.
+
+## Design
+
+### Avoid AI-default patterns
+- No colored icon boxes next to metrics (the blue-bg-with-icon KPI pattern)
+- No gradient avatar circles with initials
+- No "Built with React · Tailwind" footers
+- No AI copywriting: "Elevate", "Seamless", "Unleash", "Delve", "Next-Gen"
+- No "Oops!" error messages — be direct ("Failed to load. Try again.")
+- No round placeholder numbers ($100.00) — use realistic data ($847.29)
+- Sentence case on headings, not Title Case On Every Word
+- Icons should aid scanning, not decorate — omit when the label is clear
+
+### ECharts
+- Flat style: show primary axis line, dashed split lines, transparent chart bg
+- Custom tooltip formatter with dash indicators (12×2.5px bars, not default circle dots)
+- Legend: type "plain", icon "roundRect", itemWidth 12, itemHeight 3
+- Prefer timeframe tabs (7D/30D/90D/1Y/All) over dataZoom for time series
+- Default to theme visualizer palette; override when semantics demand it (red/green for gain/loss, sequential scales for heatmaps)
+- Dark mode: parameterize tooltip bg, axis colors, split line colors via resolvedTheme
