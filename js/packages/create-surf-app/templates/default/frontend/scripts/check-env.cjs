@@ -39,7 +39,8 @@ const missingDefined = requiredDefined.filter(k => process.env[k] === undefined)
 const missing = [...missingNonEmpty, ...missingDefined]
 
 if (missing.length > 0) {
-  console.error(`\n❌ Missing required env vars in .env: ${missing.join(', ')}\n`)
+  console.error(`\n❌ Missing required env vars: ${missing.join(', ')}`)
+  console.error(`   Set them in your environment or copy .env.example to .env\n`)
   process.exit(1)
 }
 

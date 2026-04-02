@@ -1,25 +1,12 @@
 import path from 'path'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-function readRequiredPort(
-  env: Record<string, string>,
-  name: 'BACKEND_PORT' | 'FRONTEND_PORT',
-) {
-  const value = env[name]
-  const port = Number.parseInt(value || '', 10)
-  if (!Number.isInteger(port)) {
-    throw new Error(`Missing required ${name} in frontend/.env`)
-  }
-  return port
-}
-
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
-  const frontendPort = readRequiredPort(env, 'FRONTEND_PORT')
-  const backendPort = readRequiredPort(env, 'BACKEND_PORT')
-  const base = env.BASE_PATH || './'
+export default defineConfig(() => {
+  const frontendPort = Number.parseInt(process.env.FRONTEND_PORT || '', 10)
+  const backendPort = Number.parseInt(process.env.BACKEND_PORT || '', 10)
+  const base = process.env.BASE_PATH || './'
   const hasAbsBase = base.startsWith('/')
   const apiBasePrefix = hasAbsBase ? base.replace(/\/$/, '') : ''
 
@@ -35,11 +22,10 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     server: {
       host: '0.0.0.0',
-      port: frontendPort,
+      port: frontendPort || undefined,
       proxy: {
         [`${apiBasePrefix}/api`]: backendProxy,
       },
-      // Keep the HMR socket under the preview base path.
       hmr: {
         path: 'ws/vite-hmr',
       },
@@ -51,8 +37,6 @@ export default defineConfig(({ mode }) => {
       dedupe: ['react', 'react-dom'],
       preserveSymlinks: true,
     },
-    // Pre-bundle the deps touched during the initial boot path so cold starts
-    // do not race Vite's lazy dependency optimizer.
     optimizeDeps: {
       include: [
         'react',

@@ -26,8 +26,6 @@ describe('create-surf-app', () => {
 
     await createSurfApp({
       projectName: projectDir,
-      backendPort: '20042',
-      previewBase: '/preview/local/test/',
       logger: () => {},
     })
 
@@ -48,12 +46,16 @@ describe('create-surf-app', () => {
       assert.equal(fs.existsSync(path.join(projectDir, relPath)), true)
     }
 
-    const backendEnv = fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8')
-    assert.match(backendEnv, /^BACKEND_PORT=20042/m)
-    assert.match(backendEnv, /SURF_API_KEY=/)
-    assert.equal(fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8'),
-      'FRONTEND_PORT=5173\nBACKEND_PORT=20042\nBASE_PATH=/preview/local/test/\n',
-    )
+    // .env.example files exist (not .env)
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend/.env')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/.env')), false)
+    const backendExample = fs.readFileSync(path.join(projectDir, 'backend/.env.example'), 'utf8')
+    assert.match(backendExample, /BACKEND_PORT=/)
+    assert.match(backendExample, /SURF_API_KEY=/)
+    const frontendExample = fs.readFileSync(path.join(projectDir, 'frontend/.env.example'), 'utf8')
+    assert.match(frontendExample, /FRONTEND_PORT=/)
+    assert.match(frontendExample, /BACKEND_PORT=/)
+    assert.match(frontendExample, /BASE_PATH=/)
 
     const frontendPackageJson = JSON.parse(
       fs.readFileSync(path.join(projectDir, 'frontend/package.json'), 'utf8'),
@@ -63,15 +65,12 @@ describe('create-surf-app', () => {
     assert.equal(frontendPackageJson.dependencies['@surf-ai/sdk'], undefined)
 
     const viteConfig = fs.readFileSync(path.join(projectDir, 'frontend/vite.config.ts'), 'utf8')
-    assert.match(viteConfig, /defineConfig\(\(\{ mode \}\) =>/)
-    assert.match(viteConfig, /const env = loadEnv\(mode, process\.cwd\(\), ''\)/)
-    assert.match(viteConfig, /readRequiredPort\(env, 'BACKEND_PORT'\)/)
-    assert.match(viteConfig, /\[\`\$\{apiBasePrefix\}\/api\`\]: backendProxy/)
-    assert.match(viteConfig, /const apiBasePrefix = hasAbsBase \? base\.replace/)
-    assert.doesNotMatch(viteConfig, /apiProxyKey/)
-    assert.doesNotMatch(viteConfig, /\/proxy/)
-    assert.doesNotMatch(viteConfig, /warmup:/)
-    assert.match(viteConfig, /port: frontendPort/)
+    assert.match(viteConfig, /defineConfig/)
+    assert.match(viteConfig, /process\.env\.BACKEND_PORT/)
+    assert.match(viteConfig, /process\.env\.FRONTEND_PORT/)
+    assert.match(viteConfig, /process\.env\.BASE_PATH/)
+    assert.match(viteConfig, /apiBasePrefix/)
+    assert.doesNotMatch(viteConfig, /loadEnv/)
     assert.doesNotMatch(viteConfig, /'5173'/)
     assert.doesNotMatch(viteConfig, /'3001'/)
 
@@ -113,7 +112,6 @@ describe('create-surf-app', () => {
 
     await createSurfApp({
       projectName: projectDir,
-      backendPort: '20042',
       logger: () => {},
     })
 
@@ -124,23 +122,25 @@ describe('create-surf-app', () => {
     assert.equal(fs.existsSync(path.join(projectDir, 'frontend/src/lib/types-common.ts')), false)
   })
 
-  test('vite scaffold env files contain all required env vars', async () => {
+  test('vite scaffold has .env.example with all required env vars', async () => {
     const projectDir = makeTempProject()
 
     await createSurfApp({
       projectName: projectDir,
-      backendPort: '4000',
       logger: () => {},
     })
 
-    const backendEnv = fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8')
-    assert.match(backendEnv, /^BACKEND_PORT=4000/m, 'backend .env must have BACKEND_PORT')
-    assert.match(backendEnv, /^SURF_API_KEY=/m, 'backend .env must have SURF_API_KEY')
-    assert.doesNotMatch(backendEnv, /SURF_API_BASE_URL/, 'backend .env must not have optional vars')
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend/.env')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/.env')), false)
 
-    const frontendEnv = fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8')
-    assert.match(frontendEnv, /^FRONTEND_PORT=5173/m, 'frontend .env must have FRONTEND_PORT')
-    assert.match(frontendEnv, /^BACKEND_PORT=4000/m, 'frontend .env must have BACKEND_PORT')
+    const backendExample = fs.readFileSync(path.join(projectDir, 'backend/.env.example'), 'utf8')
+    assert.match(backendExample, /BACKEND_PORT=/, 'backend .env.example must have BACKEND_PORT')
+    assert.match(backendExample, /SURF_API_KEY=/, 'backend .env.example must have SURF_API_KEY')
+
+    const frontendExample = fs.readFileSync(path.join(projectDir, 'frontend/.env.example'), 'utf8')
+    assert.match(frontendExample, /FRONTEND_PORT=/, 'frontend .env.example must have FRONTEND_PORT')
+    assert.match(frontendExample, /BACKEND_PORT=/, 'frontend .env.example must have BACKEND_PORT')
+    assert.match(frontendExample, /BASE_PATH=/, 'frontend .env.example must have BASE_PATH')
   })
 
   test('generates nextjs template with correct structure', async () => {
@@ -191,20 +191,20 @@ describe('create-surf-app', () => {
     assert.equal(fs.existsSync(path.join(projectDir, 'vite.config.ts')), false)
   })
 
-  test('nextjs scaffold env file contains all required env vars', async () => {
+  test('nextjs scaffold has .env.example with all required env vars', async () => {
     const projectDir = makeTempProject()
 
     await createSurfApp({
       projectName: projectDir,
       template: 'nextjs',
-      backendPort: '5000',
       logger: () => {},
     })
 
-    const envFile = fs.readFileSync(path.join(projectDir, '.env'), 'utf8')
-    assert.match(envFile, /^FRONTEND_PORT=5000/m, '.env must have FRONTEND_PORT')
-    assert.match(envFile, /^SURF_API_KEY=/m, '.env must have SURF_API_KEY')
-    assert.doesNotMatch(envFile, /SURF_API_BASE_URL/, '.env must not have optional vars')
+    assert.equal(fs.existsSync(path.join(projectDir, '.env')), false)
+    const envExample = fs.readFileSync(path.join(projectDir, '.env.example'), 'utf8')
+    assert.match(envExample, /FRONTEND_PORT=/, '.env.example must have FRONTEND_PORT')
+    assert.match(envExample, /BASE_PATH=/, '.env.example must have BASE_PATH')
+    assert.match(envExample, /SURF_API_KEY=/, '.env.example must have SURF_API_KEY')
   })
 
   test('nextjs scaffold package.json has correct name and deps', async () => {
@@ -274,23 +274,16 @@ describe('create-surf-app', () => {
     )
   })
 
-  test('uses env fallback ports when flags are omitted', async () => {
-    const originalBackendPort = process.env.BACKEND_PORT
-    const originalBase = process.env.BASE_PATH
+  test('scaffold does not create .env files, only .env.example', async () => {
     const projectDir = makeTempProject()
-    process.env.BACKEND_PORT = '26000'
-    process.env.BASE_PATH = '/preview/env/test/'
+    await createSurfApp({ projectName: projectDir, logger: () => {} })
 
-    try {
-      await createSurfApp({ projectName: projectDir, logger: () => {} })
-    } finally {
-      process.env.BACKEND_PORT = originalBackendPort
-      process.env.BASE_PATH = originalBase
-    }
+    // No .env files created
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend/.env')), false)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/.env')), false)
 
-    const frontendEnv = fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8')
-    assert.match(frontendEnv, /FRONTEND_PORT=5173/)
-    assert.match(frontendEnv, /BACKEND_PORT=26000/)
-    assert.match(frontendEnv, /BASE_PATH=\/preview\/env\/test\//)
+    // .env.example files exist
+    assert.equal(fs.existsSync(path.join(projectDir, 'backend/.env.example')), true)
+    assert.equal(fs.existsSync(path.join(projectDir, 'frontend/.env.example')), true)
   })
 })
