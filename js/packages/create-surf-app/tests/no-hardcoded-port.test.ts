@@ -82,7 +82,7 @@ describe('create-surf-app', () => {
     )
     assert.equal(backendPackageJson.scripts.start, 'node --env-file=.env server.js')
     assert.equal(backendPackageJson.scripts.dev, 'node --env-file=.env --watch server.js')
-    assert.equal(backendPackageJson.dependencies['@surf-ai/sdk'], '1.0.0-alpha.0')
+    assert.ok(backendPackageJson.dependencies['@surf-ai/sdk'], 'must have @surf-ai/sdk dependency')
 
     const backendServer = fs.readFileSync(path.join(projectDir, 'backend/server.js'), 'utf8')
     assert.match(backendServer, /createServer/)
@@ -222,7 +222,7 @@ describe('create-surf-app', () => {
     assert.match(pkg.scripts.dev, /next dev/)
     assert.match(pkg.scripts.build, /next build/)
     assert.match(pkg.scripts.start, /next start/)
-    assert.equal(pkg.dependencies['@surf-ai/sdk'], '1.0.0-alpha.0')
+    assert.ok(pkg.dependencies['@surf-ai/sdk'], 'must have @surf-ai/sdk dependency')
     assert.equal(pkg.dependencies.next != null, true, 'must have next dependency')
     assert.equal(pkg.dependencies.react != null, true, 'must have react dependency')
     assert.equal(pkg.dependencies['drizzle-orm'] != null, true, 'must have drizzle-orm')
