@@ -6,7 +6,7 @@
     "dev": "node --env-file=.env --watch server.js"
   },
   "dependencies": {
-    "@surf-ai/sdk": "1.0.0-alpha.0",
+    "@surf-ai/sdk": "1.0.0-alpha.1",
     "express": "4.22.1"
   }
 }
