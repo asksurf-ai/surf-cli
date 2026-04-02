@@ -1,0 +1,134 @@
+name: Publish JS Packages
+
+# Triggered by pushing a tag like v1.0.0-alpha.2 or v1.0.0
+# All JS packages are published with the same version from the tag.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install & test SDK
+        working-directory: js/packages/sdk
+        run: |
+          bun install
+          bun run build
+          bun test
+
+      - name: Install & test create-surf-app
+        working-directory: js/packages/create-surf-app
+        run: |
+          bun install
+          bun run build
+          bun test
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Parse version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Determine npm tag: alpha/beta/rc tags get their pre-release name, else latest
+          if [[ "$VERSION" == *"-alpha"* ]]; then
+            echo "npm_tag=alpha" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *"-beta"* ]]; then
+            echo "npm_tag=beta" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *"-rc"* ]]; then
+            echo "npm_tag=rc" >> "$GITHUB_OUTPUT"
+          else
+            echo "npm_tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "Version: $VERSION"
+          echo "npm tag: $(grep npm_tag "$GITHUB_OUTPUT" | cut -d= -f2)"
+
+      - name: Stamp versions on all JS packages
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          for pkg in js/packages/sdk/package.json \
+                     js/packages/create-surf-app/package.json; do
+            jq --arg v "$VERSION" '.version = $v' "$pkg" > tmp && mv tmp "$pkg"
+            echo "Stamped $pkg → $VERSION"
+          done
+
+          # Also update SDK version in template package.json files
+          for tpl in js/packages/create-surf-app/templates/nextjs/package.json \
+                     js/packages/create-surf-app/templates/default/backend/package.json; do
+            jq --arg v "$VERSION" '.dependencies["@surf-ai/sdk"] = $v' "$tpl" > tmp && mv tmp "$tpl"
+            echo "Stamped $tpl @surf-ai/sdk → $VERSION"
+          done
+
+      - name: Build & publish @surf-ai/sdk
+        working-directory: js/packages/sdk
+        run: |
+          bun install
+          bun run build
+          npm publish --access public --tag ${{ steps.version.outputs.npm_tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build & publish create-surf-app
+        working-directory: js/packages/create-surf-app
+        run: |
+          bun install
+          bun run build
+          npm publish --access public --tag ${{ steps.version.outputs.npm_tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Notify Urania
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_PAT }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.npm_tag }}"
+          gh api repos/cyberconnecthq/urania/dispatches \
+            -f event_type=create_surf_app_published \
+            -f client_payload[package_name]=create-surf-app \
+            -f client_payload[version]="$VERSION" \
+            -f client_payload[tag]="$TAG" \
+            -f client_payload[source_sha]="${{ github.sha }}" || true
+
+      - name: Commit version bump
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add js/
+          git diff --cached --quiet || {
+            git commit -m "chore: release v${VERSION}"
+            git push origin HEAD:main
+          }
+
+      - name: Summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.npm_tag }}"
+          echo "## Published v${VERSION} (npm tag: ${TAG})" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`@surf-ai/sdk@${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`create-surf-app@${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
