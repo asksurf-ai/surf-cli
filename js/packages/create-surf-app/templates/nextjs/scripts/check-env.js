@@ -26,11 +26,17 @@ if (fs.existsSync(envPath)) {
 const args = process.argv.slice(2)
 const isBuild = args.includes('build')
 
-const required = isBuild
-  ? ['BASE_PATH', 'SURF_API_KEY']
-  : ['FRONTEND_PORT', 'BASE_PATH', 'SURF_API_KEY']
+// Vars that must be non-empty
+const requiredNonEmpty = isBuild
+  ? ['SURF_API_KEY']
+  : ['FRONTEND_PORT', 'SURF_API_KEY']
 
-const missing = required.filter(k => !process.env[k])
+// Vars that must be defined (empty is ok — e.g. BASE_PATH="" means root)
+const requiredDefined = ['BASE_PATH']
+
+const missingNonEmpty = requiredNonEmpty.filter(k => !process.env[k])
+const missingDefined = requiredDefined.filter(k => process.env[k] === undefined)
+const missing = [...missingNonEmpty, ...missingDefined]
 
 if (missing.length > 0) {
   console.error(`\n❌ Missing required env vars in .env: ${missing.join(', ')}\n`)

@@ -97,7 +97,9 @@ async function doSyncSchema(schemaPath: string): Promise<void> {
     await post('db/provision', {})
 
     // Get existing tables
-    const existing: string[] = ((await get('db/tables')) as any[]).map((t: any) => t.name)
+    const tablesResult: any = await get('db/tables')
+    const tablesList = Array.isArray(tablesResult) ? tablesResult : (tablesResult.tables || [])
+    const existing: string[] = tablesList.map((t: any) => typeof t === 'string' ? t : t.name)
     const missing = tables.filter((t: any) => !existing.includes(getTableConfig(t).name))
 
     if (missing.length > 0) {
