@@ -28,7 +28,7 @@ const isBuild = args.includes('build')
 
 // Vars that must be non-empty
 const requiredNonEmpty = isBuild
-  ? ['SURF_API_KEY']
+  ? []
   : ['FRONTEND_PORT', 'SURF_API_KEY']
 
 // Vars that must be defined (empty is ok — e.g. BASE_PATH="" means root)
