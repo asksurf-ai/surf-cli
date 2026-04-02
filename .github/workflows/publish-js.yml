@@ -114,14 +114,26 @@ jobs:
             -f client_payload[source_sha]="${{ github.sha }}" || true
 
       - name: Commit version bump
+        continue-on-error: true
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git pull origin main
+          for pkg in js/packages/sdk/package.json \
+                     js/packages/create-surf-app/package.json; do
+            jq --arg v "$VERSION" '.version = $v' "$pkg" > tmp && mv tmp "$pkg"
+          done
+          for tpl in js/packages/create-surf-app/templates/nextjs/package.json \
+                     js/packages/create-surf-app/templates/default/backend/package.json; do
+            jq --arg v "$VERSION" '.dependencies["@surf-ai/sdk"] = $v' "$tpl" > tmp && mv tmp "$tpl"
+          done
           git add js/
           git diff --cached --quiet || {
             git commit -m "chore: release v${VERSION}"
-            git push origin HEAD:main
+            git push origin main
           }
 
       - name: Summary
