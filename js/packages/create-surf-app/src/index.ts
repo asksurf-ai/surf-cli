@@ -42,14 +42,8 @@ Done! Next steps:
 Done! Next steps:
 
   cd ${name}
-  cd backend && npm install && cd ..
-  cd frontend && npm install && cd ..
-
-  # Start backend
-  cd backend && npm run dev &
-
-  # Start frontend
-  cd frontend && npm run dev
+  npm install
+  npm run dev
 
   Open the local URL printed by Vite
 `)
