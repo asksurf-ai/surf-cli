@@ -11,7 +11,7 @@
   "dependencies": {
     "@surf-ai/sdk": "1.0.0-alpha.2",
     "@surf-ai/theme": "latest",
-    "next": "15.3.3",
+    "next": "15.5.14",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "drizzle-orm": "0.44.2",
