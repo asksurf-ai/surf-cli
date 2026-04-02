@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(() => {
-  const frontendPort = Number.parseInt(process.env.FRONTEND_PORT || '', 10)
+  const frontendPort = Number.parseInt(process.env.PORT || '', 10)
   const backendPort = Number.parseInt(process.env.BACKEND_PORT || '', 10)
   const base = process.env.BASE_PATH || './'
   const hasAbsBase = base.startsWith('/')

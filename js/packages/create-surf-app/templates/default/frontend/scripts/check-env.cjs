@@ -3,7 +3,7 @@
  * Loads .env manually, checks vars, then execs the actual command.
  *
  * Build: BASE_PATH (defined, can be empty), BACKEND_PORT
- * Dev: FRONTEND_PORT, BACKEND_PORT, BASE_PATH
+ * Dev: PORT, BACKEND_PORT, BASE_PATH
  */
 const fs = require('node:fs')
 const path = require('node:path')
@@ -29,7 +29,7 @@ const isBuild = args.some(a => a.includes('build'))
 // Vars that must be non-empty
 const requiredNonEmpty = isBuild
   ? ['BACKEND_PORT']
-  : ['FRONTEND_PORT', 'BACKEND_PORT']
+  : ['PORT', 'BACKEND_PORT']
 
 // Vars that must be defined (empty is ok — BASE_PATH="" means root)
 const requiredDefined = ['BASE_PATH']

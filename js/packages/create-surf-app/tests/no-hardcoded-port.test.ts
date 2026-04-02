@@ -53,7 +53,7 @@ describe('create-surf-app', () => {
     assert.match(backendExample, /BACKEND_PORT=/)
     assert.match(backendExample, /SURF_API_KEY=/)
     const frontendExample = fs.readFileSync(path.join(projectDir, 'frontend/.env.example'), 'utf8')
-    assert.match(frontendExample, /FRONTEND_PORT=/)
+    assert.match(frontendExample, /PORT=/)
     assert.match(frontendExample, /BACKEND_PORT=/)
     assert.match(frontendExample, /BASE_PATH=/)
 
@@ -67,7 +67,7 @@ describe('create-surf-app', () => {
     const viteConfig = fs.readFileSync(path.join(projectDir, 'frontend/vite.config.ts'), 'utf8')
     assert.match(viteConfig, /defineConfig/)
     assert.match(viteConfig, /process\.env\.BACKEND_PORT/)
-    assert.match(viteConfig, /process\.env\.FRONTEND_PORT/)
+    assert.match(viteConfig, /process\.env\.PORT/)
     assert.match(viteConfig, /process\.env\.BASE_PATH/)
     assert.match(viteConfig, /apiBasePrefix/)
     assert.doesNotMatch(viteConfig, /loadEnv/)
@@ -138,7 +138,7 @@ describe('create-surf-app', () => {
     assert.match(backendExample, /SURF_API_KEY=/, 'backend .env.example must have SURF_API_KEY')
 
     const frontendExample = fs.readFileSync(path.join(projectDir, 'frontend/.env.example'), 'utf8')
-    assert.match(frontendExample, /FRONTEND_PORT=/, 'frontend .env.example must have FRONTEND_PORT')
+    assert.match(frontendExample, /PORT=/, 'frontend .env.example must have PORT')
     assert.match(frontendExample, /BACKEND_PORT=/, 'frontend .env.example must have BACKEND_PORT')
     assert.match(frontendExample, /BASE_PATH=/, 'frontend .env.example must have BASE_PATH')
   })
@@ -202,7 +202,7 @@ describe('create-surf-app', () => {
 
     assert.equal(fs.existsSync(path.join(projectDir, '.env')), false)
     const envExample = fs.readFileSync(path.join(projectDir, '.env.example'), 'utf8')
-    assert.match(envExample, /FRONTEND_PORT=/, '.env.example must have FRONTEND_PORT')
+    assert.match(envExample, /PORT=/, '.env.example must have PORT')
     assert.match(envExample, /BASE_PATH=/, '.env.example must have BASE_PATH')
     assert.match(envExample, /SURF_API_KEY=/, '.env.example must have SURF_API_KEY')
   })

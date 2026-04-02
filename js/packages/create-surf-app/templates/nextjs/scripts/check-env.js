@@ -29,7 +29,7 @@ const isBuild = args.includes('build')
 // Vars that must be non-empty
 const requiredNonEmpty = isBuild
   ? []
-  : ['FRONTEND_PORT', 'SURF_API_KEY']
+  : ['PORT', 'SURF_API_KEY']
 
 // Vars that must be defined (empty is ok — e.g. BASE_PATH="" means root)
 const requiredDefined = ['BASE_PATH']
@@ -42,11 +42,6 @@ if (missing.length > 0) {
   console.error(`\n❌ Missing required env vars: ${missing.join(', ')}`)
   console.error(`   Set them in your environment or copy .env.example to .env\n`)
   process.exit(1)
-}
-
-// Pass FRONTEND_PORT as PORT so Next.js uses it
-if (process.env.FRONTEND_PORT) {
-  process.env.PORT = process.env.FRONTEND_PORT
 }
 
 // Run the actual command

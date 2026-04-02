@@ -110,7 +110,7 @@ node "$CLI_DIR/dist/cli.js" "$NEXTJS_DIR" --template nextjs >/dev/null 2>&1
 
 # Check .env.example exists (not .env)
 if [[ ! -f "$NEXTJS_DIR/.env" ]] && \
-   grep -q "FRONTEND_PORT=" "$NEXTJS_DIR/.env.example" && \
+   grep -q "PORT=" "$NEXTJS_DIR/.env.example" && \
    grep -q "BASE_PATH=" "$NEXTJS_DIR/.env.example" && \
    grep -q "SURF_API_KEY=" "$NEXTJS_DIR/.env.example"; then
   pass "scaffold: .env.example has all required vars, no .env"
@@ -156,7 +156,7 @@ else
 fi
 
 # Create .env without SURF_API_KEY — build should work, dev should block
-make_env "$NEXTJS_DIR/.env.example" "FRONTEND_PORT=4000" "BASE_PATH=/preview/test"
+make_env "$NEXTJS_DIR/.env.example" "PORT=4000" "BASE_PATH=/preview/test"
 bun run dev >"$DEV_OUT" 2>&1 || true
 if grep -q "Missing required env vars" "$DEV_OUT"; then
   pass "dev: blocked without SURF_API_KEY"
@@ -174,7 +174,7 @@ else
 fi
 
 # Set API key
-make_env "$NEXTJS_DIR/.env.example" "FRONTEND_PORT=4000" "BASE_PATH=/preview/test" "SURF_API_KEY=testkey"
+make_env "$NEXTJS_DIR/.env.example" "PORT=4000" "BASE_PATH=/preview/test" "SURF_API_KEY=testkey"
 
 # Build — should succeed
 if bun run build >/dev/null 2>&1; then
@@ -242,10 +242,10 @@ else
 fi
 
 if [[ ! -f "$VITE_DIR/frontend/.env" ]] && \
-   grep -q "FRONTEND_PORT=" "$VITE_DIR/frontend/.env.example" && \
+   grep -q "PORT=" "$VITE_DIR/frontend/.env.example" && \
    grep -q "BACKEND_PORT=" "$VITE_DIR/frontend/.env.example" && \
    grep -q "BASE_PATH=" "$VITE_DIR/frontend/.env.example"; then
-  pass "scaffold: frontend/.env.example has FRONTEND_PORT, BACKEND_PORT, BASE_PATH"
+  pass "scaffold: frontend/.env.example has PORT, BACKEND_PORT, BASE_PATH"
 else
   fail "scaffold: frontend env check failed"
 fi
