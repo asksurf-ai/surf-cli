@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -182,6 +183,87 @@ func TestRequestRetryAfter(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
+}
+
+func TestSurfAPIKeyEnvVar(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+
+	// Mock an endpoint that checks the Authorization header
+	gock.New("http://example.com").
+		Get("/test").
+		MatchHeader("Authorization", "Bearer test-api-key-123").
+		Reply(http.StatusOK).
+		JSON(map[string]string{"status": "ok"})
+
+	// Set SURF_API_KEY
+	os.Setenv("SURF_API_KEY", "test-api-key-123")
+	defer os.Unsetenv("SURF_API_KEY")
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/test", nil)
+	resp, err := MakeRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestSurfAPIKeyOverridesOAuth(t *testing.T) {
+	defer gock.Off()
+
+	// Set up a profile with OAuth auth that would panic
+	configs["apikey-test"] = &APIConfig{
+		Base: "https://example.com",
+		Profiles: map[string]*APIProfile{
+			"default": {
+				Auth: &APIAuth{
+					Name: "hook-fail", // This would panic if called
+				},
+			},
+		},
+	}
+	authHandlers["hook-fail"] = &authHookFailure{}
+
+	gock.New("https://example.com").
+		Get("/test").
+		MatchHeader("Authorization", "Bearer my-key").
+		Reply(http.StatusOK)
+
+	// SURF_API_KEY should skip OAuth entirely
+	os.Setenv("SURF_API_KEY", "my-key")
+	defer os.Unsetenv("SURF_API_KEY")
+
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com/test", nil)
+	resp, err := MakeRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	delete(configs, "apikey-test")
+}
+
+func TestNoSurfAPIKeyFallsBackToOAuth(t *testing.T) {
+	// Ensure SURF_API_KEY is not set
+	os.Unsetenv("SURF_API_KEY")
+
+	// Should fall through to profile auth (which panics with our test handler)
+	configs["no-apikey-test"] = &APIConfig{
+		Profiles: map[string]*APIProfile{
+			"default": {
+				Auth: &APIAuth{
+					Name: "hook-fail",
+				},
+			},
+		},
+	}
+	authHandlers["hook-fail"] = &authHookFailure{}
+
+	r, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	assert.PanicsWithError(t, "some-error", func() {
+		MakeRequest(r)
+	})
+
+	delete(configs, "no-apikey-test")
 }
 
 func TestRequestRetryTimeout(t *testing.T) {

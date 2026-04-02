@@ -228,8 +228,10 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		}
 	}
 
-	// Add auth if needed.
-	if profile.Auth != nil && profile.Auth.Name != "" {
+	// Add auth: SURF_API_KEY env var takes priority over OAuth.
+	if apiKey := os.Getenv("SURF_API_KEY"); apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	} else if profile.Auth != nil && profile.Auth.Name != "" {
 		auth, ok := authHandlers[profile.Auth.Name]
 		if ok {
 			err := auth.OnRequest(req, name+":"+viper.GetString("rsh-profile"), profile.Auth.Params)
