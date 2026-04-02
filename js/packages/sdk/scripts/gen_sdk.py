@@ -14,7 +14,7 @@ Usage:
     python scripts/gen_sdk.py --spec /tmp/openapi.json
 
     # Generate from URL
-    python scripts/gen_sdk.py --spec https://api.ask.surf/gateway/openapi.json
+    python scripts/gen_sdk.py --spec https://api.asksurf.ai/gateway/openapi.json
 
     # Generate specific operations only
     python scripts/gen_sdk.py --ops market-price wallet-detail
@@ -68,7 +68,7 @@ class Endpoint:
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_SPEC_URL = "https://api.ask.surf/gateway/openapi.json"
+DEFAULT_SPEC_URL = "https://api.asksurf.ai/gateway/openapi.json"
 
 # Path prefix stripped from OpenAPI paths to derive the relative API path
 # used by the SDK client (whose baseUrl already includes /gateway/v1).

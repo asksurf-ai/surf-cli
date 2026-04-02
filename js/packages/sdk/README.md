@@ -14,7 +14,7 @@ SDK 1.0 uses a single direct-auth model.
 
 | Env Var | Default | Purpose |
 | --- | --- | --- |
-| `SURF_API_BASE_URL` | `https://api.ask.surf/gateway/v1` | Full Surf API base URL |
+| `SURF_API_BASE_URL` | `https://api.asksurf.ai/gateway/v1` | Full Surf API base URL |
 | `SURF_API_KEY` | none | Bearer token used for upstream requests and protected runtime endpoints |
 | `PORT` | none | Express server port when `createServer({ port })` is not provided |
 

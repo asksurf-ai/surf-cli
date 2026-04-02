@@ -22,7 +22,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "codegen": "python3 scripts/gen_sdk.py --spec https://api.ask.surf/gateway/openapi.json"
+    "codegen": "python3 scripts/gen_sdk.py --spec https://api.asksurf.ai/gateway/openapi.json"
   },
   "dependencies": {
     "express": "^4.22.0",

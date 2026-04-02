@@ -235,7 +235,7 @@ func newRefreshCmd() *cobra.Command {
 					Scopes:       []string{"offline_access"},
 				},
 			}
-			req, _ := http.NewRequest("GET", "https://api.ask.surf/gateway/", nil)
+			req, _ := http.NewRequest("GET", "https://api.asksurf.ai/gateway/", nil)
 			if err := handleToken(source, key, req); err != nil {
 				return fmt.Errorf("refresh failed: %w", err)
 			}
@@ -283,7 +283,7 @@ func newSyncCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			viper.Set("rsh-no-cache", true)
-			if _, err := cli.Load("https://api.ask.surf/gateway", cli.Root); err != nil {
+			if _, err := cli.Load("https://api.asksurf.ai/gateway", cli.Root); err != nil {
 				return fmt.Errorf("sync failed: %w", err)
 			}
 			fmt.Fprintln(os.Stderr, "API spec synced.")

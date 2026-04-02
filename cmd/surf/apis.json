@@ -1,9 +1,9 @@
 {
   "$schema": "https://rest.sh/schemas/apis.json",
   "surf": {
-    "base": "https://api.ask.surf/gateway",
+    "base": "https://api.asksurf.ai/gateway",
     "spec_files": [
-      "https://api.ask.surf/gateway/openapi.json"
+      "https://api.asksurf.ai/gateway/openapi.json"
     ],
     "profiles": {
       "default": {

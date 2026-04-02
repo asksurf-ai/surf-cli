@@ -24,7 +24,7 @@ bun test                 # all tests, all files
 | Mode | What's tested | Env vars needed |
 |------|--------------|----------------|
 | Dev | createServer endpoints, cron CRUD (no data API) | none |
-| Deployed (public) | all endpoints + data API via api.ask.surf | `SURF_DEPLOYED_GATEWAY_URL` + `SURF_DEPLOYED_APP_TOKEN` |
+| Deployed (public) | all endpoints + data API via api.asksurf.ai | `SURF_DEPLOYED_GATEWAY_URL` + `SURF_DEPLOYED_APP_TOKEN` |
 | Deployed (internal) | all endpoints + data API via hermod internal | same, with internal URL |
 | Sandbox | all endpoints + data API via OutboundProxy | `SURF_SANDBOX_PROXY_BASE` |
 
@@ -70,7 +70,7 @@ Schema sync complete, API ready
 
 ## 2. Deployed Mode (public hermod)
 
-Uses `api.ask.surf` with a surf CLI token. Tests full data API + proxy + cron auth.
+Uses `api.asksurf.ai` with a surf CLI token. Tests full data API + proxy + cron auth.
 
 **Setup:**
 ```bash
@@ -81,7 +81,7 @@ surf login   # refresh token if expired
 ```bash
 SURF_TOKEN=$(python3 -c "import json; print(json.load(open('$HOME/.config/surf/credentials.json'))['surf:default']['token'])")
 
-SURF_DEPLOYED_GATEWAY_URL=https://api.ask.surf \
+SURF_DEPLOYED_GATEWAY_URL=https://api.asksurf.ai \
 SURF_DEPLOYED_APP_TOKEN=$SURF_TOKEN \
 bun test ./tests/e2e-all-envs.test.ts
 ```
@@ -202,7 +202,7 @@ Schema sync complete, API ready
 | Mode | Setup | Env Vars | Tests | Data API |
 |------|-------|----------|-------|----------|
 | Dev | none | none | 14 | skipped |
-| Deployed (public) | `surf login` | `SURF_DEPLOYED_GATEWAY_URL=https://api.ask.surf` + token | 19 | via api.ask.surf |
+| Deployed (public) | `surf login` | `SURF_DEPLOYED_GATEWAY_URL=https://api.asksurf.ai` + token | 19 | via api.asksurf.ai |
 | Deployed (internal) | `surf login` + Tailscale | `SURF_DEPLOYED_GATEWAY_URL=http://hermod-api.svc:8080` + token | 19 | via Tailscale |
 | Sandbox | urania container + session | `SURF_SANDBOX_PROXY_BASE=http://127.0.0.1:9999/s/{sid}/proxy` | 19 | via OutboundProxy |
 

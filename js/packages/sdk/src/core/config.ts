@@ -1,4 +1,4 @@
-export const DEFAULT_API_BASE_URL = 'https://api.ask.surf/gateway/v1'
+export const DEFAULT_API_BASE_URL = 'https://api.asksurf.ai/gateway/v1'
 
 export interface SurfApiConfig {
   baseUrl: string
