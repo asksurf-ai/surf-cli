@@ -1,8 +1,7 @@
 /**
- * Express server runtime — replaces scaffold server.js + routes/proxy.js.
+ * Express server runtime — replaces scaffold server.js.
  *
  * Handles:
- *   - /proxy/* passthrough (env-aware: sandbox → OutboundProxy, deployed → hermod)
  *   - Auto-loading routes from routes/*.js → /api/{name}
  *   - Cron job system from cron.json
  *   - DB schema sync on startup
@@ -13,37 +12,43 @@ import express, { type Express, type Request, type Response } from 'express'
 import cors from 'cors'
 import fs from 'fs'
 import path from 'path'
-import { createProxyMiddleware, responseInterceptor } from 'http-proxy-middleware'
 import { Cron } from 'croner'
+import { readAdminApiKey } from '../core/config'
 
 export interface ServerOptions {
-  /** Port to listen on (default: PORT env, fallback 3001) */
+  /** Port to listen on. Falls back to the PORT env var when omitted. */
   port?: number
   /** Directory containing route files (default: ./routes) */
   routesDir?: string
   /** Directory containing cron.json (default: .) */
   cronDir?: string
-  /** Enable /proxy/* passthrough (default: true) */
-  proxy?: boolean
+}
+
+function requireBearerAuth(req: Request, res: Response, next: () => void) {
+  const apiKey = readAdminApiKey()
+  if (!apiKey) {
+    return res.status(503).json({ error: 'SURF_API_KEY is not configured' })
+  }
+
+  if (req.headers.authorization !== `Bearer ${apiKey}`) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  next()
 }
 
 export function createServer(options: ServerOptions = {}) {
-  const port = options.port || parseInt(process.env.PORT || '3001', 10)
+  const port = options.port ?? (process.env.PORT ? Number.parseInt(process.env.PORT, 10) : undefined)
+  if (!Number.isInteger(port)) {
+    throw new Error('createServer requires a port via options.port or process.env.PORT')
+  }
   const routesDir = options.routesDir || path.join(process.cwd(), 'routes')
   const cronDir = options.cronDir || process.cwd()
-  const enableProxy = options.proxy !== false
 
   const app: Express = express()
 
   // CORS
   app.use(cors())
-
-  // /proxy/* passthrough — MUST be before express.json() to preserve body stream
-  if (enableProxy) {
-    setupProxy(app, port)
-  }
-
-  // Parse JSON bodies (after proxy to avoid consuming body stream)
   app.use(express.json())
 
   // Health check
@@ -57,12 +62,13 @@ export function createServer(options: ServerOptions = {}) {
       if (!file.endsWith('.js') && !file.endsWith('.ts')) continue
       const name = file.replace(/\.(js|ts)$/, '')
       try {
-        const route = require(path.join(routesDir, file))
-        const handler = route.default || route
+        const handler = require(path.join(routesDir, file))
         if (typeof handler === 'function') {
           app.use(`/api/${name}`, handler)
           console.log(`Route registered: /api/${name}`)
+          continue
         }
+        throw new Error(`Route module must export a handler function via module.exports`)
       } catch (err: any) {
         console.error(`Failed to load route ${file}: ${err.message}`)
       }
@@ -90,67 +96,6 @@ export function createServer(options: ServerOptions = {}) {
         })
       })
     },
-  }
-}
-
-// ── Proxy setup ──────────────────────────────────────────────────────────
-
-/** Read env var with SURF_ prefix priority, falling back to old name. */
-function env(surfName: string, legacyName: string): string | undefined {
-  return process.env[surfName] || process.env[legacyName]
-}
-
-function setupProxy(app: Express, port: number) {
-  const gatewayUrl = env('SURF_DEPLOYED_GATEWAY_URL', 'GATEWAY_URL')
-  const appToken = env('SURF_DEPLOYED_APP_TOKEN', 'APP_TOKEN')
-  const proxyBase = env('SURF_SANDBOX_PROXY_BASE', 'DATA_PROXY_BASE')
-  const isDeployed = Boolean(gatewayUrl && appToken)
-
-  const bufferResponse = responseInterceptor(async (buf) => buf)
-
-  if (isDeployed) {
-    // Deployed: /proxy/* → hermod /gateway/v1/* with APP_TOKEN
-    app.use('/proxy', createProxyMiddleware({
-      target: gatewayUrl!,
-      changeOrigin: true,
-      selfHandleResponse: true,
-      pathRewrite: (p) => '/gateway/v1' + p,
-      headers: {
-        Authorization: `Bearer ${appToken}`,
-        'Accept-Encoding': 'identity',
-      },
-      on: { proxyRes: bufferResponse },
-    }))
-
-    // Backend routes use DATA_PROXY_BASE to call through our own /proxy middleware
-    // Set both new and legacy vars so the data client resolves correctly
-    const loopback = `http://127.0.0.1:${port}/proxy`
-    process.env.SURF_SANDBOX_PROXY_BASE = loopback
-    process.env.DATA_PROXY_BASE = loopback
-  } else if (proxyBase) {
-    // Sandbox: /proxy/* → OutboundProxy (set by urania executor)
-    // Direct passthrough — no selfHandleResponse/responseInterceptor needed.
-    // selfHandleResponse buffers the entire response body which breaks when
-    // upstream returns chunked/compressed responses (causes 500 + empty body).
-    const target = proxyBase.replace(/\/proxy$/, '')
-
-    app.use(createProxyMiddleware({
-      target,
-      changeOrigin: true,
-      pathFilter: '/proxy',
-      on: {
-        proxyReq: (proxyReq, req) => {
-          console.log(`[proxy] >> ${req.method} ${req.originalUrl}`)
-        },
-        proxyRes: (proxyRes, req) => {
-          console.log(`[proxy] << ${proxyRes.statusCode} ${req.method} ${req.originalUrl}`)
-        },
-        error: (err: Error, req: any, res: any) => {
-          console.error(`[proxy] !! ${req.method} ${req.originalUrl} error: ${err.message}`)
-          if (!res.headersSent) res.status(502).json({ error: err.message })
-        },
-      },
-    }))
   }
 }
 
@@ -274,7 +219,7 @@ function setupSchemaSync(app: Express, schemaDir: string) {
   }
 
   // Explicit sync endpoint
-  app.post('/api/__sync-schema', async (_req: Request, res: Response) => {
+  app.post('/api/__sync-schema', requireBearerAuth, async (_req: Request, res: Response) => {
     try {
       await syncWithRetry(2, 1500)
       res.json({ ok: true })
@@ -374,17 +319,7 @@ function setupCron(app: Express, cronDir: string) {
     }
   }
 
-  // Cron auth middleware — requires APP_TOKEN in deployed mode, skips in dev
-  const envFn = (s: string, l: string) => process.env[s] || process.env[l]
-  app.use('/api/cron', (req: Request, res: Response, next: any) => {
-    const appToken = envFn('SURF_DEPLOYED_APP_TOKEN', 'APP_TOKEN')
-    if (!appToken) return next() // dev mode: skip auth
-    const auth = req.headers.authorization
-    if (!auth || auth !== `Bearer ${appToken}`) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-    next()
-  })
+  app.use('/api/cron', requireBearerAuth)
 
   // GET /api/cron — list all cron jobs with status
   app.get('/api/cron', (_req: Request, res: Response) => {

@@ -48,7 +48,10 @@ describe('create-surf-app', () => {
       assert.equal(fs.existsSync(path.join(projectDir, relPath)), true)
     }
 
-    assert.equal(fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8'), 'PORT=20042\n')
+    assert.equal(
+      fs.readFileSync(path.join(projectDir, 'backend/.env'), 'utf8'),
+      'PORT=20042\nSURF_API_KEY=REPLACE_WITH_SURF_API_KEY\n# Optional: override the default Surf API host\n# SURF_API_BASE_URL=https://api.ask.surf/gateway/v1\n',
+    )
     assert.equal(fs.readFileSync(path.join(projectDir, 'frontend/.env'), 'utf8'),
       'VITE_BACKEND_PORT=20042\nVITE_BASE=/preview/local/test/\n',
     )
@@ -78,12 +81,13 @@ describe('create-surf-app', () => {
     const backendPackageJson = JSON.parse(
       fs.readFileSync(path.join(projectDir, 'backend/package.json'), 'utf8'),
     )
-    assert.equal(backendPackageJson.scripts.start, 'node server.js')
-    assert.equal(backendPackageJson.scripts.dev, 'node --watch server.js')
+    assert.equal(backendPackageJson.scripts.start, 'node --env-file=.env server.js')
+    assert.equal(backendPackageJson.scripts.dev, 'node --env-file=.env --watch server.js')
+    assert.equal(backendPackageJson.dependencies['@surf-ai/sdk'], '1.0.0-alpha.0')
 
     const backendServer = fs.readFileSync(path.join(projectDir, 'backend/server.js'), 'utf8')
     assert.match(backendServer, /createServer/)
-    assert.match(backendServer, /proxy:\s*false/)
+    assert.match(backendServer, /createServer\(\)\.start\(\)/)
     assert.match(backendServer, /@surf-ai\/sdk\/server/)
 
     assert.equal(fs.existsSync(path.join(projectDir, 'backend/routes/proxy.js')), false)

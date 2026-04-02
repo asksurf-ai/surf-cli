@@ -9,14 +9,6 @@ export default defineConfig([
     clean: true,
     outDir: 'dist',
   },
-  // React: ESM only (frontend is always ESM)
-  {
-    entry: { 'react/index': 'src/react/index.ts' },
-    format: ['esm'],
-    dts: true,
-    outDir: 'dist',
-    external: ['react', 'clsx', 'tailwind-merge'],
-  },
   // DB: CJS + ESM
   {
     entry: { 'db/index': 'src/db/index.ts' },

@@ -1,39 +1,82 @@
-/**
- * Quick smoke test for @surf-ai/sdk data client.
- *
- * Run: bun test tests/test_data_client.ts
- */
-import { describe, test, expect, beforeAll } from 'bun:test'
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { readSurfApiConfig, DEFAULT_API_BASE_URL } from '../src/core/config'
 import { get, post } from '../src/data/client'
 import { dataApi } from '../src/data/data-api'
+import { dbProvision, dbQuery, dbStatus } from '../src/db'
+import { startMockApiServer } from './support/mock-api'
 
 describe('@surf-ai/sdk data client', () => {
-  test('resolveConfig defaults to public URL when no env vars set', async () => {
-    // With no env vars, should try api.ask.surf (will fail without auth, but URL should be correct)
-    delete process.env.DATA_PROXY_BASE
-    delete process.env.GATEWAY_URL
-    delete process.env.APP_TOKEN
+  const previousBaseUrl = process.env.SURF_API_BASE_URL
+  const previousApiKey = process.env.SURF_API_KEY
+  const api = startMockApiServer()
 
-    try {
-      await get('market/price', { symbol: 'BTC', time_range: '1d' })
-    } catch (e: any) {
-      // Expected: either network error or auth error — but URL should be api.ask.surf
-      expect(e.message).toMatch(/API error|fetch failed/)
-    }
+  beforeAll(() => {
+    process.env.SURF_API_BASE_URL = api.baseUrl
+    process.env.SURF_API_KEY = 'test-api-key'
   })
 
-  test('resolveConfig uses DATA_PROXY_BASE when set (sandbox mode)', async () => {
-    // Mock a local server
-    process.env.DATA_PROXY_BASE = 'http://127.0.0.1:59999/s/test/proxy'
+  afterAll(() => {
+    api.stop()
+    if (previousBaseUrl === undefined) delete process.env.SURF_API_BASE_URL
+    else process.env.SURF_API_BASE_URL = previousBaseUrl
+    if (previousApiKey === undefined) delete process.env.SURF_API_KEY
+    else process.env.SURF_API_KEY = previousApiKey
+  })
+
+  beforeEach(() => {
+    api.clear()
+  })
+
+  test('config uses the 1.0 default base URL when env is absent', () => {
+    delete process.env.SURF_API_BASE_URL
+    const config = readSurfApiConfig()
+    expect(config.baseUrl).toBe(DEFAULT_API_BASE_URL)
+    process.env.SURF_API_BASE_URL = api.baseUrl
+  })
+
+  test('get() throws when SURF_API_KEY is missing', async () => {
+    delete process.env.SURF_API_KEY
 
     try {
       await get('market/price', { symbol: 'BTC' })
-    } catch (e: any) {
-      // Expected: connection refused (no server at 59999)
-      expect(e.message).toMatch(/fetch failed|ECONNREFUSED|Unable to connect/)
+      throw new Error('expected get() to throw when SURF_API_KEY is missing')
+    } catch (error: any) {
+      expect(error.message).toContain('SURF_API_KEY is required')
     } finally {
-      delete process.env.DATA_PROXY_BASE
+      process.env.SURF_API_KEY = 'test-api-key'
     }
+  })
+
+  test('get() throws when SURF_API_BASE_URL is invalid', async () => {
+    process.env.SURF_API_BASE_URL = 'not-a-url'
+
+    try {
+      await get('market/price', { symbol: 'BTC' })
+      throw new Error('expected get() to throw when SURF_API_BASE_URL is invalid')
+    } catch (error: any) {
+      expect(error.message).toContain('cannot be parsed as a URL')
+    } finally {
+      process.env.SURF_API_BASE_URL = api.baseUrl
+    }
+  })
+
+  test('get() sends bearer auth to the configured base URL', async () => {
+    const result = await get('market/price', { symbol: 'BTC', time_range: '1d' })
+
+    expect((result as any).data[0].symbol).toBe('BTC')
+    expect(api.requests).toHaveLength(1)
+    expect(api.requests[0].pathname).toBe('/gateway/v1/market/price')
+    expect(api.requests[0].headers.authorization).toBe('Bearer test-api-key')
+  })
+
+  test('post() sends JSON body with bearer auth', async () => {
+    await post('db/query', { sql: 'SELECT 1', params: [] })
+
+    expect(api.requests).toHaveLength(1)
+    expect(api.requests[0].pathname).toBe('/gateway/v1/db/query')
+    expect(api.requests[0].headers.authorization).toBe('Bearer test-api-key')
+    expect(api.requests[0].headers['content-type']).toContain('application/json')
+    expect(api.requests[0].bodyJson).toEqual({ sql: 'SELECT 1', params: [] })
   })
 
   test('dataApi has all categories', () => {
@@ -53,29 +96,27 @@ describe('@surf-ai/sdk data client', () => {
     expect(dataApi.prediction_market).toBeDefined()
   })
 
-  test('dataApi.market has typed methods', () => {
-    expect(typeof dataApi.market.price).toBe('function')
-    expect(typeof dataApi.market.etf).toBe('function')
-    expect(typeof dataApi.market.futures).toBe('function')
-    expect(typeof dataApi.market.ranking).toBe('function')
+  test('typed methods stringify numeric params through the shared transport', async () => {
+    const result = await dataApi.market.ranking({ limit: 10 } as any)
+
+    expect(result.data).toHaveLength(10)
+    expect(api.requests).toHaveLength(1)
+    expect(api.requests[0].search).toContain('limit=10')
   })
 
-  test('dataApi.get escape hatch exists', () => {
-    expect(typeof dataApi.get).toBe('function')
-    expect(typeof dataApi.post).toBe('function')
-  })
+  test('db helpers reuse the same transport and auth', async () => {
+    const provisioned = await dbProvision()
+    const queried = await dbQuery('SELECT 1', [], { arrayMode: true })
+    const status = await dbStatus()
 
-  test('params with numbers are converted to strings', async () => {
-    process.env.DATA_PROXY_BASE = 'http://127.0.0.1:59999/s/test/proxy'
-
-    try {
-      // This should not throw a type error — numbers should be stringified
-      await dataApi.market.ranking({ limit: 10 } as any)
-    } catch (e: any) {
-      // Connection error expected, not type error
-      expect(e.message).toMatch(/fetch failed|ECONNREFUSED|Unable to connect/)
-    } finally {
-      delete process.env.DATA_PROXY_BASE
-    }
+    expect(provisioned.database).toBe('test_db')
+    expect(queried.rows).toEqual([])
+    expect(status.connected).toBe(true)
+    expect(api.requests.map((request) => request.pathname)).toEqual([
+      '/gateway/v1/db/provision',
+      '/gateway/v1/db/query',
+      '/gateway/v1/db/status',
+    ])
+    expect(api.requests.every((request) => request.headers.authorization === 'Bearer test-api-key')).toBe(true)
   })
 })

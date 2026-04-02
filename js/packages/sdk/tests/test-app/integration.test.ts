@@ -1,68 +1,52 @@
-/**
- * Integration test for @surf-ai/sdk test app.
- *
- * Tests the full stack:
- *   1. createServer() starts Express with /proxy/* and route auto-loading
- *   2. /api/health returns ok
- *   3. /api/btc route (agent-written) calls dataApi.market.price()
- *   4. /proxy/market/price passthrough works
- *
- * Run modes:
- *   - Standalone: DATA_PROXY_BASE not set → hits api.ask.surf (needs internet)
- *   - With urania: DATA_PROXY_BASE=http://127.0.0.1:9999/s/test/proxy → hits OutboundProxy
- *
- * Usage:
- *   cd packages/sdk
- *   bun test ./tests/test-app/integration.test.ts
- *
- *   # With local urania eval container running:
- *   DATA_PROXY_BASE=http://127.0.0.1:9999/s/test/proxy bun test ./tests/test-app/integration.test.ts
- */
-
-import { describe, test, expect, beforeAll, afterAll } from 'bun:test'
-import { createServer } from '../../src/server/runtime'
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import path from 'path'
+import { createServer } from '../../src/server/runtime'
+import { startMockApiServer } from '../support/mock-api'
 
 const TEST_PORT = 13579
 
 describe('@surf-ai/sdk test-app integration', () => {
-  let server: any
+  const previousBaseUrl = process.env.SURF_API_BASE_URL
+  const previousApiKey = process.env.SURF_API_KEY
+  const api = startMockApiServer()
+  let server: ReturnType<typeof createServer>
 
   beforeAll(async () => {
-    // Point route loading at our test routes
-    const routesDir = path.join(__dirname, 'backend', 'routes')
-
+    process.env.SURF_API_BASE_URL = api.baseUrl
+    process.env.SURF_API_KEY = 'test-api-key'
     server = createServer({
       port: TEST_PORT,
-      routesDir,
+      routesDir: path.join(__dirname, 'backend', 'routes'),
     })
     await server.start()
   })
 
   afterAll(() => {
-    // Express doesn't have a built-in close, but the process will exit
+    api.stop()
+    if (previousBaseUrl === undefined) delete process.env.SURF_API_BASE_URL
+    else process.env.SURF_API_BASE_URL = previousBaseUrl
+    if (previousApiKey === undefined) delete process.env.SURF_API_KEY
+    else process.env.SURF_API_KEY = previousApiKey
+  })
+
+  beforeEach(() => {
+    api.clear()
   })
 
   test('GET /api/health returns ok', async () => {
     const res = await fetch(`http://localhost:${TEST_PORT}/api/health`)
     expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body.status).toBe('ok')
+    expect(await res.json()).toEqual({ status: 'ok' })
   })
 
   test('route auto-loading registered /api/btc', async () => {
-    // This will fail with connection error if no upstream, but should not 404
     const res = await fetch(`http://localhost:${TEST_PORT}/api/btc`)
-    // If DATA_PROXY_BASE is set and upstream is running, we get 200
-    // If not, we get 500 (upstream error), but NOT 404 (route not found)
-    expect(res.status).not.toBe(404)
+    expect(res.status).toBe(200)
+    expect(api.requests[0].pathname).toBe('/gateway/v1/market/price')
   })
 
-  test('/proxy/* passthrough is registered', async () => {
-    // Test that the proxy middleware is mounted
-    // Will fail upstream but should not 404
+  test('/proxy/* is not registered anymore', async () => {
     const res = await fetch(`http://localhost:${TEST_PORT}/proxy/market/price?symbol=BTC`)
-    // 502 = proxy error (no upstream), not 404 (no route)
-    expect(res.status).not.toBe(404)
+    expect(res.status).toBe(404)
   })
 })

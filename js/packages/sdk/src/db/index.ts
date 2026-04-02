@@ -16,7 +16,7 @@
 import { get, post } from '../data/client'
 
 /**
- * Provision a database for the current user via /proxy/db/provision.
+ * Provision a database for the current user via db/provision.
  * Returns connection metadata. Neon auto-creates the DB if it doesn't exist.
  */
 export async function dbProvision(): Promise<{
@@ -29,7 +29,7 @@ export async function dbProvision(): Promise<{
 }
 
 /**
- * Execute a SQL query via /proxy/db/query.
+ * Execute a SQL query via db/query.
  * Uses pg-proxy driver under the hood — Drizzle ORM calls this automatically.
  *
  * @param options.arrayMode - When true, rows are returned as positional arrays

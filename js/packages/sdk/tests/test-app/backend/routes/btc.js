@@ -1,8 +1,6 @@
 // Example agent-written backend route using the SDK.
 const express = require('express')
-// In real scaffold: const { dataApi } = require('@surf-ai/sdk/server')
-// In test: import from compiled dist
-const { dataApi } = require('../../../../dist/server/index.cjs')
+const { dataApi } = require('../../../../src/server/index.ts')
 
 const router = express.Router()
 

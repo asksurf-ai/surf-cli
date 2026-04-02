@@ -1,122 +1,88 @@
-/**
- * E2E test — verify SDK works with real data.
- *
- * Tests:
- *   1. dataApi direct calls (using SURF_TOKEN for auth)
- *   2. createServer /proxy/* passthrough
- *   3. Agent-written backend route via dataApi
- *
- * Usage:
- *   cd packages/sdk
- *   bun test ./tests/test-app/e2e.test.ts
- */
-
-import { describe, test, expect, beforeAll } from 'bun:test'
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import path from 'path'
 import { get } from '../../src/data/client'
 import { dataApi } from '../../src/data/data-api'
 import { createServer } from '../../src/server/runtime'
-import path from 'path'
-import fs from 'fs'
-
-// Load token from surf CLI credentials
-const credsPath = path.join(process.env.HOME || '', '.config/surf/credentials.json')
-let surfToken = ''
-try {
-  const creds = JSON.parse(fs.readFileSync(credsPath, 'utf-8'))
-  surfToken = creds['surf:default']?.token || ''
-} catch {
-  console.warn('No surf credentials found — E2E tests will skip')
-}
-
-// Point SDK at public API with Bearer token auth
-delete process.env.DATA_PROXY_BASE
-process.env.GATEWAY_URL = 'https://api.ask.surf'
-process.env.APP_TOKEN = surfToken
-
-const canRun = Boolean(surfToken)
-
-describe('@surf-ai/sdk e2e (data API with token)', () => {
-  test('dataApi.market.price returns BTC data', async () => {
-    if (!canRun) return console.log('  SKIP: no surf token')
-    const result = await dataApi.market.price({ symbol: 'BTC', time_range: '1d' })
-    expect(result.data).toBeDefined()
-    expect(result.data.length).toBeGreaterThan(0)
-    expect(result.data[0].value).toBeGreaterThan(0)
-    console.log(`  BTC price: $${result.data[0].value?.toLocaleString()} (${result.data.length} points)`)
-  })
-
-  test('dataApi.market.ranking returns top coins', async () => {
-    if (!canRun) return
-    const result = await dataApi.market.ranking({ limit: '5', metric: 'market_cap' })
-    expect(result.data).toBeDefined()
-    expect(result.data.length).toBe(5)
-    console.log(`  Top 5: ${result.data.map((d: any) => d.symbol).join(', ')}`)
-  })
-
-  test('dataApi.get escape hatch works', async () => {
-    if (!canRun) return
-    const result = await get('market/price', { symbol: 'ETH', time_range: '1d' })
-    expect(result.data).toBeDefined()
-    expect(result.data.length).toBeGreaterThan(0)
-    console.log(`  ETH price: $${result.data[0].value?.toLocaleString()}`)
-  })
-
-  test('dataApi.token.holders returns data', async () => {
-    if (!canRun) return
-    const result = await dataApi.token.holders({
-      address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-      chain: 'ethereum',
-    })
-    expect(result.data).toBeDefined()
-    console.log(`  USDT holders: ${result.data.length} entries`)
-  })
-})
+import { startMockApiServer } from '../support/mock-api'
 
 const E2E_PORT = 13580
 
-describe('@surf-ai/sdk e2e (server with /proxy/*)', () => {
+describe('@surf-ai/sdk test-app e2e', () => {
+  const previousBaseUrl = process.env.SURF_API_BASE_URL
+  const previousApiKey = process.env.SURF_API_KEY
+  const api = startMockApiServer()
+  let server: ReturnType<typeof createServer>
+
   beforeAll(async () => {
-    if (!canRun) return
-    const server = createServer({
+    process.env.SURF_API_BASE_URL = api.baseUrl
+    process.env.SURF_API_KEY = 'test-api-key'
+    server = createServer({
       port: E2E_PORT,
       routesDir: path.join(__dirname, 'backend', 'routes'),
     })
     await server.start()
   })
 
-  test('/proxy passthrough returns real BTC data', async () => {
-    if (!canRun) return console.log('  SKIP: no surf token')
-    const res = await fetch(`http://localhost:${E2E_PORT}/proxy/market/price?symbol=BTC&time_range=1d`)
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body.data).toBeDefined()
-    expect(body.data.length).toBeGreaterThan(0)
-    console.log(`  /proxy: BTC $${body.data[0].value?.toLocaleString()} (${body.data.length} pts)`)
+  afterAll(() => {
+    api.stop()
+    if (previousBaseUrl === undefined) delete process.env.SURF_API_BASE_URL
+    else process.env.SURF_API_BASE_URL = previousBaseUrl
+    if (previousApiKey === undefined) delete process.env.SURF_API_KEY
+    else process.env.SURF_API_KEY = previousApiKey
   })
 
-  test('/api/btc backend route returns real data', async () => {
-    if (!canRun) return
+  beforeEach(() => {
+    api.clear()
+  })
+
+  test('dataApi.market.price returns BTC data', async () => {
+    const result = await dataApi.market.price({ symbol: 'BTC', time_range: '1d' })
+    expect(result.data).toHaveLength(1)
+    expect((result.data[0] as any).symbol).toBe('BTC')
+  })
+
+  test('dataApi.market.ranking returns the requested number of rows', async () => {
+    const result = await dataApi.market.ranking({ limit: '5', metric: 'market_cap' })
+    expect(result.data).toHaveLength(5)
+  })
+
+  test('dataApi.get escape hatch works', async () => {
+    const result = await get('market/price', { symbol: 'ETH', time_range: '1d' })
+    expect(result.data).toHaveLength(1)
+    expect(api.requests[0].headers.authorization).toBe('Bearer test-api-key')
+  })
+
+  test('dataApi.token.holders returns data', async () => {
+    const result = await dataApi.token.holders({
+      address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+      chain: 'ethereum',
+    })
+    expect(result.data).toHaveLength(1)
+  })
+
+  test('/api/btc backend route returns data through shared transport', async () => {
     const res = await fetch(`http://localhost:${E2E_PORT}/api/btc`)
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toBeDefined()
-    console.log(`  /api/btc: ${body.data.length} points`)
+    expect(body.data).toHaveLength(1)
+    expect(api.requests[0].pathname).toBe('/gateway/v1/market/price')
   })
 
-  test('/api/btc/escape-hatch uses raw get()', async () => {
-    if (!canRun) return
+  test('/api/btc/escape-hatch uses the low-level client', async () => {
     const res = await fetch(`http://localhost:${E2E_PORT}/api/btc/escape-hatch`)
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toBeDefined()
-    console.log(`  /api/btc/escape-hatch: ETH ${body.data.length} points`)
+    expect(body.data).toHaveLength(1)
   })
 
   test('/api/health returns ok', async () => {
-    if (!canRun) return
     const res = await fetch(`http://localhost:${E2E_PORT}/api/health`)
     expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body.status).toBe('ok')
+    expect(await res.json()).toEqual({ status: 'ok' })
+  })
+
+  test('/proxy is not mounted in 1.0', async () => {
+    const res = await fetch(`http://localhost:${E2E_PORT}/proxy/market/price?symbol=BTC`)
+    expect(res.status).toBe(404)
   })
 })

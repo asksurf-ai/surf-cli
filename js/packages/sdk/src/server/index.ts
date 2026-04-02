@@ -1,7 +1,7 @@
 /**
  * @surf-ai/sdk/server — Express server runtime + data API client.
  *
- * Replaces scaffold server.js, routes/proxy.js, and lib/api.js.
+ * Replaces scaffold server.js and lib/api.js.
  * Agent just calls createServer() and writes routes in routes/*.
  */
 

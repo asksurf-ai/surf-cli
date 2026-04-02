@@ -37,7 +37,7 @@ Done! Next steps:
   cd frontend && npm install && cd ..
 
   # Start backend
-  cd backend && PORT=${validatedBackendPort} npm run dev &
+  cd backend && npm run dev &
 
   # Start frontend
   cd frontend && npm run dev
@@ -95,7 +95,14 @@ function writeEnvFiles(
   const backendEnvPath = path.join(root, 'backend', '.env')
   const frontendEnvPath = path.join(root, 'frontend', '.env')
 
-  fs.writeFileSync(backendEnvPath, `PORT=${backendPort}${os.EOL}`)
+  const backendEnv = [
+    `PORT=${backendPort}`,
+    'SURF_API_KEY=REPLACE_WITH_SURF_API_KEY',
+    '# Optional: override the default Surf API host',
+    '# SURF_API_BASE_URL=https://api.ask.surf/gateway/v1',
+  ].join(os.EOL)
+
+  fs.writeFileSync(backendEnvPath, `${backendEnv}${os.EOL}`)
 
   let frontendEnv = `VITE_BACKEND_PORT=${backendPort}${os.EOL}`
   if (previewBase) {
