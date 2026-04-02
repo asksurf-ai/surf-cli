@@ -2,7 +2,6 @@
   "name": "backend",
   "private": true,
   "scripts": {
-    "start": "node scripts/check-env.js node server.js",
     "dev": "node scripts/check-env.js node --watch server.js"
   },
   "dependencies": {

@@ -4,7 +4,6 @@
   "scripts": {
     "dev": "node scripts/check-env.js next dev",
     "build": "node scripts/check-env.js next build",
-    "start": "node scripts/check-env.js next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit --incremental"
   },

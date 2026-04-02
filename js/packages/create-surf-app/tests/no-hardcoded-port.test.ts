@@ -77,7 +77,7 @@ describe('create-surf-app', () => {
     const backendPackageJson = JSON.parse(
       fs.readFileSync(path.join(projectDir, 'backend/package.json'), 'utf8'),
     )
-    assert.match(backendPackageJson.scripts.start, /server\.js/)
+    assert.equal(backendPackageJson.scripts.start, undefined)
     assert.match(backendPackageJson.scripts.dev, /server\.js/)
     assert.ok(backendPackageJson.dependencies['@surf-ai/sdk'], 'must have @surf-ai/sdk dependency')
 
@@ -219,7 +219,7 @@ describe('create-surf-app', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(projectDir, 'package.json'), 'utf8'))
     assert.match(pkg.scripts.dev, /next dev/)
     assert.match(pkg.scripts.build, /next build/)
-    assert.match(pkg.scripts.start, /next start/)
+    assert.equal(pkg.scripts.start, undefined)
     assert.ok(pkg.dependencies['@surf-ai/sdk'], 'must have @surf-ai/sdk dependency')
     assert.equal(pkg.dependencies.next != null, true, 'must have next dependency')
     assert.equal(pkg.dependencies.react != null, true, 'must have react dependency')
