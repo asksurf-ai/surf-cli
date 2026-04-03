@@ -22,7 +22,7 @@ function useSurfAppReady() {
 const _basePath = process.env.NEXT_PUBLIC_BASE_PATH || ""
 if (typeof window !== "undefined" && _basePath) {
   const _origFetch = window.fetch
-  window.fetch = function patchedFetch(input, init) {
+  window.fetch = function patchedFetch(this: typeof globalThis, input: RequestInfo | URL, init?: RequestInit) {
     if (typeof input === "string" && input.startsWith("/api/")) {
       input = _basePath + input
     }

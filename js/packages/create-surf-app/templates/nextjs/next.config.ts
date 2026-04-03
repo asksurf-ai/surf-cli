@@ -7,9 +7,6 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_PATH: process.env.BASE_PATH!.replace(/\/+$/, ''),
   },
   serverExternalPackages: ['@surf-ai/sdk', 'drizzle-orm', 'drizzle-kit', 'croner'],
-  logging: {
-    browserToTerminal: true,
-  },
 }
 
 export default nextConfig
