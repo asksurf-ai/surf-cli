@@ -225,7 +225,6 @@ describe('create-surf-app', () => {
     assert.equal(pkg.dependencies.react != null, true, 'must have react dependency')
     assert.equal(pkg.dependencies['drizzle-orm'] != null, true, 'must have drizzle-orm')
     assert.equal(pkg.dependencies.croner != null, true, 'must have croner')
-    assert.equal(pkg.dependencies['@tanstack/react-query'] != null, true, 'must have react-query')
   })
 
   test('nextjs CLAUDE.md has correct agent instructions', async () => {

@@ -1,7 +1,6 @@
 "use client"
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 
 // Notify parent frame that the app has rendered.
 // DO NOT REMOVE — the hosting app uses this to dismiss the loading overlay.
@@ -32,21 +31,5 @@ if (typeof window !== "undefined" && _basePath) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useSurfAppReady()
-
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            refetchOnWindowFocus: false,
-            retry: 3,
-            staleTime: 30 * 1000,
-          },
-        },
-      })
-  )
-
-  return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
+  return children
 }

@@ -79,7 +79,7 @@ Tables are auto-synced on server start and when `db/schema.ts` changes in dev mo
 - `db/index.ts` - database connection
 - `lib/boot.ts` - infrastructure (schema sync, cron init)
 - `app/layout.tsx` - root layout and providers
-- `app/providers.tsx` - client-side providers (QueryClient, theme)
+- `app/providers.tsx` - client-side preview bridge hooks
 - `eslint.config.mjs` - lint rules
 - `globals.css` - only imports, do not add styles here (use Tailwind classes)
 
