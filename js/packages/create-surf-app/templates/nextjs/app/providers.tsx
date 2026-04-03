@@ -15,6 +15,21 @@ function useSurfAppReady() {
   }, [])
 }
 
+// Patch fetch so `/api/*` calls automatically include basePath.
+// Without this, `fetch('/api/...')` hits the parent app's routes instead of
+// the preview dev server's API routes.
+// DO NOT REMOVE — this is required for the preview proxy architecture.
+const _basePath = process.env.NEXT_PUBLIC_BASE_PATH || ""
+if (typeof window !== "undefined" && _basePath) {
+  const _origFetch = window.fetch
+  window.fetch = function patchedFetch(input, init) {
+    if (typeof input === "string" && input.startsWith("/api/")) {
+      input = _basePath + input
+    }
+    return _origFetch.call(this, input, init)
+  } as typeof window.fetch
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   useSurfAppReady()
 
