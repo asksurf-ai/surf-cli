@@ -109,6 +109,7 @@ func main() {
 	cli.Root.AddCommand(newVersionCmd())
 	cli.Root.AddCommand(newInstallCmd())
 	cli.Root.AddCommand(newListOperationsCmd())
+	cli.Root.AddCommand(newCatalogCmd())
 
 	// Run.
 	if err := cli.Run(); err != nil {
@@ -121,7 +122,7 @@ func main() {
 // (not a local command like login/logout/help/completion).
 func shouldInjectAPIName() bool {
 	local := map[string]bool{
-		"sync": true,
+		"sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
 		"list-operations": true,
 	}
