@@ -23,8 +23,17 @@ type catalog struct {
 	Connection     json.RawMessage   `json:"connection"`
 	BestPractices  []string          `json:"query_best_practices"`
 	EntityLinking  []string          `json:"entity_linking"`
+	JoinPatterns   []joinPattern     `json:"join_patterns"`
 	Categories     []catalogCategory `json:"categories"`
 	Tables         []catalogTable    `json:"tables"`
+}
+
+type joinPattern struct {
+	Table   string `json:"table"`
+	JoinKey string `json:"join_key"`
+	UseWith string `json:"use_with"`
+	Pattern string `json:"pattern"`
+	Note    string `json:"note"`
 }
 
 type catalogCategory struct {
@@ -54,6 +63,8 @@ type catalogTable struct {
 	SkipIndices     []skipIndex       `json:"skip_indices"`
 	Columns         []catalogColumn   `json:"columns"`
 	SampleQueries   []sampleQuery     `json:"sample_queries"`
+	CustomView      bool              `json:"custom_view,omitempty"`
+	ViewSQL         string            `json:"view_sql,omitempty"`
 }
 
 type skipIndex struct {
@@ -144,9 +155,23 @@ func newCatalogListCmd() *cobra.Command {
 				lc := strings.ToLower(category)
 				var filtered []catalogTable
 				for _, t := range tables {
-					if strings.ToLower(t.Category) == lc {
+					tc := strings.ToLower(t.Category)
+					if tc == lc || strings.Contains(tc, lc) {
 						filtered = append(filtered, t)
 					}
+				}
+				if len(filtered) == 0 {
+					// Suggest closest category
+					var cats []string
+					seen := map[string]bool{}
+					for _, t := range tables {
+						if !seen[t.Category] {
+							seen[t.Category] = true
+							cats = append(cats, t.Category)
+						}
+					}
+					fmt.Fprintf(os.Stderr, "No category matching %q. Available: %s\n", category, strings.Join(cats, ", "))
+					return nil
 				}
 				tables = filtered
 			}
@@ -334,6 +359,7 @@ func newCatalogPracticesCmd() *cobra.Command {
 				out := map[string]any{
 					"query_best_practices": cat.BestPractices,
 					"entity_linking":       cat.EntityLinking,
+					"join_patterns":        cat.JoinPatterns,
 				}
 				enc := json.NewEncoder(os.Stdout)
 				enc.SetIndent("", "  ")
@@ -351,6 +377,17 @@ func newCatalogPracticesCmd() *cobra.Command {
 			fmt.Println(strings.Repeat("─", 50))
 			for _, e := range cat.EntityLinking {
 				fmt.Fprintf(os.Stdout, "  • %s\n", e)
+			}
+
+			if len(cat.JoinPatterns) > 0 {
+				fmt.Println()
+				fmt.Println("JOIN Patterns")
+				fmt.Println(strings.Repeat("─", 50))
+				for _, jp := range cat.JoinPatterns {
+					fmt.Printf("  %s (key: %s)\n", jp.Table, jp.JoinKey)
+					fmt.Printf("    %s\n", jp.Pattern)
+					fmt.Printf("    %s\n\n", jp.Note)
+				}
 			}
 
 			return nil
@@ -411,7 +448,15 @@ func scoreMatch(t catalogTable, terms []string) (int, string) {
 			if strings.Contains(strings.ToLower(c.Name), term) {
 				score += 1
 				reasons = append(reasons, "column:"+c.Name)
-				break // one column match per term is enough
+				break
+			}
+		}
+		// Search related tables
+		for _, rt := range t.RelatedTables {
+			if strings.Contains(strings.ToLower(rt), term) {
+				score += 1
+				reasons = append(reasons, "related:"+rt)
+				break
 			}
 		}
 	}
@@ -502,6 +547,15 @@ func printTableDetail(t *catalogTable) {
 			fmt.Fprintf(w, "  %s\t%s%s%s\n", c.Name, c.Type, flags, desc)
 		}
 		w.Flush()
+	}
+
+	// View SQL for custom views
+	if t.ViewSQL != "" {
+		fmt.Println()
+		fmt.Println("View SQL")
+		for _, line := range strings.Split(t.ViewSQL, "\n") {
+			fmt.Printf("  %s\n", line)
+		}
 	}
 
 	// When to use
