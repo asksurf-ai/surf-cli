@@ -179,10 +179,12 @@ func newSyncCmd() *cobra.Command {
 
 func newListOperationsCmd() *cobra.Command {
 	var groupByTag bool
+	var detail bool
+	var category string
 	cmd := &cobra.Command{
 		Use:   "list-operations",
 		Short: "List all available API operations",
-		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.",
+		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.\n\nUse --detail to show full descriptions (useful for choosing between similar endpoints).\nUse --category to filter by group name.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			api := cli.LoadCachedAPI("surf")
@@ -191,28 +193,81 @@ func newListOperationsCmd() *cobra.Command {
 			}
 
 			if groupByTag {
-				printOperationsGrouped(api.Operations)
+				printOperationsGrouped(api.Operations, detail, category)
 			} else {
-				printOperationsFlat(api.Operations)
+				printOperationsFlat(api.Operations, detail, category)
 			}
 			return nil
 		},
 	}
 	cmd.Flags().BoolVarP(&groupByTag, "group", "g", false, "Group operations by category")
+	cmd.Flags().BoolVarP(&detail, "detail", "d", false, "Show full description for each operation")
+	cmd.Flags().StringVarP(&category, "category", "c", "", "Filter by category name (case-insensitive substring match)")
 	return cmd
 }
 
-func printOperationsFlat(ops []cli.Operation) {
+func filterOps(ops []cli.Operation, category string) []cli.Operation {
+	if category == "" {
+		return ops
+	}
+	lc := strings.ToLower(category)
+	var filtered []cli.Operation
+	for _, op := range ops {
+		g := op.Group
+		if g == "" {
+			g = "other"
+		}
+		if strings.Contains(strings.ToLower(g), lc) {
+			filtered = append(filtered, op)
+		}
+	}
+	return filtered
+}
+
+// firstParagraph returns the first paragraph of a description, stripping
+// markdown bold markers for cleaner CLI output. Stops at markdown headings
+// (## Option Schema, ## Response, etc.) since op.Long includes the full
+// help text with schemas.
+func firstParagraph(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	// Stop at markdown headings (schema, response sections).
+	for _, sep := range []string{"\n##", "\n```"} {
+		if idx := strings.Index(s, sep); idx > 0 {
+			s = s[:idx]
+		}
+	}
+	// Split on double newline to get first paragraph.
+	if idx := strings.Index(s, "\n\n"); idx > 0 {
+		s = s[:idx]
+	}
+	// Strip markdown bold markers.
+	s = strings.ReplaceAll(s, "**", "")
+	// Collapse internal newlines to spaces.
+	s = strings.ReplaceAll(s, "\n", " ")
+	return strings.TrimSpace(s)
+}
+
+func printOperationsFlat(ops []cli.Operation, detail bool, category string) {
+	ops = filterOps(ops, category)
 	for _, op := range ops {
 		if op.Hidden {
 			continue
 		}
 		params := formatParams(op)
 		fmt.Fprintf(os.Stdout, "  %-6s %-35s %s%s\n", op.Method, op.Name, op.Short, params)
+		if detail {
+			if desc := firstParagraph(op.Long); desc != "" {
+				fmt.Fprintf(os.Stdout, "         %s\n\n", desc)
+			}
+		}
 	}
 }
 
-func printOperationsGrouped(ops []cli.Operation) {
+func printOperationsGrouped(ops []cli.Operation, detail bool, category string) {
+	ops = filterOps(ops, category)
 	groups := map[string][]cli.Operation{}
 	var order []string
 	for _, op := range ops {
@@ -237,6 +292,11 @@ func printOperationsGrouped(ops []cli.Operation) {
 		for _, op := range groups[g] {
 			params := formatParams(op)
 			fmt.Fprintf(os.Stdout, "  %-6s %-35s %s%s\n", op.Method, op.Name, op.Short, params)
+			if detail {
+				if desc := firstParagraph(op.Long); desc != "" {
+					fmt.Fprintf(os.Stdout, "         %s\n\n", desc)
+				}
+			}
 		}
 	}
 }
