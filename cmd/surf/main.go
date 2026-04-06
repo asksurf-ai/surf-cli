@@ -10,6 +10,7 @@ import (
 	"github.com/cyberconnecthq/surf-cli/cli"
 	"github.com/cyberconnecthq/surf-cli/openapi"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/zalando/go-keyring"
 )
@@ -70,6 +71,13 @@ func main() {
 		cmd.Help()
 	}
 	cli.Root.ValidArgsFunction = nil
+
+	// Hide all restish flags — they still work but don't clutter help.
+	cli.Root.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		if f.Name != "help" && f.Name != "version" {
+			f.Hidden = true
+		}
+	})
 
 	// Remove restish generic commands we don't need.
 	removeCommands(cli.Root,
