@@ -27,8 +27,8 @@ go install github.com/cyberconnecthq/surf-cli/cmd/surf@latest
 ## Usage
 
 ```sh
-# Authenticate (opens browser)
-surf login
+# Save your API key
+surf auth --api-key sk-xxx
 
 # Query market data
 surf market-futures --symbol BTC
@@ -40,15 +40,32 @@ surf sync
 # Show version
 surf version
 
-# Log out and clear cached tokens
-surf logout
+# Show auth status
+surf auth
+
+# Clear saved API key
+surf auth --clear
 ```
 
 Run `surf help` to see all available commands.
 
+## Authentication
+
+API keys are resolved in this order:
+
+1. `SURF_API_KEY` environment variable
+2. OS keychain (macOS Keychain, Linux secret-service, Windows Credential Manager)
+3. `~/.surf/config.json` (file fallback)
+
+```sh
+surf auth --api-key sk-xxx   # Save (prefers keychain, falls back to file)
+surf auth                    # Show current key source and masked value
+surf auth --clear            # Clear from both keychain and file
+```
+
 ## Configuration
 
-Config and cached tokens are stored in `~/.config/surf/`.
+Configuration is stored in `~/.surf/`.
 
 ## Development
 

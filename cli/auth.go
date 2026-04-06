@@ -11,8 +11,12 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/zalando/go-keyring"
 	"golang.org/x/term"
 )
+
+// KeyringService is the service name used for OS keychain storage.
+const KeyringService = "surf-cli"
 
 // AuthParam describes an auth input parameter for an AuthHandler.
 type AuthParam struct {
@@ -37,6 +41,30 @@ var authHandlers map[string]AuthHandler = map[string]AuthHandler{}
 // AddAuth registers a new named auth handler.
 func AddAuth(name string, h AuthHandler) {
 	authHandlers[name] = h
+}
+
+// APIKeyAuth reads an API key from the local credentials cache and sets it as
+// a Bearer token. Falls back to the SURF_API_KEY environment variable.
+type APIKeyAuth struct{}
+
+func (a *APIKeyAuth) Parameters() []AuthParam {
+	return []AuthParam{}
+}
+
+func (a *APIKeyAuth) OnRequest(req *http.Request, key string, params map[string]string) error {
+	if apiKey := os.Getenv("SURF_API_KEY"); apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		return nil
+	}
+	if token, err := keyring.Get(KeyringService, key); err == nil && token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+		return nil
+	}
+	if token := Cache.GetString(key + ".api_key"); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+		return nil
+	}
+	return nil
 }
 
 // BasicAuth implements HTTP Basic authentication.

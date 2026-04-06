@@ -11,21 +11,23 @@ import (
 	"github.com/cyberconnecthq/surf-cli/openapi"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zalando/go-keyring"
 )
 
 //go:embed apis.json
 var embeddedAPIsJSON []byte
 
 var version = "dev"
+var configDir string
 
 func main() {
-	// Force config and cache to ~/.config/surf/ on all platforms.
+	// Force config and cache to ~/.surf/ on all platforms.
 	home, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: cannot determine home directory: %v\n", err)
 		os.Exit(1)
 	}
-	configDir := filepath.Join(home, ".config", "surf")
+	configDir = filepath.Join(home, ".surf")
 	os.Setenv("SURF_CONFIG_DIR", configDir)
 	os.Setenv("SURF_CACHE_DIR", configDir)
 
@@ -47,7 +49,7 @@ func main() {
 	// Inject "surf" as the API name into os.Args so restish's Run() loads
 	// the API config. Skip injection for commands that don't need API loading.
 	//   surf market-futures --symbol BTC  →  [surf, surf, market-futures, --symbol, BTC]
-	//   surf login                        →  [surf, login]  (no injection)
+	//   surf auth                         →  [surf, auth]  (no injection)
 	if shouldInjectAPIName() {
 		os.Args = append([]string{os.Args[0], "surf"}, os.Args[1:]...)
 	}
@@ -105,6 +107,7 @@ func main() {
 	}
 
 	// Add custom commands directly on Root (not under the API subcommand).
+	cli.Root.AddCommand(newAuthCmd())
 	cli.Root.AddCommand(newSyncCmd())
 	cli.Root.AddCommand(newVersionCmd())
 	cli.Root.AddCommand(newInstallCmd())
@@ -119,10 +122,10 @@ func main() {
 }
 
 // shouldInjectAPIName returns true if os.Args represents an API operation
-// (not a local command like login/logout/help/completion).
+// (not a local command like auth/help/completion).
 func shouldInjectAPIName() bool {
 	local := map[string]bool{
-		"sync": true, "catalog": true,
+		"auth": true, "sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
 		"list-operations": true,
 	}
@@ -147,6 +150,80 @@ func removeCommands(root *cobra.Command, names ...string) {
 			root.RemoveCommand(cmd)
 		}
 	}
+}
+
+func newAuthCmd() *cobra.Command {
+	var apiKey string
+	var clear bool
+
+	cmd := &cobra.Command{
+		Use:   "auth",
+		Short: "Manage API authentication",
+		Long:  "Save, view, or clear the API key used for authentication.\nThe SURF_API_KEY environment variable takes precedence over the saved key.",
+		Example: `  surf auth --api-key sk-xxx   # Save API key
+  surf auth                    # Show current auth status
+  surf auth --clear            # Clear saved API key`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			profile := viper.GetString("rsh-profile")
+			if profile == "" {
+				profile = "default"
+			}
+			keychainUser := "surf:" + profile
+			cacheKey := keychainUser + ".api_key"
+
+			if clear {
+				// Clear from both keychain and file.
+				_ = keyring.Delete(cli.KeyringService, keychainUser)
+				cli.Cache.Set(cacheKey, "")
+				if err := cli.Cache.WriteConfig(); err != nil {
+					return fmt.Errorf("failed to clear credentials: %w", err)
+				}
+				fmt.Fprintln(os.Stderr, "API key cleared.")
+				return nil
+			}
+
+			if apiKey != "" {
+				// Try keychain first, fall back to file.
+				if err := keyring.Set(cli.KeyringService, keychainUser, apiKey); err == nil {
+					fmt.Fprintln(os.Stderr, "API key saved to system keychain.")
+				} else {
+					cli.Cache.Set(cacheKey, apiKey)
+					if err := cli.Cache.WriteConfig(); err != nil {
+						return fmt.Errorf("failed to save credentials: %w", err)
+					}
+					fmt.Fprintf(os.Stderr, "API key saved to %s.\n", filepath.Join(configDir, "config.json"))
+				}
+				return nil
+			}
+
+			// Show status.
+			if envKey := os.Getenv("SURF_API_KEY"); envKey != "" {
+				fmt.Fprintf(os.Stdout, "source:  SURF_API_KEY (env)\napi-key: %s\n", maskKey(envKey))
+				return nil
+			}
+			if token, err := keyring.Get(cli.KeyringService, keychainUser); err == nil && token != "" {
+				fmt.Fprintf(os.Stdout, "source:  system keychain\napi-key: %s\n", maskKey(token))
+				return nil
+			}
+			if cached := cli.Cache.GetString(cacheKey); cached != "" {
+				fmt.Fprintf(os.Stdout, "source:  %s\napi-key: %s\n", filepath.Join(configDir, "config.json"), maskKey(cached))
+				return nil
+			}
+			fmt.Fprintln(os.Stdout, "No API key configured. Run `surf auth --api-key <key>` or set SURF_API_KEY.")
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key to save")
+	cmd.Flags().BoolVar(&clear, "clear", false, "Clear the saved API key")
+	return cmd
+}
+
+func maskKey(key string) string {
+	if len(key) <= 8 {
+		return strings.Repeat("*", len(key))
+	}
+	return key[:4] + strings.Repeat("*", len(key)-8) + key[len(key)-4:]
 }
 
 func newVersionCmd() *cobra.Command {

@@ -118,7 +118,7 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		opt(requestConf)
 	}
 
-	_, config := findAPI(req.URL.String())
+	apiName, config := findAPI(req.URL.String())
 
 	if config == nil {
 		config = &APIConfig{Profiles: map[string]*APIProfile{
@@ -228,9 +228,10 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		}
 	}
 
-	// Add auth via SURF_API_KEY environment variable.
-	if apiKey := os.Getenv("SURF_API_KEY"); apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+apiKey)
+	// Apply API key auth: env var > credentials cache.
+	apiKeyAuth := &APIKeyAuth{}
+	if err := apiKeyAuth.OnRequest(req, apiName+":"+viper.GetString("rsh-profile"), nil); err != nil {
+		return nil, err
 	}
 
 	if req.Header.Get("user-agent") == "" {

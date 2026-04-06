@@ -44,11 +44,13 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/danielgtaylor/mexpr v1.8.0 // indirect
+	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
@@ -78,6 +80,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yuin/goldmark v1.5.3 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
+	github.com/zalando/go-keyring v0.2.8 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/image v0.38.0 // indirect
 	golang.org/x/net v0.38.0 // indirect

@@ -666,7 +666,7 @@ func initConfig(appName, envPrefix string) {
 
 func initCache(appName string) {
 	Cache = viper.New()
-	Cache.SetConfigName("credentials")
+	Cache.SetConfigName("config")
 
 	cacheDir := getCacheDir()
 	if err := os.MkdirAll(cacheDir, 0700); err != nil {
@@ -677,7 +677,7 @@ func initCache(appName string) {
 
 	// Write a blank cache if no file is already there. Later you can use
 	// cli.Cache.SaveConfig() to write new values.
-	filename := filepath.Join(cacheDir, "credentials.json")
+	filename := filepath.Join(cacheDir, "config.json")
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		if err := os.WriteFile(filename, []byte("{}"), 0600); err != nil {
 			panic(err)

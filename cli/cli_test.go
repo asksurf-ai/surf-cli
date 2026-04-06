@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/zalando/go-keyring"
 	"gopkg.in/h2non/gock.v1"
 )
 
@@ -164,6 +165,119 @@ func TestAuthHeader(t *testing.T) {
 
 	captured = runNoReset("auth-header test-auth-header -p no-auth")
 	assert.Contains(t, captured, "no auth set up")
+}
+
+func TestAPIKeyAuthFromCache(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_API_KEY", "")
+
+	Cache.Set("surf-test:default.api_key", "cached-key-123")
+	Cache.WriteConfig()
+	defer func() {
+		Cache.Set("surf-test:default.api_key", "")
+		Cache.WriteConfig()
+	}()
+
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	auth := &APIKeyAuth{}
+	err := auth.OnRequest(req, "surf-test:default", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "Bearer cached-key-123", req.Header.Get("Authorization"))
+}
+
+func TestAPIKeyAuthEnvOverridesCache(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_API_KEY", "env-key-456")
+
+	Cache.Set("surf-test:default.api_key", "cached-key-123")
+	Cache.WriteConfig()
+	defer func() {
+		Cache.Set("surf-test:default.api_key", "")
+		Cache.WriteConfig()
+	}()
+
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	auth := &APIKeyAuth{}
+	err := auth.OnRequest(req, "surf-test:default", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "Bearer env-key-456", req.Header.Get("Authorization"))
+}
+
+func TestAPIKeyAuthNoKey(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_API_KEY", "")
+	keyring.MockInit()
+
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	auth := &APIKeyAuth{}
+	err := auth.OnRequest(req, "nonexistent:default", nil)
+	assert.NoError(t, err)
+	assert.Empty(t, req.Header.Get("Authorization"))
+}
+
+func TestAPIKeyAuthFromKeychain(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_API_KEY", "")
+	keyring.MockInit()
+	keyring.Set(KeyringService, "surf-test:default", "keychain-key-789")
+
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	auth := &APIKeyAuth{}
+	err := auth.OnRequest(req, "surf-test:default", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "Bearer keychain-key-789", req.Header.Get("Authorization"))
+}
+
+func TestAPIKeyAuthKeychainOverridesFile(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_API_KEY", "")
+	keyring.MockInit()
+	keyring.Set(KeyringService, "surf-test:default", "keychain-key-789")
+
+	Cache.Set("surf-test:default.api_key", "file-key-123")
+	Cache.WriteConfig()
+	defer func() {
+		Cache.Set("surf-test:default.api_key", "")
+		Cache.WriteConfig()
+	}()
+
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	auth := &APIKeyAuth{}
+	err := auth.OnRequest(req, "surf-test:default", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "Bearer keychain-key-789", req.Header.Get("Authorization"))
+}
+
+func TestAPIKeyAuthEnvOverridesKeychain(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_API_KEY", "env-key-456")
+	keyring.MockInit()
+	keyring.Set(KeyringService, "surf-test:default", "keychain-key-789")
+
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	auth := &APIKeyAuth{}
+	err := auth.OnRequest(req, "surf-test:default", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "Bearer env-key-456", req.Header.Get("Authorization"))
+}
+
+func TestAPIKeyAuthFallsBackToFileWhenKeychainEmpty(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_API_KEY", "")
+	keyring.MockInit() // empty keychain
+
+	Cache.Set("surf-test:default.api_key", "file-key-123")
+	Cache.WriteConfig()
+	defer func() {
+		Cache.Set("surf-test:default.api_key", "")
+		Cache.WriteConfig()
+	}()
+
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	auth := &APIKeyAuth{}
+	err := auth.OnRequest(req, "surf-test:default", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "Bearer file-key-123", req.Header.Get("Authorization"))
 }
 
 func TestLinks(t *testing.T) {
