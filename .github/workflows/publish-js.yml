@@ -100,18 +100,20 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Notify Urania
+      - name: Notify downstream repos
         env:
           GH_TOKEN: ${{ secrets.GITOPS_PAT }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${{ steps.version.outputs.npm_tag }}"
-          gh api repos/cyberconnecthq/urania/dispatches \
-            -f event_type=create_surf_app_published \
-            -f client_payload[package_name]=create-surf-app \
-            -f client_payload[version]="$VERSION" \
-            -f client_payload[tag]="$TAG" \
-            -f client_payload[source_sha]="${{ github.sha }}" || true
+          for repo in urania vulcan; do
+            gh api repos/cyberconnecthq/$repo/dispatches \
+              -f event_type=create_surf_app_published \
+              -f client_payload[package_name]=create-surf-app \
+              -f client_payload[version]="$VERSION" \
+              -f client_payload[tag]="$TAG" \
+              -f client_payload[source_sha]="${{ github.sha }}" || true
+          done
 
       - name: Commit version bump
         continue-on-error: true
