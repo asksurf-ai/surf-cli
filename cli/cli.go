@@ -257,6 +257,9 @@ func Init(name string, version string) {
 			generic(http.MethodGet, args[0], args[1:])
 		},
 	}
+	Root.Flags().SetNormalizeFunc(NormalizeSnakeCaseFlags)
+	Root.PersistentFlags().SetNormalizeFunc(NormalizeSnakeCaseFlags)
+
 	Root.AddGroup(
 		&cobra.Group{ID: "api", Title: "Available API Commands:"},
 		&cobra.Group{ID: "generic", Title: "Generic Commands:"},

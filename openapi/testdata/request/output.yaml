@@ -19,6 +19,7 @@ operations:
     path_params:
       - type: string
         name: item-id
+        required: true
   - name: put-item
     aliases: []
     short: ""
@@ -68,6 +69,7 @@ operations:
     path_params:
       - type: string
         name: item-id
+        required: true
     header_params:
       - type: string
         name: MyHeader

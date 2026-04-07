@@ -6,10 +6,12 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -62,7 +64,7 @@ func (o Operation) command() *cobra.Command {
 		Args:       argSpec,
 		Hidden:     o.Hidden,
 		Deprecated: o.Deprecated,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			uri := o.URITemplate
 
 			for i, param := range o.PathParams {
@@ -73,6 +75,21 @@ func (o Operation) command() *cobra.Command {
 				}
 				// Replaces URL-encoded `{`+name+`}` in the template.
 				uri = strings.Replace(uri, "{"+param.Name+"}", fmt.Sprintf("%v", value), 1)
+			}
+
+			var missing []string
+			for _, param := range o.QueryParams {
+				if param.Required && !cmd.Flags().Changed(param.OptionName()) {
+					missing = append(missing, "--"+param.OptionName())
+				}
+			}
+			for _, param := range o.HeaderParams {
+				if param.Required && !cmd.Flags().Changed(param.OptionName()) {
+					missing = append(missing, "--"+param.OptionName())
+				}
+			}
+			if len(missing) > 0 {
+				return fmt.Errorf("missing required flag(s): %s\nSee: %s %s --help", strings.Join(missing, ", "), cmd.Root().CommandPath(), use)
 			}
 
 			query := url.Values{}
@@ -140,6 +157,7 @@ func (o Operation) command() *cobra.Command {
 			req, _ := http.NewRequest(o.Method, uri, body)
 			req.Header = headers
 			MakeRequestAndFormat(req)
+			return nil
 		},
 	}
 
@@ -151,5 +169,19 @@ func (o Operation) command() *cobra.Command {
 		flags[p.Name] = p.AddFlag(sub.Flags())
 	}
 
+	sub.Flags().SetNormalizeFunc(NormalizeSnakeCaseFlags)
+
 	return sub
+}
+
+// NormalizeSnakeCaseFlags converts underscore-separated flag names to
+// kebab-case and prints a deprecation warning to stderr. This allows
+// --time_range to work as an alias for --time-range.
+func NormalizeSnakeCaseFlags(f *pflag.FlagSet, name string) pflag.NormalizedName {
+	if strings.Contains(name, "_") {
+		canonical := strings.ReplaceAll(name, "_", "-")
+		fmt.Fprintf(os.Stderr, "Warning: flag --%s is deprecated, use --%s instead\n", name, canonical)
+		return pflag.NormalizedName(canonical)
+	}
+	return pflag.NormalizedName(name)
 }

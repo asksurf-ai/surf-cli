@@ -108,3 +108,4 @@ operations:
       - type: string
         name: petId
         description: The id of the pet to retrieve
+        required: true

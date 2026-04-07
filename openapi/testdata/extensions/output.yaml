@@ -37,6 +37,7 @@ operations:
     path_params:
       - type: string
         name: item-id
+        required: true
     query_params:
       - type: "array[string]"
         name: q

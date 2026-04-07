@@ -26,14 +26,15 @@ func typeConvert(from, to any) any {
 
 // Param represents an API operation input parameter.
 type Param struct {
-	Type        string      `json:"type" yaml:"type"`
-	Name        string      `json:"name" yaml:"name"`
-	DisplayName string      `json:"display_name,omitempty" yaml:"display_name,omitempty"`
-	Description string      `json:"description,omitempty" yaml:"description,omitempty"`
-	Style       Style       `json:"style,omitempty" yaml:"style,omitempty"`
-	Explode     bool        `json:"explode,omitempty" yaml:"explide,omitempty"`
-	Default     any `json:"default,omitempty" yaml:"default,omitempty"`
-	Example     any `json:"example,omitempty" yaml:"example,omitempty"`
+	Type        string `json:"type" yaml:"type"`
+	Name        string `json:"name" yaml:"name"`
+	DisplayName string `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Style       Style  `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode     bool   `json:"explode,omitempty" yaml:"explide,omitempty"`
+	Required    bool   `json:"required,omitempty" yaml:"required,omitempty"`
+	Default     any    `json:"default,omitempty" yaml:"default,omitempty"`
+	Example     any    `json:"example,omitempty" yaml:"example,omitempty"`
 }
 
 // Parse the parameter from a string input (e.g. command line argument)

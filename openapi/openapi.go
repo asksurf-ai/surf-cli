@@ -313,6 +313,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 			DisplayName: displayName,
 			Description: description,
 			Style:       style,
+			Required:    p.Required != nil && *p.Required,
 			Default:     def,
 			Example:     example,
 		}

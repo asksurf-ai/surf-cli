@@ -38,5 +38,6 @@ operations:
     path_params:
       - type: string
         name: item-id
+        required: true
     examples:
       - "<input.json"
