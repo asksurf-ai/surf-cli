@@ -13,7 +13,7 @@
     "next": "15.5.14",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "drizzle-orm": "0.44.2",
+    "drizzle-orm": "0.45.2",
     "drizzle-kit": "0.31.1",
     "croner": "9.1.0",
     "class-variance-authority": "0.7.1",
