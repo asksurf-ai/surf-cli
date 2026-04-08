@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-CDN_BASE="https://agent.asksurf.ai/cli/releases"
+CDN_BASE="https://downloads.asksurf.ai/cli/releases"
 
 # Require curl or wget.
 if command -v curl >/dev/null 2>&1; then

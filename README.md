@@ -7,7 +7,7 @@ Every API endpoint is available as a CLI command, dynamically generated from the
 ## Install
 
 ```sh
-curl -fsSL https://agent.asksurf.ai/cli/releases/install.sh | sh
+curl -fsSL https://downloads.asksurf.ai/cli/releases/install.sh | sh
 ```
 
 Installs to `~/.surf/bin`. No sudo required.
@@ -15,7 +15,7 @@ Installs to `~/.surf/bin`. No sudo required.
 To install a specific version:
 
 ```sh
-curl -fsSL https://agent.asksurf.ai/cli/releases/install.sh | sh -s v0.1.3
+curl -fsSL https://downloads.asksurf.ai/cli/releases/install.sh | sh -s v0.1.3
 ```
 
 ### Build from source

@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const cdnBase = "https://agent.asksurf.ai/cli/releases"
+const cdnBase = "https://downloads.asksurf.ai/cli/releases"
 
 func installDir(home string) string {
 	return filepath.Join(home, ".local", "bin")
