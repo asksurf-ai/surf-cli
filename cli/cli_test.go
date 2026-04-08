@@ -280,6 +280,94 @@ func TestAPIKeyAuthFallsBackToFileWhenKeychainEmpty(t *testing.T) {
 	assert.Equal(t, "Bearer file-key-123", req.Header.Get("Authorization"))
 }
 
+// Integration tests: verify auth flows through MakeRequest to the wire.
+
+func TestMakeRequestAuthFromEnv(t *testing.T) {
+	defer gock.Off()
+	reset(false)
+	t.Setenv("SURF_API_KEY", "env-integration-key")
+
+	gock.New("http://example.com").
+		Get("/test-auth").
+		MatchHeader("Authorization", "Bearer env-integration-key").
+		Reply(200).
+		JSON(map[string]any{"ok": true})
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/test-auth", nil)
+	resp, err := MakeRequest(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.True(t, gock.IsDone(), "expected Authorization header was not sent")
+}
+
+func TestMakeRequestAuthFromKeychain(t *testing.T) {
+	defer gock.Off()
+	reset(false)
+	t.Setenv("SURF_API_KEY", "")
+	keyring.MockInit()
+	keyring.Set(KeyringService, "surf:default", "keychain-integration-key")
+
+	gock.New("http://example.com").
+		Get("/test-auth").
+		MatchHeader("Authorization", "Bearer keychain-integration-key").
+		Reply(200).
+		JSON(map[string]any{"ok": true})
+
+	viper.Set("api-name", "surf")
+	configs["surf"] = &APIConfig{
+		name: "surf",
+		Base: "http://example.com",
+		Profiles: map[string]*APIProfile{
+			"default": {},
+		},
+	}
+	defer delete(configs, "surf")
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/test-auth", nil)
+	resp, err := MakeRequest(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.True(t, gock.IsDone(), "expected Authorization header was not sent")
+}
+
+func TestMakeRequestNoAuth(t *testing.T) {
+	defer gock.Off()
+	reset(false)
+	t.Setenv("SURF_API_KEY", "")
+	keyring.MockInit()
+
+	gock.New("http://example.com").
+		Get("/test-no-auth").
+		Reply(200).
+		JSON(map[string]any{"ok": true})
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/test-no-auth", nil)
+	resp, err := MakeRequest(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Empty(t, req.Header.Get("Authorization"))
+}
+
+func TestMakeRequestEnvOverridesKeychainIntegration(t *testing.T) {
+	defer gock.Off()
+	reset(false)
+	t.Setenv("SURF_API_KEY", "env-wins")
+	keyring.MockInit()
+	keyring.Set(KeyringService, "surf:default", "keychain-loses")
+
+	gock.New("http://example.com").
+		Get("/test-priority").
+		MatchHeader("Authorization", "Bearer env-wins").
+		Reply(200).
+		JSON(map[string]any{"ok": true})
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/test-priority", nil)
+	resp, err := MakeRequest(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.True(t, gock.IsDone(), "env var should take precedence over keychain")
+}
+
 func TestLinks(t *testing.T) {
 	defer gock.Off()
 

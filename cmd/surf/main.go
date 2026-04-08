@@ -85,11 +85,27 @@ func main() {
 		"edit", "api", "links", "cert", "auth-header", "bulk",
 	)
 
-	// Hide the intermediate "surf" API subcommand — users call commands
-	// directly (surf market-futures), not via a nested subcommand (surf surf market-futures).
+	// Hide the intermediate "surf" API subcommand and fix "surf surf <cmd>"
+	// in all usage/help/error output. Restish routes API operations through
+	// a hidden "surf" subcommand, which makes Cobra's CommandPath() return
+	// "surf surf <cmd>". We fix this with:
+	// 1. Custom usage template: replaces {{.UseLine}} and {{.CommandPath}}
+	// 2. SilenceErrors on API subcommand: suppresses Cobra's hardcoded
+	//    "Run 'surf surf <cmd> --help'" hint (command.go:1132)
 	for _, cmd := range cli.Root.Commands() {
 		if cmd.Use == "surf" {
 			cmd.Hidden = true
+
+			// Replace {{.UseLine}} and {{.CommandPath}} in the usage template
+			// with versions that skip the intermediate API subcommand name.
+			tmpl := cmd.UsageTemplate()
+			tmpl = strings.ReplaceAll(tmpl, "{{.UseLine}}", "{{.Root.Name}} {{.Use}}{{if .HasAvailableFlags}} [flags]{{end}}")
+			tmpl = strings.ReplaceAll(tmpl, "{{.CommandPath}}", "{{.Root.Name}} {{.Name}}")
+			cmd.SetUsageTemplate(tmpl)
+
+			// Suppress Cobra's hardcoded error hint that includes CommandPath().
+			// Errors are still printed by cli.Run()'s error handling.
+			cmd.SilenceErrors = true
 			break
 		}
 	}
@@ -130,12 +146,20 @@ func main() {
 }
 
 // shouldInjectAPIName returns true if os.Args represents an API operation
-// (not a local command like auth/help/completion).
+// that needs execution (not a local command, not help-only).
+// When --help / -h is present, we skip injection so Cobra routes to the
+// lightweight stub on Root, avoiding "surf surf <cmd>" in usage output.
 func shouldInjectAPIName() bool {
 	local := map[string]bool{
 		"auth": true, "sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
 		"list-operations": true,
+	}
+	// If --help or -h appears anywhere, don't inject — let the stub handle it.
+	for _, arg := range os.Args[1:] {
+		if arg == "--help" || arg == "-h" {
+			return false
+		}
 	}
 	for _, arg := range os.Args[1:] {
 		if strings.HasPrefix(arg, "-") {
