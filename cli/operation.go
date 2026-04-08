@@ -154,6 +154,8 @@ func (o Operation) command() *cobra.Command {
 				body = strings.NewReader(b)
 			}
 
+			currentCommand = slug.Make(o.Name)
+
 			req, _ := http.NewRequest(o.Method, uri, body)
 			req.Header = headers
 			MakeRequestAndFormat(req)

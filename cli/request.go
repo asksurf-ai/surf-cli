@@ -234,6 +234,9 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		return nil, err
 	}
 
+	// Add telemetry headers for user API keys.
+	setTelemetryHeaders(req)
+
 	if req.Header.Get("user-agent") == "" {
 		req.Header.Set("user-agent", "restish-"+Root.Version)
 	}
