@@ -4,7 +4,7 @@ import { get, post } from '../client';
 import type { ApiCursorResponse, ApiObjectResponse, ApiResponse, SocialDetailData, SocialDetailParams, SocialMindshareItem, SocialMindshareParams, SocialRankingItem, SocialRankingParams, SocialSmartFollowersHistoryItem, SocialSmartFollowersHistoryParams, SocialTweetRepliesItem, SocialTweetRepliesParams, SocialTweetsItem, SocialTweetsParams, SocialUserData, SocialUserFollowersItem, SocialUserFollowersParams, SocialUserFollowingItem, SocialUserFollowingParams, SocialUserParams, SocialUserPostsItem, SocialUserPostsParams, SocialUserRepliesItem, SocialUserRepliesParams } from '../types';
 
 export const social = {
-  /** Returns a **point-in-time snapshot** of social analytics for a project. **Available fields** (via `fields`): `sentiment`, `follower_geo`, `smart_followers`. **Lookup:** by X account ID (`x_id`) or project name (`q`, e.g. `uniswap`, `solana`). The `q` parameter must be a crypto project name, not a personal Twitter handle. Returns 404 if the project has no linked Twitter account. For sentiment **trends over time**, use `/social/mindshare` instead. */
+  /** Returns Twitter/X analytics for a crypto project: sentiment score, follower geography, and smart follower breakdown (VCs, KOLs, developers). For individual user profiles use `social-user` instead. **Available fields** (via `fields`): `sentiment`, `follower_geo`, `smart_followers`. **Lookup:** by X account ID (`x_id`) or project name (`q`, e.g. `uniswap`, `solana`). The `q` parameter must be a crypto project name, not a personal Twitter handle. Returns 404 if the project has no linked Twitter account. For sentiment **trends over time**, use `/social/mindshare` instead. */
   detail: (params?: SocialDetailParams): Promise<ApiObjectResponse<SocialDetailData>> =>
     get('social/detail', params as any),
 
@@ -28,7 +28,7 @@ export const social = {
   tweets: (params: SocialTweetsParams): Promise<ApiResponse<SocialTweetsItem>> =>
     get('social/tweets', params as any),
 
-  /** Returns an X (Twitter) user profile. **Included fields:** display name, follower count, following count, and bio. **Lookup:** by `handle` (without @). */
+  /** Returns a basic X/Twitter profile (name, bio, avatar, follower/following counts) for any handle. For crypto project social analytics (sentiment, smart followers, geo), use `social-detail` instead. **Lookup:** by `handle` (without @). */
   user: (params: SocialUserParams): Promise<ApiObjectResponse<SocialUserData>> =>
     get('social/user', params as any),
 

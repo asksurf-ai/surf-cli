@@ -14,7 +14,6 @@ import { project } from './categories/project';
 import { search } from './categories/search';
 import { social } from './categories/social';
 import { token } from './categories/token';
-import { v2 } from './categories/v2';
 import { wallet } from './categories/wallet';
 import { web } from './categories/web';
 
@@ -36,7 +35,6 @@ export const dataApi = {
   search,
   social,
   token,
-  v2,
   wallet,
   web,
 };

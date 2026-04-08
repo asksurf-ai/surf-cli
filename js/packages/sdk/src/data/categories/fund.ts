@@ -4,7 +4,7 @@ import { get, post } from '../client';
 import type { ApiObjectResponse, ApiResponse, FundDetailData, FundDetailParams, FundPortfolioItem, FundPortfolioParams, FundRankingItem, FundRankingParams } from '../types';
 
 export const fund = {
-  /** Returns a fund's **profile metadata**. **Included fields:** X accounts, team members, recent research, invested project count. This does NOT return the list of investments — use `/fund/portfolio` for that. **Lookup:** by UUID (`id`) or name (`q`). Returns 404 if not found. */
+  /** Returns a crypto VC fund's full profile: description, jurisdiction, portfolio count, social links, and team members with roles. **Included fields:** X accounts, team members, recent research, invested project count. This does NOT return the list of investments — use `/fund/portfolio` for that. **Lookup:** by UUID (`id`) or name (`q`). Returns 404 if not found. */
   detail: (params?: FundDetailParams): Promise<ApiObjectResponse<FundDetailData>> =>
     get('fund/detail', params as any),
 
@@ -12,7 +12,7 @@ export const fund = {
   portfolio: (params?: FundPortfolioParams): Promise<ApiResponse<FundPortfolioItem>> =>
     get('fund/portfolio', params as any),
 
-  /** Returns top-ranked funds by a specified metric. **Available metrics:** `tier` (lower is better), `portfolio_count` (number of invested projects). */
+  /** Returns top crypto VC funds ranked by tier or portfolio count. **Available metrics:** `tier` (lower is better), `portfolio_count` (number of invested projects). */
   ranking: (params: FundRankingParams): Promise<ApiResponse<FundRankingItem>> =>
     get('fund/ranking', params as any),
 

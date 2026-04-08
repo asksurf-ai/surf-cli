@@ -16,7 +16,7 @@ export const onchain = {
   structured_query: (body: OnchainStructuredQueryParams): Promise<ApiResponse<OnchainStructuredQueryItem>> =>
     post('onchain/query', body),
 
-  /** Returns table metadata for all available on-chain databases. **Included fields:** database name, table name, column names, types, and comments. */
+  /** Returns the ClickHouse schema catalog (tables, columns, types) for on-chain analytics. Use this to discover available tables before writing SQL with `onchain-sql`. **Included fields:** database name, table name, column names, types, and comments. */
   schema: (): Promise<ApiResponse<OnchainSchemaItem>> =>
     get('onchain/schema'),
 
@@ -28,7 +28,7 @@ export const onchain = {
   tx: (params: OnchainTxParams): Promise<ApiResponse<OnchainTxItem>> =>
     get('onchain/tx', params as any),
 
-  /** Returns DeFi yield pools ranked by APY or TVL. Returns the latest snapshot. Filter by protocol. */
+  /** Returns individual DeFi yield pools/vaults ranked by APY or TVL, with APY breakdown (base vs reward) and pool contract address. Unlike `project-defi-ranking` which ranks whole protocols, this ranks specific pools within protocols. Filter by protocol name (e.g. `lido`, `aave`). Only pools with TVL >= $100k are included when sorted by APY. */
   yield_ranking: (params?: OnchainYieldRankingParams): Promise<ApiResponse<OnchainYieldRankingItem>> =>
     get('onchain/yield/ranking', params as any),
 

@@ -44,7 +44,7 @@ export const market = {
   price_indicator: (params: MarketPriceIndicatorParams): Promise<ApiResponse<MarketPriceIndicatorItem>> =>
     get('market/price-indicator', params as any),
 
-  /** Returns tokens ranked by a specified metric. **Available metrics:** `market_cap`, `top_gainers`, `top_losers`, `volume`. **Note:** `top_gainers` and `top_losers` rank by 24h price change within the top 250 coins by market cap. For circulating supply, FDV, ATH/ATL, use `/project/detail?fields=token_info`. */
+  /** Returns a token leaderboard sorted by market cap, 24h change, or volume. Each entry includes price, market cap, FDV, supply, ATH/ATL, and 24h range. Supports category filtering (MEME, AI, L1, L2, DEFI, GAMING, etc.). **Available metrics:** `market_cap`, `top_gainers`, `top_losers`, `volume`. **Note:** `top_gainers` and `top_losers` rank by 24h price change within the top 250 coins by market cap. For circulating supply, FDV, ATH/ATL, use `/project/detail?fields=token_info`. */
   ranking: (params?: MarketRankingParams): Promise<ApiResponse<MarketRankingItem>> =>
     get('market/ranking', params as any),
 

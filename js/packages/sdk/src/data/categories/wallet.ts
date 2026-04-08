@@ -4,11 +4,11 @@ import { get, post } from '../client';
 import type { ApiObjectResponse, ApiResponse, WalletDetailData, WalletDetailParams, WalletHistoryItem, WalletHistoryParams, WalletLabelsBatchItem, WalletLabelsBatchParams, WalletNetWorthItem, WalletNetWorthParams, WalletProtocolsItem, WalletProtocolsParams, WalletTransfersItem, WalletTransfersParams } from '../types';
 
 export const wallet = {
-  /** Returns multiple wallet sub-resources in a single request. **Available fields** (via `fields`): `balance`, `tokens`, `labels`, `nft`. **Lookup:** by `address`. Partial failures return available fields with per-field error info. Returns 422 if `fields` is invalid. */
+  /** Returns a wallet's cross-chain portfolio with selectable sub-resources (balance, tokens, labels, NFTs). Always includes per-chain USD breakdown across 15+ EVM chains. **Available fields** (via `fields`): `balance`, `tokens`, `labels`, `nft`. **Lookup:** by `address`. Partial failures return available fields with per-field error info. Returns 422 if `fields` is invalid. */
   detail: (params: WalletDetailParams): Promise<ApiObjectResponse<WalletDetailData>> =>
     get('wallet/detail', params as any),
 
-  /** Returns full transaction history for a wallet — swaps, transfers, and contract interactions. **Lookup:** by `address`. Filter by `chain` — supports `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `avalanche`, `fantom`, `base`. */
+  /** Returns all on-chain transactions for a wallet, classified by type (send, receive, swap, approve) with native token value. For ERC-20 token transfers with token identity and USD value, use `wallet-transfers` instead. **Lookup:** by `address`. Filter by `chain` — supports `ethereum`, `polygon`, `bsc`, `arbitrum`, `optimism`, `avalanche`, `fantom`, `base`. */
   history: (params: WalletHistoryParams): Promise<ApiResponse<WalletHistoryItem>> =>
     get('wallet/history', params as any),
 
@@ -24,7 +24,7 @@ export const wallet = {
   protocols: (params: WalletProtocolsParams): Promise<ApiResponse<WalletProtocolsItem>> =>
     get('wallet/protocols', params as any),
 
-  /** Returns recent token transfers **sent or received by a wallet**. Pass the **wallet address** in `address` — returns all ERC-20/SPL token transfers where this wallet is the sender or receiver. **Included fields:** token contract, counterparty, raw amount, block timestamp. Use this to audit a wallet's token flow (e.g. inflows, outflows, airdrop receipts). **Lookup:** `address` (wallet, raw 0x hex or base58 — ENS not supported). Filter by `chain` — supports `ethereum`, `base`, `solana`. **Data refresh:** ~24 hours · **Chains:** Ethereum, Base (Solana uses a different source with no delay) */
+  /** Returns ERC-20/SPL token transfers with token identity, USD value, and flow direction (in/out). Unlike `wallet-history` which shows all tx types in native value, this focuses on token-level transfer activity. Pass the **wallet address** in `address` — returns all ERC-20/SPL token transfers where this wallet is the sender or receiver. **Included fields:** token contract, token symbol, amount USD, counterparty, flow direction. Filter by specific token or flow direction (in/out). **Lookup:** `address` (wallet, raw 0x hex or base58 — ENS not supported). Filter by `chain` — supports `ethereum`, `base`, `solana`. **Data refresh:** ~24 hours · **Chains:** Ethereum, Base (Solana uses a different source with no delay) */
   transfers: (params: WalletTransfersParams): Promise<ApiResponse<WalletTransfersItem>> =>
     get('wallet/transfers', params as any),
 

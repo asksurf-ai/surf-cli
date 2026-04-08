@@ -157,11 +157,11 @@ export interface ExchangeLongShortRatioParams {
   pair: string;
   /** Data interval — @default '1h' */
   interval?: '1h' | '4h' | '1d';
-  /** Start of time range. Accepts Unix seconds or date string (YYYY-MM-DD, ISO8601). Not all exchanges support historical queries; some only return recent data regardless of this value. */
+  /** Start of time range. Accepts Unix seconds or date string (YYYY-MM-DD, ISO8601). Binance only retains the last 30 days of data; other exchanges may have different limits. */
   from?: string;
   /** Max number of records. For longer history, paginate using the last returned timestamp as the next from value. — @default '50' */
   limit?: number;
-  /** Exchange identifier — @default 'bitget' */
+  /** Exchange identifier — @default 'binance' */
   exchange?: 'binance' | 'okx' | 'bybit' | 'bitget';
 }
 
@@ -899,7 +899,7 @@ export interface OnchainStructuredQueryItem {
 }
 
 export interface OnchainStructuredQueryParams {
-  /** Columns to return. Omit to return all columns. Example for agent.ethereum_transactions: [`transaction_hash`, `from_address`, `value`] */
+  /** Columns to return. Omit to return all columns. */
   fields?: unknown;
   /** WHERE conditions (ANDed together) */
   filters?: OnchainStructuredQueryParamsFiltersItem[];
@@ -909,7 +909,7 @@ export interface OnchainStructuredQueryParams {
   offset?: number;
   /** ORDER BY clauses */
   sort?: OnchainStructuredQueryParamsSortItem[];
-  /** Fully-qualified table name like `agent.my_table` */
+  /** Fully-qualified table name like `agent.ethereum_yields_daily`. Use GET /v1/onchain/schema for available tables. */
   source: string;
 }
 
@@ -953,7 +953,7 @@ export interface OnchainSqlItem {
 export interface OnchainSqlParams {
   /** Maximum number of rows to return — @default '1000' */
   max_rows?: number;
-  /** SQL query to execute against the blockchain data warehouse */
+  /** SQL query to execute against the blockchain data warehouse. Use GET /v1/onchain/schema for available tables and columns. */
   sql: string;
 }
 
@@ -1052,29 +1052,160 @@ export interface OnchainYieldRankingParams {
   offset?: number;
 }
 
-export interface PredictionMarketCategoryMetricsItem {
-  /** Top-level category */
-  category: string;
-  /** Notional trading volume in USD */
-  notional_volume_usd: number;
-  /** Open interest in USD */
-  open_interest_usd: number;
-  /** Prediction market platform: Kalshi or Polymarket */
-  source: string;
-  /** Subcategory within the category */
-  subcategory: string;
-  /** Unix timestamp in seconds (midnight UTC for the trading day) */
-  timestamp: number;
+export interface PredictionMarketAnalyticsData {
+  /** Daily volume/OI time series by platform. When category is omitted, values are summed across all categories. */
+  category_trends: PredictionMarketAnalyticsDataCategoryTrendsItem[];
+  /** Per-market momentum signals sorted by sort_by */
+  momentum_markets: PredictionMarketAnalyticsDataMomentumMarketsItem[];
+  momentum_summary: PredictionMarketAnalyticsDataMomentumSummary;
+  /** Top markets by open interest (within category, or globally when category is omitted) */
+  top_markets: PredictionMarketAnalyticsDataTopMarketsItem[];
 }
 
-export interface PredictionMarketCategoryMetricsParams {
-  /** Filter by prediction market platform: `Kalshi` or `Polymarket` */
-  source?: 'Kalshi' | 'Polymarket';
-  /** Filter by top-level category */
+export interface PredictionMarketAnalyticsDataCategoryTrendsItem {
+  /** Number of active markets */
+  market_count: number;
+  /** Cumulative open interest (USD) */
+  open_interest_usd: number;
+  /** Polymarket or Kalshi */
+  source: string;
+  /** Day start Unix timestamp */
+  timestamp: number;
+  /** Daily notional volume (USD) */
+  volume_usd: number;
+}
+
+export interface PredictionMarketAnalyticsDataMomentumMarketsItem {
+  /** Surf-curated category */
+  category: string;
+  /** Polymarket condition ID */
+  condition_id: string;
+  /** Latest YES price (0-1) */
+  latest_price: number;
+  /** 7-day open interest change (USD) */
+  oi_change_7d: number;
+  /** 7-day price change */
+  price_change_7d: number;
+  /** CONFIRMING_UP, CONFIRMING_DOWN, DIVERGING_UP, DIVERGING_DOWN, or NEUTRAL */
+  price_momentum: string;
+  /** Market question text */
+  question: string;
+  /** BULLISH, BEARISH, or NEUTRAL */
+  smart_money_direction: string;
+  /** Number of smart wallets with positions */
+  smart_wallets_involved: number;
+  /** Surf-curated subcategory */
+  subcategory?: string;
+  /** 7-day volume (USD) */
+  volume_7d: number;
+  /** INCREASING, STABLE, or DECREASING */
+  volume_direction: string;
+  /** Net whale flow (USD) last 24h */
+  whale_flow_net_1d: number;
+  /** Net whale flow (USD) last 7 days */
+  whale_flow_net_7d: number;
+}
+
+export interface PredictionMarketAnalyticsDataMomentumSummary {
+  /** Price down + volume up */
+  confirming_down: number;
+  /** Price up + volume up */
+  confirming_up: number;
+  /** Price down + volume down */
+  diverging_down: number;
+  /** Price up + volume down */
+  diverging_up: number;
+  /** No clear momentum */
+  neutral: number;
+  /** Total active markets (in category, or globally when category is omitted) */
+  total_active: number;
+  /** Markets with decreasing volume */
+  volume_decreasing: number;
+  /** Markets with increasing volume */
+  volume_increasing: number;
+}
+
+export interface PredictionMarketAnalyticsDataTopMarketsItem {
+  /** Surf-curated category */
+  category: string;
+  /** Polymarket condition ID */
+  condition_id?: string;
+  /** Days until market end date */
+  days_to_resolution?: number;
+  /** YES-side probability (0-1) from realtime price store */
+  latest_price?: number;
+  /** Direct link to market */
+  market_link?: string;
+  /** Kalshi market ticker */
+  market_ticker?: string;
+  /** Matching market ID on the other platform */
+  matched_counterpart?: string;
+  /** Current open interest (USD) */
+  open_interest_usd: number;
+  /** polymarket or kalshi */
+  platform: string;
+  /** Market question text */
+  question: string;
+  /** BULLISH, BEARISH, or NEUTRAL (Polymarket only) */
+  smart_money_direction?: string;
+  /** Market status */
+  status: string;
+  /** Surf-curated subcategory */
+  subcategory?: string;
+  /** Number of trades last 7 days */
+  trade_count_7d: number;
+  /** Notional volume last 24h (USD) */
+  volume_1d: number;
+  /** Notional volume last 30 days (USD) */
+  volume_30d: number;
+  /** Notional volume last 7 days (USD) */
+  volume_7d: number;
+}
+
+export interface PredictionMarketAnalyticsParams {
+  /** Category to analyze. Omit to get platform-wide totals across all categories. */
   category?: 'crypto' | 'culture' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports';
-  /** Predefined time range: `7d`, `30d`, `90d`, `180d`, `1y`, or `all` — @default '30d' */
-  time_range?: '7d' | '30d' | '90d' | '180d' | '1y' | 'all';
-  /** Maximum rows to return — @default '200' */
+  /** Filter to one platform */
+  platform?: 'polymarket' | 'kalshi';
+  /** Time range for category trends — @default '30d' */
+  time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
+  /** Number of top markets to include — @default '10' */
+  top_n?: number;
+  /** Sort field for momentum markets — @default 'volume_7d' */
+  sort_by?: 'volume_7d' | 'whale_flow_net_7d' | 'price_change_7d' | 'oi_change_7d';
+  /** Sort direction — @default 'desc' */
+  order?: 'asc' | 'desc';
+  /** Limit for momentum markets list — @default '20' */
+  limit?: number;
+  /** Pagination offset for momentum markets — @default '0' */
+  offset?: number;
+}
+
+export interface PredictionMarketCorrelationsItem {
+  /** Shared category */
+  category: string;
+  /** 30-day Pearson correlation coefficient */
+  correlation: number;
+  /** First market condition ID */
+  market_a_condition_id: string;
+  /** First market question */
+  market_a_question?: string;
+  /** Second market condition ID */
+  market_b_condition_id: string;
+  /** Second market question */
+  market_b_question?: string;
+  /** Number of trading days with data for both markets */
+  overlapping_days: number;
+}
+
+export interface PredictionMarketCorrelationsParams {
+  /** Category (correlations are within-category only) */
+  category: 'crypto' | 'culture' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports';
+  /** Filter to pairs involving this market */
+  condition_id?: string;
+  /** Minimum absolute correlation — @default '0.5' */
+  min_correlation?: number;
+  /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
   offset?: number;
@@ -1129,8 +1260,8 @@ export interface KalshiEventsItemMarketsItem {
 }
 
 export interface KalshiEventsParams {
-  /** Event ticker identifier */
-  event_ticker: string;
+  /** Event ticker identifier. When omitted, returns top active events by volume. Use GET /v1/search/kalshi?q={keyword} to discover valid tickers. */
+  event_ticker?: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1173,8 +1304,8 @@ export interface KalshiMarketsItem {
 }
 
 export interface KalshiMarketsParams {
-  /** Market ticker identifier */
-  market_ticker: string;
+  /** Market ticker identifier. When omitted, returns top active markets by volume. Use GET /v1/search/kalshi?q={keyword} to discover valid tickers. */
+  market_ticker?: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1189,10 +1320,26 @@ export interface KalshiOpenInterestItem {
 }
 
 export interface KalshiOpenInterestParams {
-  /** Market ticker identifier */
+  /** Market ticker identifier. Use GET /v1/prediction-market/kalshi/markets or GET /v1/search/kalshi?q={keyword} to discover valid tickers. */
   ticker: string;
   /** Predefined time range: `7d`, `30d`, `90d`, `180d`, or `1y` — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
+}
+
+export interface KalshiOrderbooksItem {
+}
+
+export interface KalshiOrderbooksParams {
+  /** Kalshi market ticker */
+  ticker: string;
+  /** Start time in Unix milliseconds. 0 means 7 days ago. */
+  start_time?: number;
+  /** End time in Unix milliseconds. 0 means current time. */
+  end_time?: number;
+  /** Maximum number of snapshots to return — @default '100' */
+  limit?: number;
+  /** Base64 cursor for pagination */
+  pagination_key?: string;
 }
 
 export interface KalshiPricesItem {
@@ -1223,62 +1370,12 @@ export interface KalshiPricesItemSideB {
 }
 
 export interface KalshiPricesParams {
-  /** Market ticker identifier */
+  /** Market ticker identifier. Use GET /v1/prediction-market/kalshi/markets or GET /v1/search/kalshi?q={keyword} to discover valid tickers. */
   ticker: string;
   /** Predefined time range: `7d`, `30d`, `90d`, `180d`, or `1y`. Ignored when `interval=latest`. — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
   /** Data interval: `1h` for hourly, `1d` for daily OHLC, `latest` for real-time price from trades — @default '1d' */
   interval?: '1h' | '1d' | 'latest';
-}
-
-export interface KalshiRankingItem {
-  /** Surf curated market category */
-  category?: string;
-  /** Market close time (Unix seconds) */
-  close_time?: number;
-  /** Market end time (Unix seconds) */
-  end_time?: number;
-  /** Parent event ticker */
-  event_ticker: string;
-  /** Event title */
-  event_title?: string;
-  /** Previous day open interest from daily report */
-  last_day_open_interest: number;
-  /** Unique market ticker identifier */
-  market_ticker: string;
-  /** Last day notional trading volume in USD (each contract = $1) */
-  notional_volume_usd: number;
-  /** Open interest (contracts) */
-  open_interest: number;
-  /** Payout type */
-  payout_type: string;
-  /** Market result if resolved */
-  result?: string;
-  /** Market start time (Unix seconds) */
-  start_time?: number;
-  /** Market status */
-  status: string;
-  /** Surf curated market subcategory */
-  subcategory?: string;
-  /** Market title */
-  title: string;
-  /** Total trading volume (contracts) */
-  total_volume: number;
-}
-
-export interface KalshiRankingParams {
-  /** Field to sort results by — @default 'notional_volume_usd' */
-  sort_by?: 'notional_volume_usd' | 'open_interest';
-  /** Sort order — @default 'desc' */
-  order?: 'asc' | 'desc';
-  /** Market status filter: `active`, `closed`, `determined`, `disputed`, `finalized`, `inactive`, or `initialized` — @default 'active' */
-  status?: 'active' | 'closed' | 'determined' | 'disputed' | 'finalized' | 'inactive' | 'initialized';
-  /** Filter by category */
-  category?: 'crypto' | 'culture' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports' | 'unknown';
-  /** Results per page — @default '20' */
-  limit?: number;
-  /** Pagination offset — @default '0' */
-  offset?: number;
 }
 
 export interface KalshiTradesItem {
@@ -1299,7 +1396,7 @@ export interface KalshiTradesItem {
 }
 
 export interface KalshiTradesParams {
-  /** Market ticker identifier */
+  /** Market ticker identifier. Use GET /v1/prediction-market/kalshi/markets or GET /v1/search/kalshi?q={keyword} to discover valid tickers. */
   ticker: string;
   /** Filter by taker side: `yes` or `no` */
   taker_side?: 'yes' | 'no';
@@ -1327,7 +1424,7 @@ export interface KalshiVolumesItem {
 }
 
 export interface KalshiVolumesParams {
-  /** Market ticker identifier */
+  /** Market ticker identifier. Use GET /v1/prediction-market/kalshi/markets or GET /v1/search/kalshi?q={keyword} to discover valid tickers. */
   ticker: string;
   /** Predefined time range: `7d`, `30d`, `90d`, `180d`, or `1y` — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
@@ -1359,65 +1456,21 @@ export interface MatchingMarketDailyParams {
   offset?: number;
 }
 
-export interface MatchingMarketFindItem {
-  /** Market category */
-  category: string;
-  /** Match confidence score (75-100) */
-  confidence: number;
-  kalshi: MatchingMarketFindItemKalshi;
-  /** Match type: exact or related */
-  match_type: string;
-  polymarket: MatchingMarketFindItemPolymarket;
-}
-
-export interface MatchingMarketFindItemKalshi {
-  /** Kalshi event ticker */
-  event_ticker: string;
-  /** Kalshi market ticker */
-  market_ticker: string;
-  /** Open interest in contracts */
-  open_interest: number;
-  /** Market status */
-  status: string;
-  /** Market title */
-  title: string;
-  /** Total volume in contracts */
-  volume_contracts: number;
-}
-
-export interface MatchingMarketFindItemPolymarket {
-  /** Polymarket condition identifier */
-  condition_id: string;
-  /** Event slug identifier */
-  event_slug: string;
-  /** Whether the market is currently active */
-  is_active: boolean;
-  /** Market question text */
-  question: string;
-  /** Total trading volume (USD) */
-  volume_usd: number;
-}
-
-export interface MatchingMarketFindParams {
-  /** Polymarket condition ID to find match for */
-  polymarket_condition_id?: string;
-  /** Kalshi market ticker to find match for */
-  kalshi_market_ticker?: string;
-  /** Maximum rows to return — @default '20' */
-  limit?: number;
-  /** Pagination offset — @default '0' */
-  offset?: number;
-}
-
 export interface MatchingMarketPairsItem {
   /** Market category */
   category: string;
   /** Match confidence score (75-100) */
   confidence: number;
   kalshi: MatchingMarketPairsItemKalshi;
+  /** Kalshi YES-side probability (0-1) */
+  kalshi_price?: number;
   /** Match type: exact or related */
   match_type: string;
   polymarket: MatchingMarketPairsItemPolymarket;
+  /** Polymarket YES-side probability (0-1) */
+  polymarket_price?: number;
+  /** Absolute spread as percentage */
+  spread_pct?: number;
 }
 
 export interface MatchingMarketPairsItemKalshi {
@@ -1457,43 +1510,15 @@ export interface MatchingMarketPairsParams {
   active_only?: boolean;
   /** Minimum confidence score (0-100) — @default '0' */
   min_confidence?: number;
+  /** Find match for this Polymarket market */
+  polymarket_condition_id?: string;
+  /** Find match for this Kalshi market */
+  kalshi_market_ticker?: string;
   /** Sort field — @default 'confidence' */
-  sort_by?: 'confidence' | 'polymarket_volume' | 'kalshi_volume';
+  sort_by?: 'confidence' | 'polymarket_volume' | 'kalshi_volume' | 'spread_pct';
   /** Sort order — @default 'desc' */
   order?: 'asc' | 'desc';
   /** Maximum rows to return — @default '20' */
-  limit?: number;
-  /** Pagination offset — @default '0' */
-  offset?: number;
-}
-
-export interface PolymarketActivityItem {
-  /** Market condition identifier */
-  condition_id: string;
-  /** Outcome label */
-  outcome: string;
-  /** Trade price (0-1) */
-  price: number;
-  /** Trade side */
-  side: string;
-  /** Trade size in shares */
-  size: number;
-  /** Activity Unix timestamp in seconds */
-  timestamp: number;
-  /** Market title */
-  title: string;
-  /** Transaction hash */
-  transaction_hash: string;
-  /** Activity type such as `buy`, `sell`, or `redeem` */
-  type: string;
-  /** Trade size in USDC */
-  usdc_size: number;
-}
-
-export interface PolymarketActivityParams {
-  /** Polymarket proxy wallet address */
-  address: string;
-  /** Results per page — @default '50' */
   limit?: number;
   /** Pagination offset — @default '0' */
   offset?: number;
@@ -1604,6 +1629,36 @@ export interface PolymarketEventsParams {
   offset?: number;
 }
 
+export interface PolymarketLeaderboardItem {
+  /** Wallet address */
+  address: string;
+  /** Realized PnL (USD) */
+  pnl: number;
+  /** Total positions */
+  positions: number;
+  /** Number of losing positions */
+  positions_lost: number;
+  /** Number of open positions */
+  positions_open: number;
+  /** Number of winning positions */
+  positions_won: number;
+  /** Total number of trades */
+  trade_count: number;
+  /** Total trading volume (USD) */
+  volume: number;
+}
+
+export interface PolymarketLeaderboardParams {
+  /** Ranking metric — @default 'pnl' */
+  sort_by?: 'pnl' | 'volume' | 'trade_count';
+  /** Sort direction — @default 'desc' */
+  order?: 'asc' | 'desc';
+  /** Results per page — @default '20' */
+  limit?: number;
+  /** Pagination offset — @default '0' */
+  offset?: number;
+}
+
 export interface PolymarketMarketsItem {
   /** Surf curated market category */
   category?: string;
@@ -1694,6 +1749,22 @@ export interface PolymarketOpenInterestParams {
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
 }
 
+export interface PolymarketOrderbooksItem {
+}
+
+export interface PolymarketOrderbooksParams {
+  /** Token identifier */
+  token_id: string;
+  /** Start time in Unix milliseconds. 0 means 7 days ago. */
+  start_time?: number;
+  /** End time in Unix milliseconds. 0 means current time. */
+  end_time?: number;
+  /** Maximum number of snapshots to return — @default '100' */
+  limit?: number;
+  /** Base64 cursor for pagination */
+  pagination_key?: string;
+}
+
 export interface PolymarketPositionsItem {
   /** Average entry price (0-1) */
   avg_price: number;
@@ -1724,6 +1795,18 @@ export interface PolymarketPositionsParams {
   limit?: number;
   /** Pagination offset — @default '0' */
   offset?: number;
+}
+
+export interface PolymarketPriceOhlcvItem {
+}
+
+export interface PolymarketPriceOhlcvParams {
+  /** Start time (Unix seconds). 0 means no lower bound. */
+  start_time?: number;
+  /** End time (Unix seconds). 0 means current time. */
+  end_time?: number;
+  /** Candle interval in minutes: 1=1min, 60=1hour, 1440=1day — @default '60' */
+  interval?: number;
 }
 
 export interface PolymarketPricesItem {
@@ -1760,40 +1843,28 @@ export interface PolymarketPricesParams {
   interval?: '1h' | '1d' | 'latest';
 }
 
-export interface PolymarketRankingItem {
-  /** Surf curated market category */
-  category?: string;
-  /** Unique condition identifier */
-  condition_id: string;
-  /** Market end time (Unix seconds) */
-  end_time?: number;
-  /** Notional trading volume (USD) */
-  notional_volume_usd: number;
-  /** Current open interest (USD) */
-  open_interest_usd: number;
-  /** Link to Polymarket page */
-  polymarket_link?: string;
-  /** Market question text */
-  question: string;
-  /** Market status */
-  status: string;
-  /** Surf curated market subcategory */
-  subcategory?: string;
-  /** Market tags */
-  tags?: unknown;
+export interface PolymarketSmartMoneyItem {
 }
 
-export interface PolymarketRankingParams {
-  /** Sort by last day's `notional_volume_usd` or `open_interest` — @default 'notional_volume_usd' */
-  sort_by?: 'notional_volume_usd' | 'open_interest';
-  /** Sort order — @default 'desc' */
+export interface PolymarketSmartMoneyParams {
+  /** positioning = aggregate smart wallet direction per market; trades = individual $10K+ trades with wallet metadata — @default 'positioning' */
+  view?: 'positioning' | 'trades';
+  /** Filter to a specific market (omit to browse all) */
+  condition_id?: string;
+  /** Filter by category */
+  category?: 'crypto' | 'culture' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports';
+  /** Filter by net smart money direction (only for view=positioning) */
+  direction?: 'bullish' | 'bearish' | 'neutral';
+  /** Trade size tier filter (only for view=trades) */
+  whale_tier?: 'whale' | 'large' | 'mega';
+  /** Start time as Unix seconds or date string (only for view=trades) */
+  from?: string;
+  /** End time as Unix seconds or date string (only for view=trades) */
+  to?: string;
+  /** Sort field — @default 'smart_wallets_involved' */
+  sort_by?: 'smart_wallets_involved' | 'smart_buy_volume_usd' | 'smart_sell_volume_usd' | 'amount_usd' | 'block_time';
+  /** Sort direction — @default 'desc' */
   order?: 'asc' | 'desc';
-  /** Market status filter: `active`, `finalized`, `ended`, `initialized`, or `closed` — @default 'active' */
-  status?: 'active' | 'finalized' | 'ended' | 'initialized' | 'closed';
-  /** Filter by Surf-curated category */
-  category?: 'crypto' | 'culture' | 'early_polymarket_trades' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports' | 'unknown';
-  /** Filter markets ending within this window from now: `24h`, `3d`, `7d`, `14d`, or `30d` */
-  end_before?: '24h' | '3d' | '7d' | '14d' | '30d';
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -1801,38 +1872,6 @@ export interface PolymarketRankingParams {
 }
 
 export interface PolymarketTradesItem {
-  /** Trade amount in USD */
-  amount_usd: number;
-  /** Block number */
-  block_number: number;
-  /** Trade Unix timestamp in seconds */
-  block_time: number;
-  /** Market condition identifier */
-  condition_id: string;
-  /** Event log index */
-  evt_index: number;
-  /** Exchange contract address */
-  exchange_address: string;
-  /** Fee amount in USD */
-  fee_usd: number;
-  /** Maker wallet address */
-  maker_address: string;
-  /** Whether this is a negative risk trade */
-  neg_risk: boolean;
-  /** Outcome label such as `Yes` or `No` */
-  outcome_label: string;
-  /** Outcome token identifier */
-  outcome_token_id: string;
-  /** Trade price (0-1) */
-  price: number;
-  /** Market question text */
-  question: string;
-  /** Number of shares traded */
-  shares: number;
-  /** Taker wallet address */
-  taker_address: string;
-  /** Transaction hash */
-  tx_hash: string;
 }
 
 export interface PolymarketTradesParams {
@@ -1840,6 +1879,8 @@ export interface PolymarketTradesParams {
   condition_id?: string;
   /** Wallet address — returns trades where the address is maker or taker */
   address?: string;
+  /** Filter by activity type: `trade` (default, spot trades only), `redemption` (splits/merges/redemptions), or `all` (all activity). Use `redemption` or `all` to get non-trade wallet activity; `address` is required for these types. — @default 'trade' */
+  type?: 'trade' | 'redemption' | 'all';
   /** Filter by outcome label: `Yes` or `No` */
   outcome_label?: 'Yes' | 'No';
   /** Minimum trade amount in USD */
@@ -1856,9 +1897,25 @@ export interface PolymarketTradesParams {
   offset?: number;
 }
 
+export interface PolymarketVolumeSplitItem {
+}
+
+export interface PolymarketVolumeSplitParams {
+  /** Time granularity for volume aggregation — @default 'hour' */
+  granularity?: 'hour' | 'day' | 'week';
+  /** Start time (Unix seconds). 0 means no lower bound. */
+  start_time?: number;
+  /** End time (Unix seconds). 0 means current time. */
+  end_time?: number;
+}
+
 export interface PolymarketVolumesItem {
+  /** Buy-side volume (USD), available when using granularity param */
+  buy_volume?: number;
   /** Notional trading volume in USD */
   notional_volume_usd: number;
+  /** Sell-side volume (USD), available when using granularity param */
+  sell_volume?: number;
   /** Interval start Unix timestamp in seconds */
   timestamp: number;
   /** Number of trades */
@@ -1866,12 +1923,20 @@ export interface PolymarketVolumesItem {
 }
 
 export interface PolymarketVolumesParams {
-  /** Market condition identifier */
-  condition_id: string;
+  /** Market condition identifier (required if token_id not provided) */
+  condition_id?: string;
+  /** Token ID (alternative identifier, resolved to condition_id internally) */
+  token_id?: string;
   /** Predefined time range — @default '30d' */
   time_range?: '7d' | '30d' | '90d' | '180d' | '1y';
   /** Aggregation interval: `1h` (hourly) or `1d` (daily) — @default '1d' */
   interval?: '1h' | '1d';
+  /** Aggregation granularity (alternative to interval). When provided, queries daily table with buy/sell volume breakdown. */
+  granularity?: 'day' | 'week' | 'month' | 'year' | 'all';
+  /** Start time as Unix seconds (alternative to time_range) */
+  start_time?: number;
+  /** End time as Unix seconds (alternative to time_range) */
+  end_time?: number;
 }
 
 export interface ProjectDefiMetricsItem {
@@ -2483,6 +2548,68 @@ export interface SearchPolymarketParams {
   category?: 'crypto' | 'culture' | 'early_polymarket_trades' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports' | 'unknown';
   /** Market status filter: `active`, `finalized`, `ended`, `initialized`, or `closed` — @default 'active' */
   status?: 'active' | 'finalized' | 'ended' | 'initialized' | 'closed';
+  /** Results per page — @default '20' */
+  limit?: number;
+  /** Pagination offset — @default '0' */
+  offset?: number;
+}
+
+export interface SearchPredictionMarketItem {
+  /** Surf-curated category */
+  category: string;
+  /** Polymarket condition ID */
+  condition_id?: string;
+  /** Days until market end date */
+  days_to_resolution?: number;
+  /** YES-side probability (0-1) from realtime price store */
+  latest_price?: number;
+  /** Direct link to market */
+  market_link?: string;
+  /** Kalshi market ticker */
+  market_ticker?: string;
+  /** Matching market ID on the other platform */
+  matched_counterpart?: string;
+  /** Current open interest (USD) */
+  open_interest_usd: number;
+  /** polymarket or kalshi */
+  platform: string;
+  /** Market question text */
+  question: string;
+  /** BULLISH, BEARISH, or NEUTRAL (Polymarket only) */
+  smart_money_direction?: string;
+  /** Market status */
+  status: string;
+  /** Surf-curated subcategory */
+  subcategory?: string;
+  /** Number of trades last 7 days */
+  trade_count_7d: number;
+  /** Notional volume last 24h (USD) */
+  volume_1d: number;
+  /** Notional volume last 30 days (USD) */
+  volume_30d: number;
+  /** Notional volume last 7 days (USD) */
+  volume_7d: number;
+}
+
+export interface SearchPredictionMarketParams {
+  /** Polymarket condition ID for single-market lookup */
+  condition_id?: string;
+  /** Kalshi market ticker for single-market lookup */
+  market_ticker?: string;
+  /** Filter by platform (omit for both) */
+  platform?: 'polymarket' | 'kalshi';
+  /** Filter by Surf-curated category */
+  category?: 'crypto' | 'culture' | 'economics' | 'financials' | 'politics' | 'stem' | 'sports';
+  /** Market status filter — @default 'active' */
+  status?: 'active' | 'closed' | 'finalized';
+  /** Sort field — @default 'volume_7d' */
+  sort_by?: 'volume_1d' | 'volume_7d' | 'volume_30d' | 'open_interest' | 'trade_count_7d' | 'days_to_resolution';
+  /** Sort direction — @default 'desc' */
+  order?: 'asc' | 'desc';
+  /** Filter by smart money direction (Polymarket only) */
+  smart_money?: 'bullish' | 'bearish';
+  /** Search markets by keyword in question/title */
+  q?: string;
   /** Results per page — @default '20' */
   limit?: number;
   /** Pagination offset — @default '0' */
@@ -3630,73 +3757,5 @@ export interface WebFetchParams {
   wait_for_selector?: string;
   /** Request timeout in milliseconds — @default '30000' */
   timeout?: number;
-}
-
-export interface V2KalshiOrderbooksItem {
-}
-
-export interface V2KalshiOrderbooksParams {
-  /** Kalshi market ticker */
-  ticker: string;
-  /** Start time in Unix milliseconds. 0 means 7 days ago. */
-  start_time?: number;
-  /** End time in Unix milliseconds. 0 means current time. */
-  end_time?: number;
-  /** Maximum number of snapshots to return — @default '100' */
-  limit?: number;
-  /** Base64 cursor for pagination */
-  pagination_key?: string;
-}
-
-export interface V2PolymarketCandlesticksItem {
-}
-
-export interface V2PolymarketCandlesticksParams {
-  /** Start time (Unix seconds). 0 means no lower bound. */
-  start_time?: number;
-  /** End time (Unix seconds). 0 means current time. */
-  end_time?: number;
-  /** Candle interval in minutes: 1=1min, 60=1hour, 1440=1day — @default '60' */
-  interval?: number;
-}
-
-export interface V2PolymarketVolumeTimeseriesItem {
-}
-
-export interface V2PolymarketVolumeTimeseriesParams {
-  /** Time granularity for aggregation — @default 'day' */
-  granularity?: 'day' | 'week' | 'month' | 'year' | 'all';
-  /** Start time (Unix seconds). 0 means no lower bound. */
-  start_time?: number;
-  /** End time (Unix seconds). 0 means current time. */
-  end_time?: number;
-}
-
-export interface V2PolymarketOrderbooksItem {
-}
-
-export interface V2PolymarketOrderbooksParams {
-  /** Token identifier */
-  token_id: string;
-  /** Start time in Unix milliseconds. 0 means 7 days ago. */
-  start_time?: number;
-  /** End time in Unix milliseconds. 0 means current time. */
-  end_time?: number;
-  /** Maximum number of snapshots to return — @default '100' */
-  limit?: number;
-  /** Base64 cursor for pagination */
-  pagination_key?: string;
-}
-
-export interface V2PolymarketVolumeChartItem {
-}
-
-export interface V2PolymarketVolumeChartParams {
-  /** Time granularity for volume aggregation — @default 'hour' */
-  granularity?: 'hour' | 'day' | 'week';
-  /** Start time (Unix seconds). 0 means no lower bound. */
-  start_time?: number;
-  /** End time (Unix seconds). 0 means current time. */
-  end_time?: number;
 }
 

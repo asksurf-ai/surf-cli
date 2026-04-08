@@ -24,7 +24,7 @@ export const exchange = {
   markets: (params?: ExchangeMarketsParams): Promise<ApiResponse<ExchangeMarketsItem>> =>
     get('exchange/markets', params as any),
 
-  /** Returns a combined snapshot of perpetual contract data for a pair. **Available fields** (via `fields`): - `funding` — current funding rate, next settlement, mark/index price - `oi` — open interest in contracts and USD Just pass the base pair (e.g. `pair=BTC/USDT`). The `:USDT` swap suffix is added automatically. */
+  /** Returns a perpetual futures snapshot for a trading pair: funding rate, open interest, mark/index price. **Available fields** (via `fields`): - `funding` — current funding rate, next settlement, mark/index price - `oi` — open interest in contracts and USD Just pass the base pair (e.g. `pair=BTC/USDT`). The `:USDT` swap suffix is added automatically. */
   perp: (params: ExchangePerpParams): Promise<ApiObjectResponse<ExchangePerpData>> =>
     get('exchange/perp', params as any),
 

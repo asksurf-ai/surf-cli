@@ -4,15 +4,15 @@ import { get, post } from '../client';
 import type { ApiObjectResponse, ApiResponse, ProjectDefiMetricsItem, ProjectDefiMetricsParams, ProjectDefiRankingItem, ProjectDefiRankingParams, ProjectDetailData, ProjectDetailParams } from '../types';
 
 export const project = {
-  /** Returns time-series DeFi metrics for a project. **Available metrics:** `volume`, `fee`, `fees`, `revenue`, `tvl`, `users`. **Lookup:** by UUID (`id`) or name (`q`). Filter by `chain` and date range (`from`/`to`). Returns 404 if the project is not found. **Note:** this endpoint only returns data for DeFi protocol projects (e.g. `aave`, `uniswap`, `lido`, `makerdao`). Use `q` with a DeFi protocol name. */
+  /** Returns historical time-series for a single DeFi protocol metric (e.g. daily TVL). Each data point has a Unix timestamp and value. **Available metrics:** `volume`, `fee`, `fees`, `revenue`, `tvl`, `users`. **Lookup:** by UUID (`id`) or name (`q`). Filter by `chain` and date range (`from`/`to`). Returns 404 if the project is not found. **Note:** this endpoint only returns data for DeFi protocol projects (e.g. `aave`, `uniswap`, `lido`, `makerdao`). Use `q` with a DeFi protocol name. */
   defi_metrics: (params: ProjectDefiMetricsParams): Promise<ApiResponse<ProjectDefiMetricsItem>> =>
     get('project/defi/metrics', params as any),
 
-  /** Returns top DeFi projects ranked by a protocol metric. **Available metrics:** `tvl`, `revenue`, `fees`, `volume`, `users`. */
+  /** Returns a DeFi protocol leaderboard (e.g. Aave, Uniswap, Lido) ranked by TVL, fees, revenue, or users. For individual pool/vault yields, use `onchain-yield-ranking` instead. **Available metrics:** `tvl`, `revenue`, `fees`, `volume`, `users`. */
   defi_ranking: (params: ProjectDefiRankingParams): Promise<ApiResponse<ProjectDefiRankingItem>> =>
     get('project/defi/ranking', params as any),
 
-  /** Returns multiple project sub-resources in a single request. **Available fields** (via `fields`): `overview`, `token_info`, `tokenomics`, `funding`, `team`, `contracts`, `social`, `tge_status`. **Lookup:** accepts project names directly via `q` (e.g. `?q=aave`) — no need to call `/search/project` first. Also accepts UUID via `id`. Returns 404 if not found. For DeFi metrics (TVL, fees, revenue, volume, users) and per-chain breakdown, use `/project/defi/metrics`. */
+  /** Returns a crypto project's profile with selectable sub-resources: overview (description, chains, exchanges), token_info (price, market cap, supply), tokenomics, funding, team, contracts, social, tge_status. **Available fields** (via `fields`): `overview`, `token_info`, `tokenomics`, `funding`, `team`, `contracts`, `social`, `tge_status`. **Lookup:** accepts project names directly via `q` (e.g. `?q=aave`) — no need to call `/search/project` first. Also accepts UUID via `id`. Returns 404 if not found. For DeFi metrics (TVL, fees, revenue, volume, users) and per-chain breakdown, use `/project/defi/metrics`. */
   detail: (params?: ProjectDetailParams): Promise<ApiObjectResponse<ProjectDetailData>> =>
     get('project/detail', params as any),
 
