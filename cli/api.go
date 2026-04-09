@@ -73,7 +73,7 @@ func setupRootFromAPI(root *cobra.Command, api *API) {
 			group := &cobra.Group{ID: op.Group, Title: groupName}
 			root.AddGroup(group)
 		}
-		root.AddCommand(op.command())
+		root.AddCommand(op.Command())
 	}
 }
 

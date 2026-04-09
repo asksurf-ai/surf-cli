@@ -110,23 +110,17 @@ func main() {
 		}
 	}
 
-	// Populate "Available API Commands" in help from cached API spec.
-	// These are lightweight stubs for display only — real execution goes
-	// through the "surf" subcommand via shouldInjectAPIName().
+	// Populate "Available API Commands" from cached API spec as full
+	// operation commands (with flags, Long description, etc.). These are
+	// used when --help/-h skips injection, and also for Root help display.
 	if api := cli.LoadCachedAPI("surf"); api != nil {
 		for _, op := range api.Operations {
 			if op.Hidden {
 				continue
 			}
-			cli.Root.AddCommand(&cobra.Command{
-				Use:     op.Name,
-				GroupID: "api",
-				Short:   op.Short,
-				Aliases: op.Aliases,
-				Run: func(cmd *cobra.Command, args []string) {
-					cmd.Help()
-				},
-			})
+			cmd := op.Command()
+			cmd.GroupID = "api"
+			cli.Root.AddCommand(cmd)
 		}
 	}
 
@@ -146,16 +140,17 @@ func main() {
 }
 
 // shouldInjectAPIName returns true if os.Args represents an API operation
-// that needs execution (not a local command, not help-only).
-// When --help / -h is present, we skip injection so Cobra routes to the
-// lightweight stub on Root, avoiding "surf surf <cmd>" in usage output.
+// (not a local command like auth/help/completion).
+// When --help / -h is present, skip injection so Cobra routes to the
+// full operation command on Root (which now has complete flags and
+// descriptions from the cached API spec).
 func shouldInjectAPIName() bool {
 	local := map[string]bool{
 		"auth": true, "sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
 		"list-operations": true,
 	}
-	// If --help or -h appears anywhere, don't inject — let the stub handle it.
+	// If --help or -h appears anywhere, don't inject.
 	for _, arg := range os.Args[1:] {
 		if arg == "--help" || arg == "-h" {
 			return false
@@ -416,7 +411,7 @@ func formatParams(op cli.Operation) string {
 		names = append(names, "<"+p.Name+">")
 	}
 	for _, p := range op.QueryParams {
-		names = append(names, "--"+p.Name)
+		names = append(names, "--"+p.OptionName())
 	}
 	if len(names) == 0 {
 		return ""

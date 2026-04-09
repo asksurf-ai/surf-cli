@@ -86,7 +86,7 @@ func TestOperation(t *testing.T) {
 		},
 	}
 
-	cmd := op.command()
+	cmd := op.Command()
 
 	viper.Reset()
 	viper.Set("nocolor", true)
@@ -127,7 +127,7 @@ func TestOperationSnakeCaseFlag(t *testing.T) {
 		},
 	}
 
-	cmd := op.command()
+	cmd := op.Command()
 
 	viper.Reset()
 	viper.Set("nocolor", true)
@@ -181,7 +181,10 @@ func TestOperationSnakeCaseFlagWarningOnce(t *testing.T) {
 	}
 
 	reset(false)
-	cmd := op.command()
+	// Reset warning deduplication so this test sees fresh warnings.
+	warnedFlags = map[string]bool{}
+
+	cmd := op.Command()
 	Root.AddCommand(cmd)
 	defer Root.RemoveCommand(cmd)
 
@@ -239,7 +242,7 @@ func TestOperationMissingRequiredFlag(t *testing.T) {
 		},
 	}
 
-	cmd := op.command()
+	cmd := op.Command()
 
 	viper.Reset()
 	viper.Set("nocolor", true)
@@ -279,7 +282,7 @@ func TestOperationRequiredFlagProvided(t *testing.T) {
 		},
 	}
 
-	cmd := op.command()
+	cmd := op.Command()
 
 	viper.Reset()
 	viper.Set("nocolor", true)

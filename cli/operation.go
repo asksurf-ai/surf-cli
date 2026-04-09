@@ -33,8 +33,8 @@ type Operation struct {
 	Deprecated    string   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 }
 
-// command returns a Cobra command instance for this operation.
-func (o Operation) command() *cobra.Command {
+// Command returns a Cobra command instance for this operation.
+func (o Operation) Command() *cobra.Command {
 	flags := map[string]any{}
 
 	use := slug.Make(o.Name)
@@ -176,13 +176,20 @@ func (o Operation) command() *cobra.Command {
 	return sub
 }
 
+// warnedFlags tracks which snake_case flags have already printed a warning
+// to avoid duplicate messages (pflag calls NormalizeFunc multiple times).
+var warnedFlags = map[string]bool{}
+
 // NormalizeSnakeCaseFlags converts underscore-separated flag names to
-// kebab-case and prints a deprecation warning to stderr. This allows
-// --time_range to work as an alias for --time-range.
+// kebab-case and prints a deprecation warning to stderr (once per flag).
+// This allows --time_range to work as an alias for --time-range.
 func NormalizeSnakeCaseFlags(f *pflag.FlagSet, name string) pflag.NormalizedName {
 	if strings.Contains(name, "_") {
 		canonical := strings.ReplaceAll(name, "_", "-")
-		fmt.Fprintf(os.Stderr, "Warning: flag --%s is deprecated, use --%s instead\n", name, canonical)
+		if !warnedFlags[name] {
+			warnedFlags[name] = true
+			fmt.Fprintf(os.Stderr, "Warning: flag --%s is deprecated, use --%s instead\n", name, canonical)
+		}
 		return pflag.NormalizedName(canonical)
 	}
 	return pflag.NormalizedName(name)
