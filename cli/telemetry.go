@@ -24,7 +24,7 @@ type sessionData struct {
 	UpdatedAt int64  `json:"updated_at"`
 }
 
-var userKeyPattern = regexp.MustCompile(`^\d+\w*$`)
+var userKeyPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // isUserKey returns true if the Authorization header contains a user API key
 // (sk- followed by hex/digits, not sk-deploy-* or sk-sees-*).

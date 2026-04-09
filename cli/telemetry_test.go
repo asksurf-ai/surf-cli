@@ -17,10 +17,11 @@ func TestIsUserKey(t *testing.T) {
 		header string
 		want   bool
 	}{
-		{"Bearer sk-719bc951719243fa27263b46dd56b777", true},
-		{"Bearer sk-12345", true},
-		{"Bearer sk-deploy-134124", false},
-		{"Bearer sk-sees-abc123", false},
+		{"Bearer sk-719bc951719243fa27263b46dd56b777364a96c9b909a6116918b8057d962203", true},
+		{"Bearer sk-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", true},
+		{"Bearer sk-12345", false},
+		{"Bearer sk_sess_719bc951719243fa27263b46dd56b777364a96c9b909a6116918b8057d962203", false},
+		{"Bearer sk_deploy_719bc951719243fa27263b46dd56b777364a96c9b909a6116918b8057d962203", false},
 		{"Bearer sk-", false},
 		{"Bearer other-token", false},
 		{"", false},
@@ -105,7 +106,7 @@ func TestSetTelemetryHeaders_UserKey(t *testing.T) {
 	currentCommand = "market-price"
 
 	req, _ := http.NewRequest(http.MethodGet, "http://example.com/test", nil)
-	req.Header.Set("Authorization", "Bearer sk-12345")
+	req.Header.Set("Authorization", "Bearer sk-719bc951719243fa27263b46dd56b777364a96c9b909a6116918b8057d962203")
 	setTelemetryHeaders(req)
 
 	assert.NotEmpty(t, req.Header.Get("X-Surf-CLI-Version"))
