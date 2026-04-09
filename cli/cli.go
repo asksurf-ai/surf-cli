@@ -866,9 +866,10 @@ func Run() (returnErr error) {
 }
 
 // GetExitCode returns the exit code to use based on the last HTTP status code.
+// All non-2xx responses return exit code 4, aligned with SKILL.md conventions.
 func GetExitCode() int {
 	if s := GetLastStatus() / 100; s > 2 && !viper.GetBool("rsh-ignore-status-code") {
-		return s
+		return 4
 	}
 
 	return 0

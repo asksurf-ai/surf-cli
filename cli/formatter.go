@@ -629,6 +629,14 @@ func (f *DefaultFormatter) Format(resp Response) error {
 		} else {
 			data, err = f.filterData(filter, data.(map[string]any))
 			if err != nil || data == nil {
+				// On error responses, the filter path (e.g. body.data) usually
+				// doesn't exist. Write the full error body to stderr so agents
+				// and scripts can see the error instead of getting silent empty output.
+				if data == nil && resp.Status >= 400 {
+					if errBody, e := MarshalShort("json", true, resp.Body); e == nil {
+						fmt.Fprintf(Stderr, "%s\n", errBody)
+					}
+				}
 				return err
 			}
 		}

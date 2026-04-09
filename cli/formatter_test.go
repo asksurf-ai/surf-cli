@@ -199,6 +199,94 @@ var formatterTests = []struct {
 	},
 }
 
+// TestFilterFallthroughOnError verifies that when -f body.data is applied to
+// a non-2xx response (which has no "data" field), the error body is written
+// to stderr instead of being silently swallowed.
+func TestFilterFallthroughOnError(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(false, false)
+
+	stdoutBuf := &bytes.Buffer{}
+	stderrBuf := &bytes.Buffer{}
+	Stdout = stdoutBuf
+	Stderr = stderrBuf
+
+	viper.Set("rsh-output-format", "json")
+	viper.Set("rsh-filter", "body.data")
+
+	errorBody := map[string]any{
+		"error": map[string]any{
+			"code":    "BAD_GATEWAY",
+			"message": "upstream unavailable",
+		},
+	}
+	err := formatter.Format(Response{
+		Status:  502,
+		Headers: map[string]string{"Content-Type": "application/json"},
+		Body:    errorBody,
+	})
+
+	// Format returns nil (no error from filterData itself), but stderr
+	// should have the error body JSON since filter didn't match on a non-2xx.
+	assert.NoError(t, err)
+	assert.Empty(t, stdoutBuf.String(), "stdout should be empty when filter doesn't match")
+
+	assert.Empty(t, stdoutBuf.String(), "stdout should be empty when filter doesn't match")
+	assert.Contains(t, stderrBuf.String(), "BAD_GATEWAY", "stderr should contain the error body")
+	assert.Contains(t, stderrBuf.String(), "upstream unavailable")
+}
+
+// TestFilterFallthroughOnlyOnError verifies that the stderr fallthrough does
+// NOT happen on 2xx responses where the filter path is simply missing.
+func TestFilterFallthroughOnlyOnError(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(false, false)
+
+	stdoutBuf := &bytes.Buffer{}
+	stderrBuf := &bytes.Buffer{}
+	Stdout = stdoutBuf
+	Stderr = stderrBuf
+
+	viper.Set("rsh-output-format", "json")
+	viper.Set("rsh-filter", "body.nonexistent")
+
+	err := formatter.Format(Response{
+		Status: 200,
+		Body: map[string]any{
+			"data": []any{"hello"},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.Empty(t, stdoutBuf.String())
+	assert.Empty(t, stderrBuf.String(), "stderr should be empty on 2xx even if filter doesn't match")
+}
+
+// TestExitCodeUnified verifies that all non-2xx status codes produce exit 4.
+func TestExitCodeUnified(t *testing.T) {
+	tests := []struct {
+		status int
+		want   int
+	}{
+		{200, 0},
+		{201, 0},
+		{301, 4},
+		{400, 4},
+		{401, 4},
+		{404, 4},
+		{429, 4},
+		{500, 4},
+		{502, 4},
+		{503, 4},
+	}
+	for _, tt := range tests {
+		viper.Set("rsh-ignore-status-code", false)
+		lastStatus = tt.status
+		got := GetExitCode()
+		assert.Equal(t, tt.want, got, "status %d should exit %d", tt.status, tt.want)
+	}
+}
+
 func TestFormatter(t *testing.T) {
 	for _, input := range formatterTests {
 		t.Run(input.name, func(t *testing.T) {
