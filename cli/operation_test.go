@@ -146,19 +146,11 @@ func TestOperationSnakeCaseFlag(t *testing.T) {
 	assert.Contains(t, capture.String(), "ok")
 }
 
-// TestOperationSnakeCaseFlagWarningOnce verifies that the deprecation warning
-// for snake_case flag aliases is printed exactly once per command invocation,
-// even when the command is dispatched through Root.Execute() (which is what
-// happens for real users). Previously the normalize function ran multiple
-// times during cobra's parsing pipeline, producing duplicate warnings like:
-//
-//	$ surf social-ranking --time_range 24h
-//	Warning: flag --time_range is deprecated, use --time-range instead
-//	Warning: flag --time_range is deprecated, use --time-range instead
-//	Warning: flag --time_range is deprecated, use --time-range instead
-//	Warning: flag --time_range is deprecated, use --time-range instead
-//	Warning: flag --time_range is deprecated, use --time-range instead
-func TestOperationSnakeCaseFlagWarningOnce(t *testing.T) {
+// TestOperationSnakeCaseFlagSilent verifies that snake_case flags are
+// accepted silently — no deprecation warnings on stderr. Warnings were
+// removed because pflag calls NormalizeFunc during flag registration,
+// producing hundreds of false warnings at startup (217 lines in one batch).
+func TestOperationSnakeCaseFlagSilent(t *testing.T) {
 	defer gock.Off()
 
 	gock.
@@ -181,22 +173,16 @@ func TestOperationSnakeCaseFlagWarningOnce(t *testing.T) {
 	}
 
 	reset(false)
-	// Reset warning deduplication so this test sees fresh warnings.
-	warnedFlags = map[string]bool{}
-
 	cmd := op.Command()
 	Root.AddCommand(cmd)
 	defer Root.RemoveCommand(cmd)
 
-	// Capture stdout/err for the response body and any cobra-side output.
 	capture := &strings.Builder{}
 	Stdout = capture
 	Stderr = capture
 	Root.SetOut(capture)
 	Root.SetErr(capture)
 
-	// NormalizeSnakeCaseFlags writes to os.Stderr directly, so redirect the
-	// real file descriptor through a pipe to capture its output.
 	origStderr := os.Stderr
 	r, w, err := os.Pipe()
 	assert.NoError(t, err)
@@ -212,16 +198,12 @@ func TestOperationSnakeCaseFlagWarningOnce(t *testing.T) {
 	Root.SetArgs([]string{"social-ranking", "--time_range", "24h"})
 	err = Root.Execute()
 
-	// Close writer so the reader goroutine returns.
 	w.Close()
 	stderrOut := <-done
 
 	assert.NoError(t, err)
-
-	count := strings.Count(stderrOut, "is deprecated")
-	assert.Equal(t, 1, count,
-		"expected exactly one deprecation warning per invocation, got %d. Stderr:\n%s",
-		count, stderrOut)
+	assert.NotContains(t, stderrOut, "deprecated",
+		"normalize should be silent, got stderr:\n%s", stderrOut)
 }
 
 func TestOperationMissingRequiredFlag(t *testing.T) {

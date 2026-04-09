@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/gosimple/slug"
@@ -176,21 +175,13 @@ func (o Operation) Command() *cobra.Command {
 	return sub
 }
 
-// warnedFlags tracks which snake_case flags have already printed a warning
-// to avoid duplicate messages (pflag calls NormalizeFunc multiple times).
-var warnedFlags = map[string]bool{}
-
-// NormalizeSnakeCaseFlags converts underscore-separated flag names to
-// kebab-case and prints a deprecation warning to stderr (once per flag).
-// This allows --time_range to work as an alias for --time-range.
+// NormalizeSnakeCaseFlags silently converts underscore-separated flag names
+// to kebab-case. This allows --time_range to work as --time-range.
+// No warning is printed because pflag calls this function during flag
+// registration (not just user input), which would produce false warnings.
 func NormalizeSnakeCaseFlags(f *pflag.FlagSet, name string) pflag.NormalizedName {
 	if strings.Contains(name, "_") {
-		canonical := strings.ReplaceAll(name, "_", "-")
-		if !warnedFlags[name] {
-			warnedFlags[name] = true
-			fmt.Fprintf(os.Stderr, "Warning: flag --%s is deprecated, use --%s instead\n", name, canonical)
-		}
-		return pflag.NormalizedName(canonical)
+		return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
 	}
 	return pflag.NormalizedName(name)
 }
