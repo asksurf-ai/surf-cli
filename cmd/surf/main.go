@@ -106,6 +106,17 @@ func main() {
 			// Suppress Cobra's hardcoded error hint that includes CommandPath().
 			// Errors are still printed by cli.Run()'s error handling.
 			cmd.SilenceErrors = true
+			cmd.SilenceUsage = true
+
+			// Catch unknown commands that fall through to the API subcommand.
+			// Without this, `surf nonexistent` shows the API subcommand's
+			// full help (with "surf surf" in it) instead of an error.
+			cmd.RunE = func(c *cobra.Command, args []string) error {
+				if len(args) > 0 {
+					return fmt.Errorf("unknown command %q\nRun 'surf --help' for usage", args[0])
+				}
+				return c.Help()
+			}
 			break
 		}
 	}

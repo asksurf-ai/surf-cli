@@ -39,6 +39,7 @@ func TestNoDoubleSurfInUsage(t *testing.T) {
 		{"root help", []string{"--help"}},
 		{"operation help", []string{"market-price", "--help"}},
 		{"flag error", []string{"market-price", "--bogus"}},
+		{"unknown command", []string{"nonexistent-command"}},
 	}
 
 	for _, tt := range tests {
@@ -51,6 +52,26 @@ func TestNoDoubleSurfInUsage(t *testing.T) {
 				t.Errorf("found 'surf surf' in output:\n%s", output)
 			}
 		})
+	}
+}
+
+// TestUnknownCommandShowsError verifies that an unknown command prints a
+// clean error message instead of dumping the API subcommand's help.
+func TestUnknownCommandShowsError(t *testing.T) {
+	bin := buildSurfBin(t)
+
+	cmd := exec.Command(bin, "nonexistent-command")
+	out, err := cmd.CombinedOutput()
+	output := string(out)
+
+	if err == nil {
+		t.Fatal("expected non-zero exit code for unknown command")
+	}
+	if !strings.Contains(output, `unknown command "nonexistent-command"`) {
+		t.Errorf("expected unknown command error, got:\n%s", output)
+	}
+	if strings.Contains(output, "surf surf") {
+		t.Errorf("found 'surf surf' in unknown command output:\n%s", output)
 	}
 }
 
