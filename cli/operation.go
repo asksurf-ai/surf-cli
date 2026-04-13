@@ -46,7 +46,7 @@ func (o Operation) Command() *cobra.Command {
 		argSpec = cobra.MinimumNArgs(len(o.PathParams))
 	}
 
-	long := o.Long
+	long := stripSchemaBlocks(o.Long)
 
 	examples := ""
 	for _, ex := range o.Examples {

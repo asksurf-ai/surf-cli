@@ -91,27 +91,31 @@ func TestUnknownCommandShowsError(t *testing.T) {
 //	  -h, --help   help for kalshi-markets
 //
 // Help output for an API operation must include its parameter flags and
-// at least part of the rich description (option schema, response schema,
-// or input example) sourced from the cached OpenAPI spec.
+// the prose description sourced from the cached OpenAPI spec. We assert
+// on a distinctive phrase from each operation's prose rather than on
+// auto-generated section headers like `## Option Schema` — those are
+// stripped by stripSchemaBlocks (see cli/schema_strip.go and review #5).
 func TestOperationHelpShowsParametersAndDescription(t *testing.T) {
 	bin := buildSurfBin(t)
 
-	// Each case picks a real operation with a query parameter and a
-	// known section header from the rendered Long description.
 	cases := []struct {
-		op       string
-		wantFlag string // parameter flag that must appear in help
+		op         string
+		wantFlag   string // parameter flag that must appear in help
+		wantProse  string // distinctive prose phrase proving Long description was rendered
+		dontAppear string // auto-generated heading that must NOT appear (stripped)
 	}{
-		{"kalshi-markets", "--limit"},
-		{"market-price", "--symbol"},
-	}
-
-	// At least one of these section headers must appear in the help
-	// output to prove the rich Long description was rendered.
-	wantSectionAny := []string{
-		"Option Schema",
-		"Response",
-		"Input Example",
+		{
+			op:         "kalshi-markets",
+			wantFlag:   "--limit",
+			wantProse:  "Returns Kalshi markets",
+			dontAppear: "## Option Schema",
+		},
+		{
+			op:         "market-price",
+			wantFlag:   "--symbol",
+			wantProse:  "Returns historical price data points",
+			dontAppear: "## Response 200",
+		},
 	}
 
 	for _, tc := range cases {
@@ -127,15 +131,12 @@ func TestOperationHelpShowsParametersAndDescription(t *testing.T) {
 				t.Errorf("%s -h is missing parameter flag %q — stub command did not inherit operation flags:\n%s", tc.op, tc.wantFlag, output)
 			}
 
-			foundSection := false
-			for _, s := range wantSectionAny {
-				if strings.Contains(output, s) {
-					foundSection = true
-					break
-				}
+			if !strings.Contains(output, tc.wantProse) {
+				t.Errorf("%s -h is missing prose %q — stub command did not inherit Long description:\n%s", tc.op, tc.wantProse, output)
 			}
-			if !foundSection {
-				t.Errorf("%s -h is missing any of %v — stub command did not inherit Long description:\n%s", tc.op, wantSectionAny, output)
+
+			if strings.Contains(output, tc.dontAppear) {
+				t.Errorf("%s -h should not contain %q after schema stripping:\n%s", tc.op, tc.dontAppear, output)
 			}
 		})
 	}

@@ -251,7 +251,7 @@ $ surf market-price --symbol BTC --json | jq '
     else .data end'
 ```
 
-### 5. Operation help 包含 OpenAPI schema 重复
+### 5. Operation help 包含 OpenAPI schema 重复 — [#71](https://github.com/cyberconnecthq/surf-cli/pull/71)
 
 **现状**：`surf market-price --help` 输出 68 行，前面有大段 `## Option Schema` 代码块跟 Cobra 自动生成的 `Flags:` 段完全重复。实测输出里有 1 个 `## Option Schema` + 2 个 `## Response` block。Agent context 里有两份 flag 定义，浪费 token。
 
@@ -1270,7 +1270,7 @@ P0 的 #1 #3 + P1 的 #4 可以打包成一个 "error routing & JSON flag" PR。
 - [ ] #2 SKILL.md API error stdout 同步
 - [x] #3 网络错误 exit code — [PR #70](https://github.com/cyberconnecthq/surf-cli/pull/70)
 - [x] #4 Error envelope 统一 code 枚举 — [PR #70](https://github.com/cyberconnecthq/surf-cli/pull/70)
-- [ ] #5 Strip schema blocks
+- [x] #5 Strip schema blocks — [PR #71](https://github.com/cyberconnecthq/surf-cli/pull/71)
 - [ ] #6 Minimal default fields
 - [ ] #7 Content truncation
 - [ ] #8 Typo suggestion
