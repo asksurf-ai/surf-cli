@@ -561,10 +561,24 @@ func GetParsedResponse(req *http.Request, options ...requestOption) (Response, e
 
 // MakeRequestAndFormat is a convenience function for calling `GetParsedResponse`
 // and then calling the default formatter's `Format` function with the parsed
-// response. Panics on error.
+// response. Panics on unexpected errors; known transport-layer errors
+// (network failure, local timeout, TLS failure, etc.) are instead
+// synthesized into a structured error envelope on stdout and exit 4,
+// so agents can branch on `error.code` the same way they handle API errors.
 func MakeRequestAndFormat(req *http.Request) {
 	parsed, err := GetParsedResponse(req)
 	if err != nil {
+		if code, msg, ok := classifyTransportError(err); ok {
+			// Synthesize a response so the normal formatter path emits a
+			// JSON envelope to stdout. Setting lastStatus to 599 causes
+			// GetExitCode to return 4, matching the §4.1 contract.
+			synthetic := newTransportErrorResponse(code, msg)
+			lastStatus = synthetic.Status
+			if fmtErr := Formatter.Format(synthetic); fmtErr != nil {
+				panic(fmtErr)
+			}
+			return
+		}
 		panic(err)
 	}
 

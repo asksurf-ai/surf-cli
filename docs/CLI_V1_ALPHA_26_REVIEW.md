@@ -26,7 +26,7 @@
 
 ## P0 (critical)
 
-### 1. `--json` flag 在 operation 命令上不可用
+### 1. `--json` flag 在 operation 命令上不可用 — [#69](https://github.com/cyberconnecthq/surf-cli/pull/69)
 
 **现状**：`surf catalog list --json` 工作，但 `surf market-price --json` 报 `unknown flag: --json` + exit 1。agent 学了 `catalog --json` 的用法后在 operation 上踩坑。
 
@@ -117,7 +117,7 @@ $ echo $?
 4
 ```
 
-### 3. 网络错误的 exit code 错了
+### 3. 网络错误的 exit code 错了 — [#70](https://github.com/cyberconnecthq/surf-cli/pull/70)
 
 **现状**：连不上 gateway（DNS 失败、TCP refused、CLI 内部 timeout、TLS 握手失败等）当前返回 exit 1 + stderr 打一行 `ERROR: Caught error: ...` + stdout 空。Agent 看到 exit 1 以为是自己 invocation 出错，不会 retry。
 
@@ -196,7 +196,7 @@ $ echo $?
 
 ## P1 (high)
 
-### 4. Error envelope 统一 code 枚举
+### 4. Error envelope 统一 code 枚举 — [#70](https://github.com/cyberconnecthq/surf-cli/pull/70)
 
 **现状**：后端 API error envelope 的 `error.code` 枚举是稳定的（`UNAUTHORIZED`、`INSUFFICIENT_CREDIT`、`RATE_LIMITED`、`INVALID_REQUEST`、`NOT_FOUND`、`BAD_GATEWAY`），但 CLI 自己合成的 error envelope（network error、本地 timeout 等）没有对应的 code。
 
@@ -1266,10 +1266,10 @@ P0 的 #1 #3 + P1 的 #4 可以打包成一个 "error routing & JSON flag" PR。
 
 在这份文档里用 checkbox 标进度，每个 PR 合并后把对应项打勾：
 
-- [ ] #1 `--json` flag 一致性
+- [x] #1 `--json` flag 一致性 — [PR #69](https://github.com/cyberconnecthq/surf-cli/pull/69)
 - [ ] #2 SKILL.md API error stdout 同步
-- [ ] #3 网络错误 exit code
-- [ ] #4 Error envelope 统一 code 枚举
+- [x] #3 网络错误 exit code — [PR #70](https://github.com/cyberconnecthq/surf-cli/pull/70)
+- [x] #4 Error envelope 统一 code 枚举 — [PR #70](https://github.com/cyberconnecthq/surf-cli/pull/70)
 - [ ] #5 Strip schema blocks
 - [ ] #6 Minimal default fields
 - [ ] #7 Content truncation
