@@ -79,6 +79,27 @@ func main() {
 		}
 	})
 
+	// Add --json as a visible shortcut for -o json. The flag is picked up
+	// in PersistentPreRun below and mapped to rsh-output-format=json.
+	// Catalog subcommands define their own local --json (for custom print
+	// paths) which shadows this persistent one — that's fine, both end up
+	// producing JSON output.
+	cli.Root.PersistentFlags().Bool("json", false, "Output result as JSON (alias for -o json)")
+
+	// Wrap the restish PersistentPreRun so we can honor --json before the
+	// command's Run executes. Cobra only runs the closest ancestor's
+	// PersistentPreRun, so overriding it on Root covers all subcommands
+	// that don't define their own.
+	origPreRun := cli.Root.PersistentPreRun
+	cli.Root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if origPreRun != nil {
+			origPreRun(cmd, args)
+		}
+		if j, err := cmd.Flags().GetBool("json"); err == nil && j {
+			viper.Set("rsh-output-format", "json")
+		}
+	}
+
 	// Remove restish generic commands we don't need.
 	removeCommands(cli.Root,
 		"head", "options", "get", "post", "put", "patch", "delete",
