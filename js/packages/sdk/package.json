@@ -28,7 +28,8 @@
     "express": "^4.22.0",
     "cors": "^2.8.5",
     "croner": "^9.0.0",
-    "drizzle-orm": "^0.44.0"
+    "drizzle-orm": "^0.44.0",
+    "drizzle-kit": "^0.31.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
