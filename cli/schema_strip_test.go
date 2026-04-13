@@ -43,7 +43,7 @@ func TestStripSchemaBlocks(t *testing.T) {
 			mustContain:    []string{"Returns historical price data."},
 		},
 		{
-			name: "strips response blocks",
+			name: "keeps response blocks (unique return-shape info)",
 			in: strings.Join([]string{
 				"Token price history.",
 				"",
@@ -63,8 +63,7 @@ func TestStripSchemaBlocks(t *testing.T) {
 				"{ error*: {...} }",
 				"```",
 			}, "\n"),
-			mustNotContain: []string{"Response 200", "Response default", "data*:", "error*:"},
-			mustContain:    []string{"Token price history."},
+			mustContain: []string{"Token price history.", "Response 200", "Response default", "data*:", "error*:"},
 		},
 		{
 			name: "strips argument schema",
@@ -82,7 +81,7 @@ func TestStripSchemaBlocks(t *testing.T) {
 			mustContain:    []string{"Get a single item."},
 		},
 		{
-			name: "keeps input example",
+			name: "keeps input example and response",
 			in: strings.Join([]string{
 				"Execute SQL.",
 				"",
@@ -97,11 +96,10 @@ func TestStripSchemaBlocks(t *testing.T) {
 				"{ data*: [...] }",
 				"```",
 			}, "\n"),
-			mustNotContain: []string{"Response 200", "data*:"},
-			mustContain:    []string{"Execute SQL.", "Input Example", `"sql": "SELECT 1"`},
+			mustContain: []string{"Execute SQL.", "Input Example", `"sql": "SELECT 1"`, "Response 200", "data*:"},
 		},
 		{
-			name: "keeps request schema (body fields not in Cobra Flags)",
+			name: "keeps request schema and response",
 			in: strings.Join([]string{
 				"Execute SQL.",
 				"",
@@ -118,8 +116,7 @@ func TestStripSchemaBlocks(t *testing.T) {
 				"{ data*: [...] }",
 				"```",
 			}, "\n"),
-			mustContain:    []string{"Request Schema", "sql*: (string) SQL query"},
-			mustNotContain: []string{"Response 200", "data*:"},
+			mustContain: []string{"Request Schema", "sql*: (string) SQL query", "Response 200", "data*:"},
 		},
 		{
 			name: "keeps user-authored sections",
@@ -145,7 +142,7 @@ func TestStripSchemaBlocks(t *testing.T) {
 			mustNotContain: []string{"Option Schema", "--sql: string"},
 		},
 		{
-			name: "interleaved sections — prose between schema blocks",
+			name: "interleaved sections — strips Option Schema, keeps Response",
 			in: strings.Join([]string{
 				"Op description.",
 				"",
@@ -162,8 +159,8 @@ func TestStripSchemaBlocks(t *testing.T) {
 				"{ data: [] }",
 				"```",
 			}, "\n"),
-			mustContain:    []string{"Op description.", "## Rules", "Must use --x."},
-			mustNotContain: []string{"Option Schema", "Response 200", "--x: string"},
+			mustContain:    []string{"Op description.", "## Rules", "Must use --x.", "Response 200", "{ data: [] }"},
+			mustNotContain: []string{"Option Schema", "--x: string"},
 		},
 		{
 			name: "code block containing a literal ## is not mistaken for a heading",
@@ -209,9 +206,9 @@ func TestIsDroppedSchemaHeading(t *testing.T) {
 		{"## Option Schema:", true},
 		{"## Option Schema", true},
 		{"## Argument Schema:", true},
-		{"## Response 200 (application/json)", true},
-		{"## Response default (application/json)", true},
-		{"## Responses 200/201 (application/json)", true},
+		{"## Response 200 (application/json)", false},  // kept — unique return-shape info
+		{"## Response default (application/json)", false}, // kept
+		{"## Responses 200/201 (application/json)", false}, // kept
 		{"## Request Schema (application/json)", false}, // kept
 		{"## Input Example", false},                     // kept
 		{"## Rules", false},

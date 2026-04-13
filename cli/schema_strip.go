@@ -2,22 +2,19 @@ package cli
 
 import "strings"
 
-// stripSchemaBlocks removes OpenAPI-schema sections from an operation's
-// long description. The OpenAPI loader (openapi/openapi.go) appends four
-// kinds of auto-generated schema blocks to op.Long:
+// stripSchemaBlocks removes auto-generated sections from an operation's
+// long description that duplicate information Cobra already renders.
 //
-//   - `## Argument Schema:`   — duplicates positional args in Cobra Usage
-//   - `## Option Schema:`     — duplicates Cobra's `Flags:` section
-//   - `## Response <code>`    — response schemas, not actionable from --help
-//   - `## Responses <codes>`  — merged response schemas, same as above
+// Stripped (redundant — Cobra shows the same info under Flags:/Usage):
+//   - `## Argument Schema:`   — duplicates positional args in Cobra Usage line
+//   - `## Option Schema:`     — duplicates Cobra's `Flags:` section exactly
 //
-// These waste agent context and (for Option Schema) are literally the
-// same information Cobra already renders under `Flags:`. We strip them.
-//
-// Kept:
-//   - User-authored prose (`## Rules`, `## Example`, `## Time range options`, ...)
-//   - `## Input Example`    — concrete example body, useful for body discovery
-//   - `## Request Schema`   — body field shapes not present in Cobra Flags
+// Kept (unique information not available elsewhere in --help):
+//   - `## Response <code>`    — response field names, types, required markers
+//   - `## Responses <codes>`  — merged response schemas
+//   - `## Input Example`      — concrete example body
+//   - `## Request Schema`     — body field shapes not in Cobra Flags
+//   - User-authored prose (`## Rules`, `## Example`, ...)
 //
 // See docs/CLI_DESIGN_PRINCIPLES.md §3.5 and
 // docs/CLI_V1_ALPHA_26_REVIEW.md item #5.
@@ -66,9 +63,7 @@ func isDroppedSchemaHeading(line string) bool {
 	h := strings.TrimSpace(strings.TrimPrefix(line, "## "))
 	switch {
 	case strings.HasPrefix(h, "Argument Schema"),
-		strings.HasPrefix(h, "Option Schema"),
-		strings.HasPrefix(h, "Response "),
-		strings.HasPrefix(h, "Responses "):
+		strings.HasPrefix(h, "Option Schema"):
 		return true
 	}
 	return false

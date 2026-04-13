@@ -114,7 +114,7 @@ func TestOperationHelpShowsParametersAndDescription(t *testing.T) {
 			op:         "market-price",
 			wantFlag:   "--symbol",
 			wantProse:  "Returns historical price data points",
-			dontAppear: "## Response 200",
+			dontAppear: "## Option Schema",
 		},
 	}
 
