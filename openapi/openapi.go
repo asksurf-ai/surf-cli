@@ -222,6 +222,39 @@ func getRequestInfo(op *v3.Operation) (string, *base.Schema, []any) {
 
 // paramSchema returns a rendered schema line for a given parameter, falling
 // back to the param type info if no schema is available.
+// appendSchemaHints appends enum values and min/max constraints to a
+// parameter description if the schema defines them and the description
+// doesn't already mention them. This makes --help show allowed values
+// (e.g. "one of: open_interest, funding_rate, volume_24h") and limits
+// (e.g. "max 100").
+func appendSchemaHints(desc string, s *base.Schema) string {
+	if len(s.Enum) > 0 {
+		vals := make([]string, 0, len(s.Enum))
+		for _, e := range s.Enum {
+			vals = append(vals, e.Value)
+		}
+		// Skip if the description already lists the first enum value
+		// (some specs embed enum info in the description text).
+		if !strings.Contains(desc, vals[0]) {
+			desc += " (one of: " + strings.Join(vals, ", ") + ")"
+		}
+	}
+	if s.Minimum != nil || s.Maximum != nil {
+		var parts []string
+		if s.Minimum != nil {
+			parts = append(parts, fmt.Sprintf("min %.0f", *s.Minimum))
+		}
+		if s.Maximum != nil {
+			parts = append(parts, fmt.Sprintf("max %.0f", *s.Maximum))
+		}
+		hint := strings.Join(parts, ", ")
+		if !strings.Contains(desc, hint) {
+			desc += " (" + hint + ")"
+		}
+	}
+	return desc
+}
+
 func paramSchema(p *cli.Param, s *base.Schema) string {
 	schemaDesc := fmt.Sprintf("(%s): %s", p.Type, p.Description)
 	if s != nil {
@@ -306,6 +339,12 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 
 		displayName := getExtOr(p.Extensions, ExtName, "")
 		description := getExtOr(p.Extensions, ExtDescription, p.Description)
+
+		// Append enum values and min/max constraints to the flag
+		// description so they appear in --help output.
+		if schema != nil {
+			description = appendSchemaHints(description, schema)
+		}
 
 		param := &cli.Param{
 			Type:        typ,
