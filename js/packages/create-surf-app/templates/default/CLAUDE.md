@@ -68,7 +68,28 @@ exports.users = pgTable("users", {
 ```
 
 Tables are auto-created on startup and when `schema.js` changes (file watcher).
-The agent can also call `POST /api/__sync-schema` explicitly after editing.
+
+Query the database in routes using `@surf-ai/sdk/db` — **not** Drizzle ORM query builder:
+
+```js
+const { dbQuery } = require("@surf-ai/sdk/db");
+
+router.get("/", async (req, res) => {
+  const rows = await dbQuery("SELECT * FROM users ORDER BY created_at DESC");
+  res.json(rows);
+});
+
+router.post("/", async (req, res) => {
+  const { name } = req.body;
+  const [row] = await dbQuery(
+    "INSERT INTO users (name) VALUES ($1) RETURNING *",
+    [name]
+  );
+  res.json(row);
+});
+```
+
+Database runs through an HTTP proxy — there is no direct `db` connection object or `req.db` middleware. Use `dbQuery(sql, params)` for all reads and writes.
 
 ## Do NOT modify
 

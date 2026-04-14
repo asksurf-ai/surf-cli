@@ -72,6 +72,28 @@ export const users = pgTable("users", {
 
 Tables are auto-synced on server start and when `db/schema.ts` changes in dev mode.
 
+Query the database in API routes using `@surf-ai/sdk/db` — **not** Drizzle ORM query builder:
+
+```ts
+import { dbQuery } from "@surf-ai/sdk/db";
+
+export async function GET() {
+  const rows = await dbQuery("SELECT * FROM users ORDER BY created_at DESC");
+  return Response.json(rows);
+}
+
+export async function POST(request: Request) {
+  const { name } = await request.json();
+  const [row] = await dbQuery(
+    "INSERT INTO users (name) VALUES ($1) RETURNING *",
+    [name]
+  );
+  return Response.json(row);
+}
+```
+
+Database runs through an HTTP proxy — there is no direct `db` connection object or `req.db` middleware. Use `dbQuery(sql, params)` for all reads and writes.
+
 ## Do NOT modify
 
 - `instrumentation.ts` - server boot (schema sync, cron)

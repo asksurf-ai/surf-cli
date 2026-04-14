@@ -1,16 +1,12 @@
 /**
- * @surf-ai/sdk/db — Drizzle ORM + Neon PostgreSQL database helpers.
+ * @surf-ai/sdk/db — Database helpers via HTTP proxy to Neon PostgreSQL.
  *
- * Replaces scaffold lib/db.js and db/index.js.
+ * All queries go through the Surf API proxy — there is no direct database
+ * connection or Drizzle ORM query builder. Use dbQuery() for all reads/writes.
  *
  * Usage:
- *   const { db, dbQuery, dbProvision } = require('@surf-ai/sdk/db')
- *
- *   // In a backend route:
- *   const users = await db.select().from(schema.users)
- *
- *   // Raw SQL:
- *   const result = await dbQuery('SELECT * FROM users WHERE id = $1', [userId])
+ *   const { dbQuery } = require('@surf-ai/sdk/db')
+ *   const users = await dbQuery('SELECT * FROM users WHERE id = $1', [userId])
  */
 
 import { get, post } from '../data/client'
