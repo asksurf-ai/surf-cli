@@ -17,7 +17,7 @@ func TestOperation(t *testing.T) {
 
 	gock.
 		New("http://example2.com").
-		Get("/prefix/test/id1").
+		Get("/prefix/id1").
 		MatchParam("search", "foo").
 		MatchParam("def3", "abc").
 		MatchHeader("Accept", "application/json").
@@ -97,7 +97,7 @@ func TestOperation(t *testing.T) {
 	Stdout = capture
 	Stderr = capture
 	cmd.SetOutput(Stdout)
-	viper.Set("rsh-server", "http://example2.com/prefix")
+	viper.Set("surf-api-base-url", "http://example2.com/prefix")
 	cmd.Flags().Parse([]string{"--search=foo", "--def-3=abc", "--accept=application/json"})
 	err := cmd.RunE(cmd, []string{"id1"})
 
@@ -129,11 +129,7 @@ func TestOperationSnakeCaseFlag(t *testing.T) {
 
 	cmd := op.Command()
 
-	viper.Reset()
-	viper.Set("nocolor", true)
-	viper.Set("tty", true)
-	Init("test", "1.0.0")
-	Defaults()
+	reset(false)
 	capture := &strings.Builder{}
 	Stdout = capture
 	Stderr = capture
@@ -266,11 +262,7 @@ func TestOperationRequiredFlagProvided(t *testing.T) {
 
 	cmd := op.Command()
 
-	viper.Reset()
-	viper.Set("nocolor", true)
-	viper.Set("tty", true)
-	Init("test", "1.0.0")
-	Defaults()
+	reset(false)
 	capture := &strings.Builder{}
 	Stdout = capture
 	Stderr = capture
@@ -281,4 +273,36 @@ func TestOperationRequiredFlagProvided(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Contains(t, capture.String(), "BTC-USD")
+}
+
+func TestOverrideServer_PathAligned(t *testing.T) {
+	// spec already contains the /gateway/v1 prefix and env agrees → no duplication
+	viper.Reset()
+	viper.Set("surf-api-base-url", "https://api.stg.ask.surf/gateway/v1")
+	got := overrideServer("https://api.asksurf.ai/gateway/v1/market/price")
+	assert.Equal(t, "https://api.stg.ask.surf/gateway/v1/market/price", got)
+}
+
+func TestOverrideServer_HostOnly(t *testing.T) {
+	// env only has scheme+host, spec carries /gateway/v1
+	viper.Reset()
+	viper.Set("surf-api-base-url", "https://api.stg.ask.surf")
+	got := overrideServer("https://api.asksurf.ai/gateway/v1/market/price")
+	assert.Equal(t, "https://api.stg.ask.surf/gateway/v1/market/price", got)
+}
+
+func TestOverrideServer_PathReplacesPrefix(t *testing.T) {
+	// env path diverges from spec path → replace first N segments (N = env seg count)
+	viper.Reset()
+	viper.Set("surf-api-base-url", "https://custom.example.com/other/v2")
+	got := overrideServer("https://api.asksurf.ai/gateway/v1/market/price")
+	assert.Equal(t, "https://custom.example.com/other/v2/market/price", got)
+}
+
+func TestOverrideServer_Empty(t *testing.T) {
+	// env not set → uri unchanged
+	viper.Reset()
+	viper.Set("surf-api-base-url", "")
+	got := overrideServer("https://api.asksurf.ai/gateway/v1/market/price")
+	assert.Equal(t, "https://api.asksurf.ai/gateway/v1/market/price", got)
 }

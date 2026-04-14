@@ -29,6 +29,10 @@ func reset(color bool) {
 
 	Init("test", "1.0.0'")
 	Defaults()
+
+	// Clear SURF_API_BASE_URL override so gock-mocked URIs aren't silently
+	// rewritten by overrideServer. Tests needing the override can re-set it.
+	viper.Set("surf-api-base-url", "")
 }
 
 func run(cmd string, color ...bool) string {
@@ -579,4 +583,18 @@ func TestCompletion(t *testing.T) {
 		"api.example.com/items/my-item/tags\tList item tags",
 		"api.example.com/items/my-item/tags/{tag-id}\tGet tag details",
 	}, possible)
+}
+
+func TestSurfAPIBaseURLFromEnv(t *testing.T) {
+	t.Setenv("SURF_API_BASE_URL", "https://api.stg.ask.surf/gateway/v1")
+	viper.Reset()
+	initConfig("surf", "")
+	assert.Equal(t, "https://api.stg.ask.surf/gateway/v1", viper.GetString("surf-api-base-url"))
+}
+
+func TestSurfAPIBaseURLDefault(t *testing.T) {
+	t.Setenv("SURF_API_BASE_URL", "")
+	viper.Reset()
+	initConfig("surf", "")
+	assert.Equal(t, "https://api.asksurf.ai/gateway/v1", viper.GetString("surf-api-base-url"))
 }

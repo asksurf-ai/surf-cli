@@ -11,6 +11,7 @@ import (
 )
 
 func TestEditSuccess(t *testing.T) {
+	reset(false)
 	defer gock.Off()
 
 	gock.New("http://example.com").
@@ -55,6 +56,7 @@ func TestEditInteractiveMissingEditor(t *testing.T) {
 }
 
 func TestEditBadGet(t *testing.T) {
+	reset(false)
 	defer gock.Off()
 
 	gock.New("http://example.com").
@@ -70,6 +72,7 @@ func TestEditBadGet(t *testing.T) {
 }
 
 func TestEditNoChange(t *testing.T) {
+	reset(false)
 	defer gock.Off()
 
 	gock.New("http://example.com").
@@ -89,6 +92,7 @@ func TestEditNoChange(t *testing.T) {
 }
 
 func TestEditNotObject(t *testing.T) {
+	reset(false)
 	defer gock.Off()
 
 	gock.New("http://example.com").

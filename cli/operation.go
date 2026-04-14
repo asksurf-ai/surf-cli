@@ -32,6 +32,50 @@ type Operation struct {
 	Deprecated    string   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 }
 
+// overrideServer applies the `surf-api-base-url` viper key as an override of
+// uri's scheme, host, and path prefix. Returns uri unchanged if the key is
+// empty or either URL fails to parse.
+//
+// Path handling:
+//   - If override has no path (or just "/"), only scheme+host are replaced.
+//   - If override has a path AND uri's path equals that path or starts with
+//     it at a segment boundary, path is left alone (spec and env agree on
+//     the base path).
+//   - Otherwise uri's path is rewritten: the first N segments (where N is
+//     the segment count of override's path) are replaced by override's path.
+func overrideServer(uri string) string {
+	customServer := viper.GetString("surf-api-base-url")
+	if customServer == "" {
+		return uri
+	}
+	orig, err := url.Parse(uri)
+	if err != nil {
+		return uri
+	}
+	custom, err := url.Parse(customServer)
+	if err != nil {
+		return uri
+	}
+
+	orig.Scheme = custom.Scheme
+	orig.Host = custom.Host
+
+	if custom.Path != "" && custom.Path != "/" {
+		customPath := strings.TrimSuffix(custom.Path, "/")
+		if !strings.HasPrefix(orig.Path, customPath+"/") && orig.Path != customPath {
+			customSeg := strings.Count(strings.Trim(customPath, "/"), "/") + 1
+			origSegs := strings.SplitN(strings.TrimPrefix(orig.Path, "/"), "/", customSeg+1)
+			if len(origSegs) > customSeg {
+				orig.Path = customPath + "/" + origSegs[customSeg]
+			} else {
+				orig.Path = customPath
+			}
+		}
+	}
+
+	return orig.String()
+}
+
 // Command returns a Cobra command instance for this operation.
 func (o Operation) Command() *cobra.Command {
 	flags := map[string]any{}
@@ -115,21 +159,7 @@ func (o Operation) Command() *cobra.Command {
 				uri += queryEncoded
 			}
 
-			customServer := viper.GetString("rsh-server")
-			if customServer != "" {
-				// Adjust the server based on the customized input.
-				orig, _ := url.Parse(uri)
-				custom, _ := url.Parse(customServer)
-
-				orig.Scheme = custom.Scheme
-				orig.Host = custom.Host
-
-				if custom.Path != "" && custom.Path != "/" {
-					orig.Path = strings.TrimSuffix(custom.Path, "/") + orig.Path
-				}
-
-				uri = orig.String()
-			}
+			uri = overrideServer(uri)
 
 			headers := http.Header{}
 			for _, param := range o.HeaderParams {

@@ -13,6 +13,7 @@ import (
 )
 
 func TestFixAddress(t *testing.T) {
+	reset(false)
 	assert.Equal(t, "https://example.com", fixAddress("example.com"))
 	assert.Equal(t, "http://localhost:8000", fixAddress(":8000"))
 	assert.Equal(t, "http://localhost:8000", fixAddress("localhost:8000"))

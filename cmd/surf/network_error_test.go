@@ -28,7 +28,7 @@ func TestNetworkErrorEnvelope(t *testing.T) {
 			"market-price",
 			"--symbol", "BTC",
 			"--time-range", "1d",
-			"--rsh-server", "http://127.0.0.1:1",
+			"--surf-api-base-url", "http://127.0.0.1:1",
 			"--rsh-retry", "0",
 		)
 		// Capture stdout and stderr separately.
@@ -60,7 +60,7 @@ func TestNetworkErrorEnvelope(t *testing.T) {
 			"market-price",
 			"--symbol", "BTC",
 			"--time-range", "1d",
-			"--rsh-server", "http://nonexistent-host-for-test-12345.invalid",
+			"--surf-api-base-url", "http://nonexistent-host-for-test-12345.invalid",
 			"--rsh-retry", "0",
 		)
 		stdout, _ := splitOutput(cmd)

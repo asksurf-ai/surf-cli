@@ -30,8 +30,7 @@ func TestReportCLIEvent_ActuallySendsPost(t *testing.T) {
 	reset(false)
 	viper.Set("config-directory", t.TempDir())
 	Root.Version = "test-version"
-	configs["surf"] = &APIConfig{Base: srv.URL}
-	defer delete(configs, "surf")
+	viper.Set("surf-api-base-url", srv.URL)
 
 	ReportCLIEvent("market-price", 1, "missing required flag(s): --symbol")
 
@@ -57,8 +56,7 @@ func TestReportCLIEvent_SuccessEvent(t *testing.T) {
 	t.Setenv("SURF_TELEMETRY_DISABLED", "")
 	reset(false)
 	viper.Set("config-directory", t.TempDir())
-	configs["surf"] = &APIConfig{Base: srv.URL}
-	defer delete(configs, "surf")
+	viper.Set("surf-api-base-url", srv.URL)
 
 	ReportCLIEvent("auth", 0, "")
 
@@ -80,8 +78,7 @@ func TestReportCLIEvent_TelemetryOff(t *testing.T) {
 	t.Setenv("SURF_TELEMETRY_DISABLED", "1")
 	reset(false)
 	viper.Set("config-directory", t.TempDir())
-	configs["surf"] = &APIConfig{Base: srv.URL}
-	defer delete(configs, "surf")
+	viper.Set("surf-api-base-url", srv.URL)
 
 	ReportCLIEvent("market-price", 0, "")
 
@@ -102,8 +99,7 @@ func TestReportCLIEvent_ErrorTruncation(t *testing.T) {
 	t.Setenv("SURF_TELEMETRY_DISABLED", "")
 	reset(false)
 	viper.Set("config-directory", t.TempDir())
-	configs["surf"] = &APIConfig{Base: srv.URL}
-	defer delete(configs, "surf")
+	viper.Set("surf-api-base-url", srv.URL)
 
 	longErr := make([]byte, 1000)
 	for i := range longErr {

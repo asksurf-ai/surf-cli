@@ -157,14 +157,7 @@ func ReportCLIEvent(command string, exitCode int, errMsg string) {
 	configDir := viper.GetString("config-directory")
 	sessionID := getSessionID(configDir)
 
-	// Base URL from API config.
-	baseURL := ""
-	if cfg, ok := configs["surf"]; ok && cfg.Base != "" {
-		baseURL = cfg.Base
-	}
-	if override := viper.GetString("rsh-server"); override != "" {
-		baseURL = override
-	}
+	baseURL := viper.GetString("surf-api-base-url")
 	if baseURL == "" {
 		return
 	}
@@ -188,7 +181,7 @@ func ReportCLIEvent(command string, exitCode int, errMsg string) {
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		baseURL+"/v1/cli/event", bytes.NewReader(payload))
+		baseURL+"/cli/event", bytes.NewReader(payload))
 	if err != nil {
 		return
 	}

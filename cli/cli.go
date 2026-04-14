@@ -539,11 +539,11 @@ Not after (expires): %s (%s)
 	// (help seems to be special cased from ParseErrorsWhitelist.UnknownFlags)
 	GlobalFlags.BoolP("help", "h", false, "")
 
+	AddGlobalFlag("surf-api-base-url", "s", "Override Surf API base URL (env: SURF_API_BASE_URL)", "https://api.asksurf.ai/gateway/v1", false)
 	AddGlobalFlag("rsh-verbose", "v", "Enable verbose log output", false, false)
 	AddGlobalFlag("rsh-output-format", "o", "Output format [auto, json, table, ...]", "auto", false)
 	AddGlobalFlag("rsh-filter", "f", "Filter / project results using shorthand query", "", false)
 	AddGlobalFlag("rsh-raw", "r", "Output result of query as raw rather than an escaped JSON string or list", false, false)
-	AddGlobalFlag("rsh-server", "s", "Override scheme://server:port for an API", "", false)
 	AddGlobalFlag("rsh-header", "H", "Add custom header", []string{}, true)
 	AddGlobalFlag("rsh-query", "q", "Add custom query param", []string{}, true)
 	AddGlobalFlag("rsh-no-paginate", "", "Disable auto-pagination", false, false)
@@ -665,6 +665,9 @@ func initConfig(appName, envPrefix string) {
 	// Save a few things that will be useful elsewhere.
 	viper.Set("config-directory", configDir)
 	viper.SetDefault("server-index", 0)
+	// API base URL — AutomaticEnv + SetEnvKeyReplacer above map
+	// the `surf-api-base-url` key to env SURF_API_BASE_URL.
+	viper.SetDefault("surf-api-base-url", "https://api.asksurf.ai/gateway/v1")
 }
 
 func initCache(appName string) {

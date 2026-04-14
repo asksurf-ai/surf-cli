@@ -67,6 +67,13 @@ surf auth --clear            # Clear from both keychain and file
 
 Configuration is stored in `~/.surf/`.
 
+### Environment Variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `SURF_API_KEY` | API authentication token | — |
+| `SURF_API_BASE_URL` | Override API gateway base URL | `https://api.asksurf.ai/gateway/v1` |
+
 ## Development
 
 **Prerequisites:** Go 1.25+
