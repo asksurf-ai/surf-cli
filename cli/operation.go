@@ -64,6 +64,7 @@ func (o Operation) Command() *cobra.Command {
 		Hidden:     o.Hidden,
 		Deprecated: o.Deprecated,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			currentCommand = slug.Make(o.Name)
 			uri := o.URITemplate
 
 			for i, param := range o.PathParams {
@@ -152,8 +153,6 @@ func (o Operation) Command() *cobra.Command {
 				}
 				body = strings.NewReader(b)
 			}
-
-			currentCommand = slug.Make(o.Name)
 
 			req, _ := http.NewRequest(o.Method, uri, body)
 			req.Header = headers

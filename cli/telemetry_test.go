@@ -149,6 +149,77 @@ func TestSetTelemetryHeaders_SeesKey_NoHeadersNoSessionFile(t *testing.T) {
 	assert.True(t, os.IsNotExist(err), "session.json should not exist for sees keys")
 }
 
+func TestReportCLIEvent_NoKey_StillFires(t *testing.T) {
+	// Without API key, ReportCLIEvent still sends (anonymous).
+	t.Setenv("SURF_API_KEY", "")
+	reset(false)
+	viper.Set("config-directory", t.TempDir())
+	configs["surf"] = &APIConfig{Base: "http://127.0.0.1:1"}
+
+	ReportCLIEvent("market-price", 0, "")
+	time.Sleep(50 * time.Millisecond)
+
+	delete(configs, "surf")
+}
+
+func TestReportCLIEvent_WithKey_FiresGoroutine(t *testing.T) {
+	t.Setenv("SURF_API_KEY", "sk-719bc951719243fa27263b46dd56b777364a96c9b909a6116918b8057d962203")
+	reset(false)
+	viper.Set("config-directory", t.TempDir())
+	configs["surf"] = &APIConfig{Base: "http://127.0.0.1:1"}
+
+	ReportCLIEvent("market-price", 1, "missing required flag(s): --symbol")
+	time.Sleep(50 * time.Millisecond)
+
+	delete(configs, "surf")
+}
+
+func TestReportCLIEvent_NoBaseURL_Skips(t *testing.T) {
+	reset(false)
+	viper.Set("config-directory", t.TempDir())
+	// No configs["surf"] → no base URL → should skip without panic.
+	ReportCLIEvent("market-price", 0, "")
+}
+
+func TestTelemetryDisabled_EnvVar(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_TELEMETRY_DISABLED", "1")
+	assert.True(t, TelemetryDisabled())
+
+	t.Setenv("SURF_TELEMETRY_DISABLED", "true")
+	assert.True(t, TelemetryDisabled())
+
+	t.Setenv("SURF_TELEMETRY_DISABLED", "")
+	assert.False(t, TelemetryDisabled())
+}
+
+func TestTelemetryDisabled_Config(t *testing.T) {
+	reset(false)
+	t.Setenv("SURF_TELEMETRY_DISABLED", "")
+	Cache.Set("telemetry_disabled", true)
+	assert.True(t, TelemetryDisabled())
+
+	Cache.Set("telemetry_disabled", false)
+	assert.False(t, TelemetryDisabled())
+}
+
+func TestTelemetryDisabled_EnvOverridesConfig(t *testing.T) {
+	reset(false)
+	Cache.Set("telemetry_disabled", false)
+	t.Setenv("SURF_TELEMETRY_DISABLED", "1")
+	assert.True(t, TelemetryDisabled(), "env var should override config")
+}
+
+func TestSetCurrentCommand(t *testing.T) {
+	currentCommand = ""
+	SetCurrentCommand("auth")
+	assert.Equal(t, "auth", GetCurrentCommand())
+
+	// Operation.go overwrites unconditionally.
+	SetCurrentCommand("market-price")
+	assert.Equal(t, "market-price", GetCurrentCommand())
+}
+
 func TestSetTelemetryHeaders_NoAuth_NoSessionFile(t *testing.T) {
 	reset(false)
 	t.Setenv("SURF_SESSION_ID", "")

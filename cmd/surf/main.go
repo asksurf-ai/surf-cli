@@ -98,6 +98,7 @@ func main() {
 		if j, err := cmd.Flags().GetBool("json"); err == nil && j {
 			viper.Set("rsh-output-format", "json")
 		}
+		cli.SetCurrentCommand(cmd.Name())
 	}
 
 	// Remove restish generic commands we don't need.
@@ -163,12 +164,22 @@ func main() {
 	cli.Root.AddCommand(newInstallCmd())
 	cli.Root.AddCommand(newListOperationsCmd())
 	cli.Root.AddCommand(newCatalogCmd())
+	cli.Root.AddCommand(newTelemetryCmd())
 
 	// Run.
-	if err := cli.Run(); err != nil {
-		os.Exit(1)
+	err = cli.Run()
+
+	exitCode := 0
+	errMsg := ""
+	if err != nil {
+		exitCode = 1
+		errMsg = err.Error()
+	} else {
+		exitCode = cli.GetExitCode()
 	}
-	os.Exit(cli.GetExitCode())
+
+	cli.ReportCLIEvent(cli.GetCurrentCommand(), exitCode, errMsg)
+	os.Exit(exitCode)
 }
 
 // shouldInjectAPIName returns true if os.Args represents an API operation
@@ -180,7 +191,7 @@ func shouldInjectAPIName() bool {
 	local := map[string]bool{
 		"auth": true, "sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
-		"list-operations": true,
+		"list-operations": true, "telemetry": true,
 	}
 	// If --help or -h appears anywhere, don't inject.
 	for _, arg := range os.Args[1:] {
@@ -449,4 +460,49 @@ func formatParams(op cli.Operation) string {
 		return ""
 	}
 	return "  (" + strings.Join(names, ", ") + ")"
+}
+
+func newTelemetryCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "telemetry [enable|disable]",
+		Short: "Manage anonymous telemetry",
+		Long: `View or change telemetry status.
+
+Surf CLI collects anonymous usage data (command name, exit code, CLI version)
+to improve the product. No file paths, arguments, or personal data are sent.
+
+Disable with:
+  surf telemetry disable
+  SURF_TELEMETRY_DISABLED=1`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				// Show status — check both env var and config.
+				if cli.TelemetryDisabled() {
+					fmt.Fprintln(os.Stdout, "Telemetry is disabled.")
+				} else {
+					fmt.Fprintln(os.Stdout, "Telemetry is enabled.")
+				}
+				return nil
+			}
+			switch args[0] {
+			case "enable":
+				cli.Cache.Set("telemetry_disabled", false)
+				if err := cli.Cache.WriteConfig(); err != nil {
+					return fmt.Errorf("failed to save config: %w", err)
+				}
+				fmt.Fprintln(os.Stderr, "Telemetry enabled.")
+			case "disable":
+				cli.Cache.Set("telemetry_disabled", true)
+				if err := cli.Cache.WriteConfig(); err != nil {
+					return fmt.Errorf("failed to save config: %w", err)
+				}
+				fmt.Fprintln(os.Stderr, "Telemetry disabled.")
+			default:
+				return fmt.Errorf("unknown subcommand %q — use 'enable' or 'disable'", args[0])
+			}
+			return nil
+		},
+	}
+	return cmd
 }

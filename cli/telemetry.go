@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	"github.com/zalando/go-keyring"
 )
 
 const sessionTimeout = 30 * time.Minute
@@ -82,9 +85,25 @@ func getSessionID(configDir string) string {
 	return s.ID
 }
 
+// telemetryDisabled returns true if the user has opted out of telemetry via
+// SURF_TELEMETRY_DISABLED=1 env var or `surf telemetry disable` (config).
+// TelemetryDisabled reports whether telemetry is opted out.
+func TelemetryDisabled() bool {
+	if v := os.Getenv("SURF_TELEMETRY_DISABLED"); v == "1" || v == "true" {
+		return true
+	}
+	if Cache != nil && Cache.GetBool("telemetry_disabled") {
+		return true
+	}
+	return false
+}
+
 // setTelemetryHeaders adds telemetry headers to the request if the API key
 // is a user key. Deploy keys, sees keys, and anonymous requests are skipped.
 func setTelemetryHeaders(req *http.Request) {
+	if TelemetryDisabled() {
+		return
+	}
 	if !isUserKey(req.Header.Get("Authorization")) {
 		return
 	}
@@ -93,4 +112,96 @@ func setTelemetryHeaders(req *http.Request) {
 	req.Header.Set("X-Surf-CLI-Version", Root.Version)
 	req.Header.Set("X-Surf-CLI-Command", currentCommand)
 	req.Header.Set("X-Surf-Session-ID", getSessionID(configDir))
+}
+
+// SetCurrentCommand sets the current command name for telemetry.
+// Called from PersistentPreRun in main.go; overwritten by operation.go RunE
+// for API operations with the more specific operation name.
+func SetCurrentCommand(name string) {
+	currentCommand = name
+}
+
+// GetCurrentCommand returns the current command name.
+func GetCurrentCommand() string {
+	return currentCommand
+}
+
+// getAPIKey returns the configured API key (env > keychain > cache).
+// Returns "" if none configured.
+func getAPIKey() string {
+	if key := os.Getenv("SURF_API_KEY"); key != "" {
+		return key
+	}
+	profile := viper.GetString("rsh-profile")
+	if profile == "" {
+		profile = "default"
+	}
+	keychainUser := "surf:" + profile
+	if token, err := keyring.Get(KeyringService, keychainUser); err == nil && token != "" {
+		return token
+	}
+	if token := Cache.GetString(keychainUser + ".api_key"); token != "" {
+		return token
+	}
+	return ""
+}
+
+// ReportCLIEvent sends a CLI invocation event to the backend.
+// Fire-and-forget: launches a goroutine with a 2-second timeout.
+// Reports for all invocations. With API key: hermod resolves user_id.
+// Without: hermod logs as anonymous with client IP.
+func ReportCLIEvent(command string, exitCode int, errMsg string) {
+	if TelemetryDisabled() {
+		return
+	}
+	configDir := viper.GetString("config-directory")
+	sessionID := getSessionID(configDir)
+
+	// Base URL from API config.
+	baseURL := ""
+	if cfg, ok := configs["surf"]; ok && cfg.Base != "" {
+		baseURL = cfg.Base
+	}
+	if override := viper.GetString("rsh-server"); override != "" {
+		baseURL = override
+	}
+	if baseURL == "" {
+		return
+	}
+
+	// Truncate error to 500 chars.
+	if len(errMsg) > 500 {
+		errMsg = errMsg[:500]
+	}
+
+	apiKey := getAPIKey()
+
+	payload, _ := json.Marshal(map[string]any{
+		"command":    command,
+		"exit_code":  exitCode,
+		"error":      errMsg,
+		"version":    Root.Version,
+		"session_id": sessionID,
+	})
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+			baseURL+"/v1/cli/event", bytes.NewReader(payload))
+		if err != nil {
+			return
+		}
+		if apiKey != "" {
+			req.Header.Set("Authorization", "Bearer "+apiKey)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return
+		}
+		resp.Body.Close()
+	}()
 }
