@@ -149,36 +149,32 @@ func TestSetTelemetryHeaders_SeesKey_NoHeadersNoSessionFile(t *testing.T) {
 	assert.True(t, os.IsNotExist(err), "session.json should not exist for sees keys")
 }
 
-func TestReportCLIEvent_NoKey_StillFires(t *testing.T) {
-	// Without API key, ReportCLIEvent still sends (anonymous).
+func TestReportCLIEvent_NoKey_NoBaseURL(t *testing.T) {
 	t.Setenv("SURF_API_KEY", "")
+	t.Setenv("SURF_TELEMETRY_DISABLED", "")
 	reset(false)
 	viper.Set("config-directory", t.TempDir())
-	configs["surf"] = &APIConfig{Base: "http://127.0.0.1:1"}
-
+	// No base URL → returns before launching goroutine.
 	ReportCLIEvent("market-price", 0, "")
-	time.Sleep(50 * time.Millisecond)
-
-	delete(configs, "surf")
 }
 
-func TestReportCLIEvent_WithKey_FiresGoroutine(t *testing.T) {
+func TestReportCLIEvent_WithKey_NoBaseURL(t *testing.T) {
 	t.Setenv("SURF_API_KEY", "sk-719bc951719243fa27263b46dd56b777364a96c9b909a6116918b8057d962203")
+	t.Setenv("SURF_TELEMETRY_DISABLED", "")
+	reset(false)
+	viper.Set("config-directory", t.TempDir())
+	// No base URL → returns before launching goroutine.
+	ReportCLIEvent("market-price", 1, "missing required flag(s): --symbol")
+}
+
+func TestReportCLIEvent_Disabled(t *testing.T) {
+	t.Setenv("SURF_TELEMETRY_DISABLED", "1")
 	reset(false)
 	viper.Set("config-directory", t.TempDir())
 	configs["surf"] = &APIConfig{Base: "http://127.0.0.1:1"}
-
-	ReportCLIEvent("market-price", 1, "missing required flag(s): --symbol")
-	time.Sleep(50 * time.Millisecond)
-
-	delete(configs, "surf")
-}
-
-func TestReportCLIEvent_NoBaseURL_Skips(t *testing.T) {
-	reset(false)
-	viper.Set("config-directory", t.TempDir())
-	// No configs["surf"] → no base URL → should skip without panic.
+	// Telemetry disabled → returns immediately, no goroutine.
 	ReportCLIEvent("market-price", 0, "")
+	delete(configs, "surf")
 }
 
 func TestTelemetryDisabled_EnvVar(t *testing.T) {
