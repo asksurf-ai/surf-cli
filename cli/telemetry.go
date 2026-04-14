@@ -184,24 +184,22 @@ func ReportCLIEvent(command string, exitCode int, errMsg string) {
 		"session_id": sessionID,
 	})
 
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-			baseURL+"/v1/cli/event", bytes.NewReader(payload))
-		if err != nil {
-			return
-		}
-		if apiKey != "" {
-			req.Header.Set("Authorization", "Bearer "+apiKey)
-		}
-		req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		baseURL+"/v1/cli/event", bytes.NewReader(payload))
+	if err != nil {
+		return
+	}
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	req.Header.Set("Content-Type", "application/json")
 
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return
-		}
-		resp.Body.Close()
-	}()
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
+	resp.Body.Close()
 }
