@@ -1,6 +1,6 @@
 {
   "name": "create-surf-app",
-  "version": "1.0.0-alpha.31",
+  "version": "1.0.0-alpha.32",
   "description": "Scaffold a Surf app — Vite + React + Express + @surf-ai/sdk",
   "type": "module",
   "bin": {

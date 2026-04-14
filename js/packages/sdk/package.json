@@ -1,6 +1,6 @@
 {
   "name": "@surf-ai/sdk",
-  "version": "1.0.0-alpha.31",
+  "version": "1.0.0-alpha.32",
   "description": "Surf platform SDK — data API client, server runtime, and database helpers",
   "type": "module",
   "exports": {
