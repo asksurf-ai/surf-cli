@@ -1,4 +1,5 @@
 .DS_Store
 dist/
 /surf
+/bin/
 node_modules

@@ -165,6 +165,7 @@ func main() {
 	cli.Root.AddCommand(newListOperationsCmd())
 	cli.Root.AddCommand(newCatalogCmd())
 	cli.Root.AddCommand(newTelemetryCmd())
+	cli.Root.AddCommand(newFeedbackCmd())
 
 	// Run.
 	err = cli.Run()
@@ -191,7 +192,7 @@ func shouldInjectAPIName() bool {
 	local := map[string]bool{
 		"auth": true, "sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
-		"list-operations": true, "telemetry": true,
+		"list-operations": true, "telemetry": true, "feedback": true,
 	}
 	// If --help or -h appears anywhere, don't inject.
 	for _, arg := range os.Args[1:] {

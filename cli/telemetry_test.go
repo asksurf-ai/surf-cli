@@ -36,7 +36,7 @@ func TestGetSessionID_New(t *testing.T) {
 	t.Setenv("SURF_SESSION_ID", "")
 	dir := t.TempDir()
 
-	id := getSessionID(dir)
+	id := GetSessionID(dir)
 	assert.NotEmpty(t, id)
 
 	// File should exist.
@@ -61,7 +61,7 @@ func TestGetSessionID_Reuse(t *testing.T) {
 	data, _ := json.Marshal(s)
 	os.WriteFile(filepath.Join(dir, "session.json"), data, 0600)
 
-	id := getSessionID(dir)
+	id := GetSessionID(dir)
 	assert.Equal(t, "existing-session-id", id)
 
 	// Timestamp should be updated.
@@ -83,7 +83,7 @@ func TestGetSessionID_Expired(t *testing.T) {
 	data, _ := json.Marshal(s)
 	os.WriteFile(filepath.Join(dir, "session.json"), data, 0600)
 
-	id := getSessionID(dir)
+	id := GetSessionID(dir)
 	assert.NotEqual(t, "old-session-id", id)
 	assert.NotEmpty(t, id)
 }
@@ -92,7 +92,7 @@ func TestGetSessionID_EnvOverride(t *testing.T) {
 	t.Setenv("SURF_SESSION_ID", "custom-agent-session")
 	dir := t.TempDir()
 
-	id := getSessionID(dir)
+	id := GetSessionID(dir)
 	assert.Equal(t, "custom-agent-session", id)
 
 	// No file should be created.

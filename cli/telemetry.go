@@ -48,10 +48,10 @@ func newUUID() string {
 	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
-// getSessionID returns the current session ID. If SURF_SESSION_ID is set,
+// GetSessionID returns the current session ID. If SURF_SESSION_ID is set,
 // it is used directly. Otherwise, a file-based session at ~/.surf/session.json
 // is used with a 30-minute inactivity timeout.
-func getSessionID(configDir string) string {
+func GetSessionID(configDir string) string {
 	if id := os.Getenv("SURF_SESSION_ID"); id != "" {
 		return id
 	}
@@ -111,7 +111,7 @@ func setTelemetryHeaders(req *http.Request) {
 	configDir := viper.GetString("config-directory")
 	req.Header.Set("X-Surf-CLI-Version", Root.Version)
 	req.Header.Set("X-Surf-CLI-Command", currentCommand)
-	req.Header.Set("X-Surf-Session-ID", getSessionID(configDir))
+	req.Header.Set("X-Surf-Session-ID", GetSessionID(configDir))
 }
 
 // SetCurrentCommand sets the current command name for telemetry.
@@ -126,9 +126,9 @@ func GetCurrentCommand() string {
 	return currentCommand
 }
 
-// getAPIKey returns the configured API key (env > keychain > cache).
+// GetAPIKey returns the configured API key (env > keychain > cache).
 // Returns "" if none configured.
-func getAPIKey() string {
+func GetAPIKey() string {
 	if key := os.Getenv("SURF_API_KEY"); key != "" {
 		return key
 	}
@@ -155,7 +155,7 @@ func ReportCLIEvent(command string, exitCode int, errMsg string) {
 		return
 	}
 	configDir := viper.GetString("config-directory")
-	sessionID := getSessionID(configDir)
+	sessionID := GetSessionID(configDir)
 
 	baseURL := viper.GetString("surf-api-base-url")
 	if baseURL == "" {
@@ -167,7 +167,7 @@ func ReportCLIEvent(command string, exitCode int, errMsg string) {
 		errMsg = errMsg[:500]
 	}
 
-	apiKey := getAPIKey()
+	apiKey := GetAPIKey()
 
 	payload, _ := json.Marshal(map[string]any{
 		"command":    command,
