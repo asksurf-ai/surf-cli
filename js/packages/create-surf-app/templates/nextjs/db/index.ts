@@ -3,6 +3,6 @@
 //
 // Usage in route handlers:
 //   import { db } from '@/db'
-//   const result = await db('SELECT * FROM users')
+//   const { rows } = await db('SELECT * FROM users')
 
 export { dbQuery as db, dbProvision, dbTables, dbTableSchema, dbStatus } from '@surf-ai/sdk/db'

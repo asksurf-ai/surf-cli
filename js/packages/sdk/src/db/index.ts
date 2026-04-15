@@ -1,12 +1,13 @@
 /**
  * @surf-ai/sdk/db — Database helpers via HTTP proxy to Neon PostgreSQL.
  *
- * All queries go through the Surf API proxy — there is no direct database
- * connection or Drizzle ORM query builder. Use dbQuery() for all reads/writes.
+ * All queries go through the Surf API proxy. There is no locally-instantiated
+ * Drizzle ORM client — `drizzle-orm/pg-core` is used only to declare the
+ * schema; reads and writes go through dbQuery().
  *
  * Usage:
  *   const { dbQuery } = require('@surf-ai/sdk/db')
- *   const users = await dbQuery('SELECT * FROM users WHERE id = $1', [userId])
+ *   const { rows } = await dbQuery('SELECT * FROM users WHERE id = $1', [userId])
  */
 
 import { get, post } from '../data/client'
@@ -30,16 +31,24 @@ export async function dbProvision(): Promise<{
 
 /**
  * Execute a SQL query via db/query.
- * Uses pg-proxy driver under the hood — Drizzle ORM calls this automatically.
  *
- * @param options.arrayMode - When true, rows are returned as positional arrays
- *   instead of objects. Required for Drizzle ORM pg-proxy compatibility.
+ * Returns a pg-style result — use `result.rows` for the row data:
+ *   const { rows } = await dbQuery('SELECT * FROM users')
+ *   const [row] = (await dbQuery('INSERT ... RETURNING *', [...])).rows
+ *
+ * @param options.arrayMode - When true, each row is a positional array instead
+ *   of an object keyed by column name. Default false (object rows).
  */
 export async function dbQuery(
   sql: string,
   params?: any[],
   options?: { arrayMode?: boolean },
-): Promise<any> {
+): Promise<{
+  rows: any[]
+  rowCount?: number
+  fields?: Array<{ name: string; type: string }>
+  truncated?: boolean
+}> {
   return post('db/query', { sql, params, arrayMode: options?.arrayMode ?? false })
 }
 

@@ -72,27 +72,31 @@ export const users = pgTable("users", {
 
 Tables are auto-synced on server start and when `db/schema.ts` changes in dev mode.
 
-Query the database in API routes using `@surf-ai/sdk/db` — **not** Drizzle ORM query builder:
+Query the database in API routes using the `db()` helper re-exported from `@/db`. Drizzle ORM is **only** used to declare the schema — there is no Drizzle client and no direct connection pool. `db(sql, params)` returns a pg-style result `{ rows, rowCount, fields }`, so destructure `rows`:
 
 ```ts
-import { dbQuery } from "@surf-ai/sdk/db";
+import { db } from "@/db";
 
 export async function GET() {
-  const rows = await dbQuery("SELECT * FROM users ORDER BY created_at DESC");
+  const { rows } = await db(
+    "SELECT * FROM users ORDER BY created_at DESC"
+  );
   return Response.json(rows);
 }
 
 export async function POST(request: Request) {
   const { name } = await request.json();
-  const [row] = await dbQuery(
+  const { rows } = await db(
     "INSERT INTO users (name) VALUES ($1) RETURNING *",
     [name]
   );
-  return Response.json(row);
+  return Response.json(rows[0]);
 }
 ```
 
-Database runs through an HTTP proxy — there is no direct `db` connection object or `req.db` middleware. Use `dbQuery(sql, params)` for all reads and writes.
+### Environment variables
+
+Only variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. To use a plain env var (e.g. `APP_TITLE`) in a client component, either read it in a server component / route handler and pass it down as a prop, or expose it through a backend route.
 
 ## Do NOT modify
 

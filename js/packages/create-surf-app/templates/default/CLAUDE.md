@@ -69,27 +69,43 @@ exports.users = pgTable("users", {
 
 Tables are auto-created on startup and when `schema.js` changes (file watcher).
 
-Query the database in routes using `@surf-ai/sdk/db` — **not** Drizzle ORM query builder:
+Query the database in routes with `dbQuery(sql, params)` from `@surf-ai/sdk/db`. Drizzle ORM is **only** used to declare the schema — there is no Drizzle client, no `req.db` middleware, and no direct connection pool. `dbQuery` returns a pg-style result `{ rows, rowCount, fields }`, so destructure `rows`:
 
 ```js
 const { dbQuery } = require("@surf-ai/sdk/db");
 
 router.get("/", async (req, res) => {
-  const rows = await dbQuery("SELECT * FROM users ORDER BY created_at DESC");
+  const { rows } = await dbQuery(
+    "SELECT * FROM users ORDER BY created_at DESC"
+  );
   res.json(rows);
 });
 
 router.post("/", async (req, res) => {
   const { name } = req.body;
-  const [row] = await dbQuery(
+  const { rows } = await dbQuery(
     "INSERT INTO users (name) VALUES ($1) RETURNING *",
     [name]
   );
-  res.json(row);
+  res.json(rows[0]);
 });
 ```
 
-Database runs through an HTTP proxy — there is no direct `db` connection object or `req.db` middleware. Use `dbQuery(sql, params)` for all reads and writes.
+### Environment variables
+
+Only variables prefixed with `VITE_` are exposed to the Vite frontend (`import.meta.env.VITE_FOO`). To use a plain env var (e.g. `APP_TITLE`) in the UI, read it in a backend route and fetch it from the frontend:
+
+```js
+// backend/routes/config.js
+const express = require("express");
+const router = express.Router();
+
+router.get("/", (_req, res) => {
+  res.json({ title: process.env.APP_TITLE || "App" });
+});
+
+module.exports = router;
+```
 
 ## Do NOT modify
 
