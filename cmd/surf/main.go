@@ -148,7 +148,7 @@ func main() {
 	// used when --help/-h skips injection, and also for Root help display.
 	if api := cli.LoadCachedAPI("surf"); api != nil {
 		for _, op := range api.Operations {
-			if op.Hidden {
+			if op.Hidden || op.Deprecated != "" {
 				continue
 			}
 			cmd := op.Command()
@@ -400,7 +400,7 @@ func firstParagraph(s string) string {
 func printOperationsFlat(ops []cli.Operation, detail bool, category string) {
 	ops = filterOps(ops, category)
 	for _, op := range ops {
-		if op.Hidden {
+		if op.Hidden || op.Deprecated != "" {
 			continue
 		}
 		params := formatParams(op)
@@ -418,7 +418,7 @@ func printOperationsGrouped(ops []cli.Operation, detail bool, category string) {
 	groups := map[string][]cli.Operation{}
 	var order []string
 	for _, op := range ops {
-		if op.Hidden {
+		if op.Hidden || op.Deprecated != "" {
 			continue
 		}
 		g := op.Group
