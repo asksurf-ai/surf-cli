@@ -16,7 +16,7 @@ SDK 1.0 uses a single direct-auth model.
 | --- | --- | --- |
 | `SURF_API_BASE_URL` | `https://api.asksurf.ai/gateway/v1` | Full Surf API base URL |
 | `SURF_API_KEY` | none | Bearer token used for upstream requests and protected runtime endpoints |
-| `PORT` | none | Express server port when `createServer({ port })` is not provided |
+| `BACKEND_PORT` | none | Express server port when `createServer({ port })` is not provided |
 
 All upstream SDK requests use:
 
@@ -140,4 +140,4 @@ exports.users = pgTable('users', {
 - The runtime no longer mounts `/proxy/*`.
 - The `@surf-ai/sdk/react` subpath has been removed.
 - Route modules must export the handler directly with `module.exports = router`.
-- `createServer()` requires a port from `options.port` or `process.env.PORT`.
+- `createServer()` requires a port from `options.port` or `process.env.BACKEND_PORT`.
