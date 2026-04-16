@@ -60,6 +60,11 @@ func main() {
 	cli.Defaults()
 	cli.AddLoader(openapi.New())
 
+	// Send Cobra diagnostics (deprecation warnings, usage errors) to stderr
+	// so they don't pollute JSON output on stdout.
+	cli.Root.SetOut(os.Stderr)
+	cli.Root.SetErr(os.Stderr)
+
 	// Customize root command.
 	cli.Root.Use = "surf"
 	cli.Root.Short = "Surf data platform CLI"
