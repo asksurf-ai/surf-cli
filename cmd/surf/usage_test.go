@@ -142,6 +142,62 @@ func TestOperationHelpShowsParametersAndDescription(t *testing.T) {
 	}
 }
 
+// TestUnknownCommandSuggestsTypoFix verifies that a close typo triggers a
+// "Did you mean?" suggestion while a far-off name does not.
+func TestUnknownCommandSuggestsTypoFix(t *testing.T) {
+	bin := buildSurfBin(t)
+
+	tests := []struct {
+		name       string
+		args       []string
+		wantHint   string // substring that must appear (empty = must NOT suggest)
+		wantNoHint bool   // true = "Did you mean" must NOT appear
+	}{
+		{
+			name:     "operation typo",
+			args:     []string{"market-pric"},
+			wantHint: "market-price",
+		},
+		{
+			name:     "root command typo",
+			args:     []string{"catlog"},
+			wantHint: "catalog",
+		},
+		{
+			name:     "auth typo",
+			args:     []string{"auht"},
+			wantHint: "auth",
+		},
+		{
+			name:       "far typo no suggestion",
+			args:       []string{"xyz"},
+			wantNoHint: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := exec.Command(bin, tt.args...)
+			out, _ := cmd.CombinedOutput()
+			output := string(out)
+
+			hasSuggestion := strings.Contains(output, "Did you mean")
+			if tt.wantNoHint {
+				if hasSuggestion {
+					t.Errorf("expected no suggestion for %v, got:\n%s", tt.args, output)
+				}
+				return
+			}
+			if !hasSuggestion {
+				t.Errorf("expected 'Did you mean' for %v, got:\n%s", tt.args, output)
+			}
+			if !strings.Contains(output, tt.wantHint) {
+				t.Errorf("expected suggestion %q for %v, got:\n%s", tt.wantHint, tt.args, output)
+			}
+		})
+	}
+}
+
 // TestListOperationsFlagsAreKebabCase guards against snake_case flag names
 // leaking into the CLI surface from the OpenAPI spec. CLI conventions (and
 // the rest of the surf CLI) use kebab-case for flag names — e.g.

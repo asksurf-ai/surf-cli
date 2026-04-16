@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -67,6 +68,7 @@ func main() {
 
 	// Customize root command.
 	cli.Root.Use = "surf"
+	cli.Root.SuggestionsMinimumDistance = 2
 	cli.Root.Short = "Surf data platform CLI"
 	cli.Root.Long = "Query the Surf data platform — crypto market data, on-chain analytics, and more."
 	cli.Root.Example = "  surf market-futures --symbol BTC\n  surf search-project --q bitcoin"
@@ -122,6 +124,7 @@ func main() {
 	for _, cmd := range cli.Root.Commands() {
 		if cmd.Use == "surf" {
 			cmd.Hidden = true
+			cmd.SuggestionsMinimumDistance = 2
 
 			// Replace {{.UseLine}} and {{.CommandPath}} in the usage template
 			// with versions that skip the intermediate API subcommand name.
@@ -140,7 +143,31 @@ func main() {
 			// full help (with "surf surf" in it) instead of an error.
 			cmd.RunE = func(c *cobra.Command, args []string) error {
 				if len(args) > 0 {
-					return fmt.Errorf("unknown command %q\nRun 'surf --help' for usage", args[0])
+					msg := fmt.Sprintf("unknown command %q", args[0])
+					// Collect suggestions from both the API subcommand (operation
+					// commands like market-price) and Root (catalog, auth, etc.).
+					seen := map[string]bool{}
+					var suggestions []string
+					for _, s := range c.SuggestionsFor(args[0]) {
+						if !seen[s] {
+							seen[s] = true
+							suggestions = append(suggestions, s)
+						}
+					}
+					for _, s := range c.Root().SuggestionsFor(args[0]) {
+						if !seen[s] {
+							seen[s] = true
+							suggestions = append(suggestions, s)
+						}
+					}
+					if len(suggestions) > 0 {
+						msg += "\n\nDid you mean this?\n"
+						for _, s := range suggestions {
+							msg += fmt.Sprintf("\t%s\n", s)
+						}
+					}
+					msg += "\nRun 'surf --help' for usage"
+					return errors.New(msg)
 				}
 				return c.Help()
 			}
