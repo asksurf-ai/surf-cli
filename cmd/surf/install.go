@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,6 +16,10 @@ import (
 )
 
 const cdnBase = "https://downloads.asksurf.ai/cli/releases"
+
+// minSkillVersion is the minimum surf skill version required by this CLI release.
+// Bump this when SKILL.md has breaking changes that require a skill update.
+const minSkillVersion = "0.0.2"
 
 func installDir(home string) string {
 	return filepath.Join(home, ".local", "bin")
@@ -282,6 +287,7 @@ func installBinary(home, srcPath, ver string) error {
 	fmt.Println()
 	fmt.Printf("  Version: %s%s%s\n", green, ver, reset)
 	fmt.Printf("  Location: %s\n", displayPath)
+	fmt.Printf("  Minimum skill version: v%s\n", minSkillVersion)
 	fmt.Println()
 	if pathMsg != "" {
 		fmt.Printf("  %s\n", pathMsg)
@@ -289,6 +295,14 @@ func installBinary(home, srcPath, ver string) error {
 	}
 	fmt.Printf("  Next: Run %ssurf --help%s to get started\n", bold, reset)
 	fmt.Println()
+
+	// Update skill if npx is available.
+	if npx, err := exec.LookPath("npx"); err == nil {
+		cmd := exec.Command(npx, "--yes", "skills", "check", "asksurf-ai/surf-skills", "--skill", "surf")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		_ = cmd.Run() // best-effort, don't fail install on skill update error
+	}
 
 	return nil
 }
