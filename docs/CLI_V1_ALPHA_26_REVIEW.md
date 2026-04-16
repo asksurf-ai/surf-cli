@@ -1273,7 +1273,7 @@ P0 的 #1 #3 + P1 的 #4 可以打包成一个 "error routing & JSON flag" PR。
 - [x] #5 Strip schema blocks — [PR #71](https://github.com/cyberconnecthq/surf-cli/pull/71)
 - [ ] #6 Minimal default fields
 - [ ] #7 Content truncation
-- [ ] #8 Typo suggestion
+- [x] #8 Typo suggestion — [PR #90](https://github.com/cyberconnecthq/surf-cli/pull/90)
 - [ ] #9 Contextual help[]
 - [ ] #10 `-q, --quiet`
 - [ ] #11 `--verbose` 长 flag
