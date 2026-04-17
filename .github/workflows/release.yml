@@ -33,6 +33,10 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload install.sh
+        env:
+          INSTALL_SH_URL: ${{ secrets.INSTALL_SH_URL }}
+        run: aws s3 cp install.sh "${INSTALL_SH_URL}" --content-type "text/plain"
       - name: Update latest version pointer
         env:
           RELEASE_LATEST_URL: ${{ secrets.RELEASE_LATEST_URL }}
