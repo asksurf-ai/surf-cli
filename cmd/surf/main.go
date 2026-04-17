@@ -92,6 +92,14 @@ func main() {
 	// paths) which shadows this persistent one — that's fine, both end up
 	// producing JSON output.
 	cli.Root.PersistentFlags().Bool("json", false, "Output result as JSON (alias for -o json)")
+	cli.Root.PersistentFlags().Bool("debug", false, "Enable debug log output")
+	cli.Root.PersistentFlags().Bool("quiet", false, "Suppress non-error diagnostic output")
+
+	// Add -v as shorthand for --version. Cobra auto-registers --version
+	// (from Root.Version) but without a short flag.
+	if vf := cli.Root.Flags().Lookup("version"); vf != nil {
+		vf.Shorthand = "v"
+	}
 
 	// Wrap the restish PersistentPreRun so we can honor --json before the
 	// command's Run executes. Cobra only runs the closest ancestor's
@@ -104,6 +112,13 @@ func main() {
 		}
 		if j, err := cmd.Flags().GetBool("json"); err == nil && j {
 			viper.Set("rsh-output-format", "json")
+		}
+		if d, err := cmd.Flags().GetBool("debug"); err == nil && d {
+			viper.Set("rsh-verbose", true)
+			cli.EnableVerbose()
+		}
+		if q, err := cmd.Flags().GetBool("quiet"); err == nil && q {
+			cli.SetQuiet(true)
 		}
 		cli.SetCurrentCommand(cmd.Name())
 	}

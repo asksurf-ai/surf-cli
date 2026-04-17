@@ -540,7 +540,7 @@ Not after (expires): %s (%s)
 	GlobalFlags.BoolP("help", "h", false, "")
 
 	AddGlobalFlag("surf-api-base-url", "s", "Override Surf API base URL (env: SURF_API_BASE_URL)", "https://api.asksurf.ai/gateway/v1", false)
-	AddGlobalFlag("rsh-verbose", "v", "Enable verbose log output", false, false)
+	AddGlobalFlag("rsh-verbose", "", "Enable verbose log output", false, false)
 	AddGlobalFlag("rsh-output-format", "o", "Output format [auto, json, table, ...]", "auto", false)
 	AddGlobalFlag("rsh-filter", "f", "Filter / project results using shorthand query", "", false)
 	AddGlobalFlag("rsh-raw", "r", "Output result of query as raw rather than an escaped JSON string or list", false, false)

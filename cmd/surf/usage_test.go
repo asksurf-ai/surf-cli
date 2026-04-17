@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"regexp"
@@ -196,6 +198,72 @@ func TestUnknownCommandSuggestsTypoFix(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestVersionFlag verifies that -v and --version both print the version string.
+func TestVersionFlag(t *testing.T) {
+	bin := buildSurfBin(t)
+
+	for _, flag := range []string{"-v", "--version"} {
+		t.Run(flag, func(t *testing.T) {
+			out, err := exec.Command(bin, flag).CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s failed: %v\n%s", flag, err, out)
+			}
+			if !strings.Contains(string(out), "surf version") {
+				t.Errorf("%s output missing 'surf version': %s", flag, out)
+			}
+		})
+	}
+}
+
+// TestDebugFlag verifies that --debug enables debug logging to stderr.
+func TestDebugFlag(t *testing.T) {
+	bin := buildSurfBin(t)
+
+	cmd := exec.Command(bin, "--debug", "market-price", "--symbol", "BTC",
+		"--surf-api-base-url", "http://127.0.0.1:1", "--rsh-retry", "0")
+	out, _ := cmd.CombinedOutput()
+	if !strings.Contains(string(out), "DEBUG:") {
+		t.Errorf("--debug should produce DEBUG: lines, got:\n%s", string(out))
+	}
+}
+
+// TestQuietFlag verifies that --quiet suppresses WARN/INFO but not errors.
+func TestQuietFlag(t *testing.T) {
+	bin := buildSurfBin(t)
+
+	t.Run("errors still show", func(t *testing.T) {
+		cmd := exec.Command(bin, "--quiet", "market-price", "--bogus")
+		out, _ := cmd.CombinedOutput()
+		if !strings.Contains(string(out), "unknown flag") {
+			t.Errorf("--quiet should still show errors, got:\n%s", string(out))
+		}
+	})
+
+	// Spin up a server that always returns 429 to trigger retry WARN lines.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	args := []string{"market-price", "--symbol", "BTC", "--time-range", "1d",
+		"--surf-api-base-url", srv.URL, "--rsh-retry", "1"}
+
+	t.Run("without --quiet shows WARN", func(t *testing.T) {
+		out, _ := exec.Command(bin, args...).CombinedOutput()
+		if !strings.Contains(string(out), "WARN:") {
+			t.Errorf("expected WARN: line on 429 retry, got:\n%s", string(out))
+		}
+	})
+
+	t.Run("--quiet suppresses WARN", func(t *testing.T) {
+		out, _ := exec.Command(bin, append([]string{"--quiet"}, args...)...).CombinedOutput()
+		if strings.Contains(string(out), "WARN:") {
+			t.Errorf("--quiet should suppress WARN:, got:\n%s", string(out))
+		}
+	})
 }
 
 // TestListOperationsFlagsAreKebabCase guards against snake_case flag names

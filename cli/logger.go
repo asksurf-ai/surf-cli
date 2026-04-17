@@ -11,6 +11,17 @@ import (
 )
 
 var enableVerbose bool
+var enableQuiet bool
+
+// EnableVerbose turns on debug-level logging (same as -d / --debug).
+func EnableVerbose() {
+	enableVerbose = true
+}
+
+// SetQuiet enables or disables quiet mode, suppressing non-error diagnostics.
+func SetQuiet(q bool) {
+	enableQuiet = q
+}
 
 // LogDebug logs a debug message if --rsh-verbose (-v) was passed.
 func LogDebug(format string, values ...any) {
@@ -57,13 +68,19 @@ func LogDebugResponse(start time.Time, resp *http.Response) {
 	}
 }
 
-// LogInfo logs an info message.
+// LogInfo logs an info message. Suppressed when --quiet is set.
 func LogInfo(format string, values ...any) {
+	if enableQuiet {
+		return
+	}
 	fmt.Fprintf(Stderr, "%s %s\n", au.Index(74, "INFO:"), fmt.Sprintf(format, values...))
 }
 
-// LogWarning logs a warning message.
+// LogWarning logs a warning message. Suppressed when --quiet is set.
 func LogWarning(format string, values ...any) {
+	if enableQuiet {
+		return
+	}
 	fmt.Fprintf(Stderr, "%s %s\n", au.Index(222, "WARN:"), fmt.Sprintf(format, values...))
 }
 
