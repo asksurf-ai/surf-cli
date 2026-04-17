@@ -34,7 +34,7 @@ jobs:
       # contents: read so it can never be pushed. When the runner VM is
       # destroyed, the tag is gone.
       - name: Create ephemeral tag
-        run: git tag "stg-${GITHUB_SHA:0:7}"
+        run: git tag "v0.0.0-stg.${GITHUB_SHA:0:7}"
       - uses: goreleaser/goreleaser-action@v6
         with:
           args: release --clean --skip=announce
@@ -51,5 +51,5 @@ jobs:
           CLOUDFRONT_LATEST_PATH: ${{ secrets.CLOUDFRONT_LATEST_PATH }}
         run: |
           SHORT_SHA="${GITHUB_SHA:0:7}"
-          echo -n "stg-${SHORT_SHA}" | aws s3 cp - "${RELEASE_LATEST_URL}" --content-type "text/plain" --cache-control "max-age=60"
+          echo -n "v0.0.0-stg.${SHORT_SHA}" | aws s3 cp - "${RELEASE_LATEST_URL}" --content-type "text/plain" --cache-control "max-age=60"
           aws cloudfront create-invalidation --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" --paths "${CLOUDFRONT_LATEST_PATH}"
