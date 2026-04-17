@@ -40,10 +40,13 @@ jobs:
           args: release --clean --skip=announce
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload install.sh to staging
+      - name: Upload install.sh to staging (patched to point at staging CDN)
         env:
           INSTALL_SH_URL: ${{ secrets.INSTALL_SH_URL }}
-        run: aws s3 cp install.sh "${INSTALL_SH_URL}" --content-type "text/plain"
+          CDN_BASE: ${{ secrets.CDN_BASE }}
+        run: |
+          sed "s|https://downloads.asksurf.ai/cli/releases|${CDN_BASE}|g" install.sh > install.stg.sh
+          aws s3 cp install.stg.sh "${INSTALL_SH_URL}" --content-type "text/plain"
       - name: Update staging latest pointer
         env:
           RELEASE_LATEST_URL: ${{ secrets.RELEASE_LATEST_URL }}
