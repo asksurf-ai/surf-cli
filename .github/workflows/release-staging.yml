@@ -28,12 +28,16 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      # Snapshot mode: no tag required. Without explicit --skip, snapshot
-      # also skips publish (which is what uploads to S3), so binaries never
-      # leave the runner. Skip only announce + validate so blobs upload.
+      # Create an ephemeral tag just for this run so goreleaser takes the
+      # normal (non-snapshot) path and actually publishes blobs to S3. The
+      # tag lives only in the runner's checkout — permissions above are
+      # contents: read so it can never be pushed. When the runner VM is
+      # destroyed, the tag is gone.
+      - name: Create ephemeral tag
+        run: git tag "stg-${GITHUB_SHA:0:7}"
       - uses: goreleaser/goreleaser-action@v6
         with:
-          args: release --clean --snapshot --skip=announce,validate
+          args: release --clean --skip=announce
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload install.sh to staging

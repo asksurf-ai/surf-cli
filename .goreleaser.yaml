@@ -41,13 +41,7 @@ blobs:
   - provider: s3
     bucket: "{{ .Env.RELEASE_BUCKET }}"
     region: "{{ .Env.AWS_REGION }}"
-    # Snapshot builds have no real tag (.Tag defaults to v0.0.0), so key on
-    # .Version instead (which is "stg-<sha>" in snapshot mode, matches the
-    # latest pointer). Tag releases still use .Tag for human-readable paths.
-    directory: "{{ .Env.RELEASE_DIRECTORY }}/{{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ .Tag }}{{ end }}"
+    directory: "{{ .Env.RELEASE_DIRECTORY }}/{{ .Tag }}"
 
 release:
   disable: true
-
-snapshot:
-  version_template: "stg-{{ .ShortCommit }}"
