@@ -615,7 +615,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 			outFormat = "json"
 		}
 	}
-	if !f.tty && filter == "" {
+	if filter == "" && (outFormat == "json" || !f.tty) {
 		filter = "body"
 	}
 

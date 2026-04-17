@@ -199,6 +199,92 @@ var formatterTests = []struct {
 	},
 }
 
+// TestJSONFormatSkipsHeadersOnTTY verifies that --json output is pure JSON
+// (no HTTP status line or headers) even when stdout is a TTY. Regression
+// test for a bug where TTY mode always went through formatAuto which
+// prepended `HTTP/x.x NNN ...` and response headers to the body.
+func TestJSONFormatSkipsHeadersOnTTY(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(true, false) // tty=true
+
+	buf := &bytes.Buffer{}
+	Stdout = buf
+
+	viper.Set("rsh-output-format", "json")
+	viper.Set("rsh-filter", "")
+
+	err := formatter.Format(Response{
+		Proto:  "HTTP/2.0",
+		Status: 200,
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+			"Server":       "istio-envoy",
+		},
+		Body: map[string]any{"data": []any{"hello"}},
+	})
+	assert.NoError(t, err)
+
+	out := buf.String()
+	assert.NotContains(t, out, "HTTP/2.0", "TTY + --json should not emit HTTP status line")
+	assert.NotContains(t, out, "Content-Type:", "TTY + --json should not emit response headers")
+	assert.NotContains(t, out, "istio-envoy", "TTY + --json should not emit header values")
+	assert.Contains(t, out, `"data"`, "body should still be in output")
+	assert.Contains(t, out, `"hello"`)
+}
+
+// TestTTYWithoutJSONStillShowsHeaders verifies the pre-existing behavior
+// that TTY mode without explicit --json still shows HTTP status + headers
+// (readable format for humans).
+func TestTTYWithoutJSONStillShowsHeaders(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(true, false)
+
+	buf := &bytes.Buffer{}
+	Stdout = buf
+
+	viper.Set("rsh-output-format", "auto")
+	viper.Set("rsh-filter", "")
+
+	err := formatter.Format(Response{
+		Proto:   "HTTP/2.0",
+		Status:  200,
+		Headers: map[string]string{"Server": "istio-envoy"},
+		Body:    map[string]any{"data": []any{"hello"}},
+	})
+	assert.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "HTTP/2.0", "TTY without --json should still show status line")
+	assert.Contains(t, out, "istio-envoy", "TTY without --json should still show headers")
+}
+
+// TestTTYJSONWithExplicitFullFilter verifies that `-f @` on TTY still gives
+// the full response envelope (body + headers + status wrapped).
+func TestTTYJSONWithExplicitFullFilter(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(true, false)
+
+	buf := &bytes.Buffer{}
+	Stdout = buf
+
+	viper.Set("rsh-output-format", "json")
+	viper.Set("rsh-filter", "@")
+
+	err := formatter.Format(Response{
+		Proto:   "HTTP/2.0",
+		Status:  200,
+		Headers: map[string]string{"Server": "istio-envoy"},
+		Body:    map[string]any{"data": []any{"hello"}},
+	})
+	assert.NoError(t, err)
+
+	out := buf.String()
+	// With -f @, user explicitly asked for the full envelope shape
+	assert.Contains(t, out, `"body"`, "explicit -f @ should include body wrapper")
+	assert.Contains(t, out, `"headers"`, "explicit -f @ should include headers wrapper")
+	assert.Contains(t, out, `"status"`)
+}
+
 // TestFilterFallthroughOnError verifies that when -f body.data is applied to
 // a non-2xx response (which has no "data" field), the error body is written
 // to stderr instead of being silently swallowed.
