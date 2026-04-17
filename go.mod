@@ -30,6 +30,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
+	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/term v0.30.0
 	golang.org/x/text v0.35.0
@@ -80,7 +81,6 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yuin/goldmark v1.5.3 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
-	github.com/zalando/go-keyring v0.2.8 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/image v0.38.0 // indirect
 	golang.org/x/net v0.38.0 // indirect

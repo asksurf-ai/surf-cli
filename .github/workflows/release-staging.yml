@@ -1,16 +1,16 @@
-name: Release
+name: Release (staging)
 
 on:
   push:
-    tags: ['v*']
+    branches: [stg]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    environment: production
+    environment: staging
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       RELEASE_BUCKET: ${{ secrets.RELEASE_BUCKET }}
@@ -28,16 +28,19 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+      # Snapshot mode: no tag required. Artifacts are suffixed with
+      # the short commit SHA (e.g. surf_linux_amd64_SNAPSHOT-abc1234).
       - uses: goreleaser/goreleaser-action@v6
         with:
-          args: release --clean
+          args: release --clean --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Update latest version pointer
+      - name: Update staging latest pointer
         env:
           RELEASE_LATEST_URL: ${{ secrets.RELEASE_LATEST_URL }}
           CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
           CLOUDFRONT_LATEST_PATH: ${{ secrets.CLOUDFRONT_LATEST_PATH }}
         run: |
-          echo -n "${{ github.ref_name }}" | aws s3 cp - "${RELEASE_LATEST_URL}" --content-type "text/plain" --cache-control "max-age=60"
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          echo -n "stg-${SHORT_SHA}" | aws s3 cp - "${RELEASE_LATEST_URL}" --content-type "text/plain" --cache-control "max-age=60"
           aws cloudfront create-invalidation --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" --paths "${CLOUDFRONT_LATEST_PATH}"
