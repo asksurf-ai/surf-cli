@@ -1,0 +1,407 @@
+package cli
+
+import (
+	"bytes"
+	"encoding/base64"
+	"testing"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestPrintable(t *testing.T) {
+	// Printable with BOM
+	var body any = []byte("\uFEFF\t\r\n Just a tést!.$%^{}/")
+	_, ok := printable(body)
+	assert.True(t, ok)
+
+	// Non-printable
+	body = []byte{0}
+	_, ok = printable(body)
+	assert.False(t, ok)
+
+	// Long printable
+	tmp := make([]byte, 150)
+	for i := 0; i < 150; i++ {
+		tmp[i] = 'a'
+	}
+	_, ok = printable(tmp)
+	assert.True(t, ok)
+
+	// Too long
+	tmp = make([]byte, 1000000)
+	for i := 0; i < 1000000; i++ {
+		tmp[i] = 'a'
+	}
+	_, ok = printable(tmp)
+	assert.False(t, ok)
+}
+
+var img, _ = base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mP8/5+hngEIGGEMADlqBP1mY/qhAAAAAElFTkSuQmCC")
+
+var formatterTests = []struct {
+	name    string
+	tty     bool
+	color   bool
+	raw     bool
+	format  string
+	filter  string
+	headers map[string]string
+	body    any
+	result  any
+	err     string
+}{
+	{
+		name:   "body-string",
+		tty:    true,
+		body:   "string",
+		result: " 0 \n\nstring\n",
+	},
+	{
+		name: "image",
+		tty:  true,
+		headers: map[string]string{
+			"Content-Type": "image/png",
+		},
+		body:   img,
+		result: []byte{0x20, 0x30, 0x20, 0xa, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x54, 0x79, 0x70, 0x65, 0x3a, 0x20, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x2f, 0x70, 0x6e, 0x67, 0xa, 0xa},
+	},
+	{
+		name: "image-empty",
+		tty:  true,
+		headers: map[string]string{
+			"Content-Type":   "image/png",
+			"Content-Length": "0",
+		},
+		body:   []byte{},
+		result: []byte{0x20, 0x30, 0x20, 0xa, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x4c, 0x65, 0x6e, 0x67, 0x74, 0x68, 0x3a, 0x20, 0x30, 0xa, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x54, 0x79, 0x70, 0x65, 0x3a, 0x20, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x2f, 0x70, 0x6e, 0x67, 0xa, 0xa},
+	},
+	{
+		name:   "json-pretty-explicit-full",
+		tty:    true,
+		color:  true,
+		format: "json",
+		filter: "@",
+		body:   "string",
+		result: "\x1b[38;5;247m{\x1b[0m\n  \x1b[38;5;74m\"body\"\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;150m\"string\"\x1b[0m\x1b[38;5;247m,\x1b[0m\n  \x1b[38;5;74m\"headers\"\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;247m{},\x1b[0m\n  \x1b[38;5;74m\"links\"\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;247m{},\x1b[0m\n  \x1b[38;5;74m\"proto\"\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;150m\"\"\x1b[0m\x1b[38;5;247m,\x1b[0m\n  \x1b[38;5;74m\"status\"\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;172m0\x1b[0m\n\x1b[38;5;247m}\x1b[0m\n",
+	},
+	{
+		name:   "json-escape",
+		format: "json",
+		body:   "<em> and & shouldn't get escaped",
+		result: `"<em> and & shouldn't get escaped"` + "\n",
+	},
+	{
+		name:   "json-bytes",
+		format: "json",
+		filter: "body",
+		body:   []byte{0, 1, 2, 3, 4, 5},
+		result: "\"AAECAwQF\"\n",
+	},
+	{
+		name:   "json-filter",
+		format: "json",
+		filter: "body.id",
+		body: []any{
+			map[string]any{"id": 1},
+			map[string]any{"id": 2},
+		},
+		result: "[\n  1,\n  2\n]\n",
+	},
+	{
+		name:   "table",
+		format: "table",
+		filter: "body",
+		body: []any{
+			map[string]any{"id": 1, "registered": true},
+			map[string]any{"id": 2, "registered": false},
+		},
+		result: `╔════╤════════════╗
+║ id │ registered ║
+╟━━━━┼━━━━━━━━━━━━╢
+║  1 │       true ║
+║  2 │      false ║
+╚════╧════════════╝
+`,
+	},
+	{
+		name:   "raw-bytes",
+		tty:    true,
+		raw:    true,
+		body:   []byte{0, 1, 2, 3, 4, 5},
+		result: []byte{0, 1, 2, 3, 4, 5},
+	},
+	{
+		name:   "raw-filtered-value",
+		tty:    true,
+		raw:    true,
+		filter: "body",
+		body:   "[1, 2, 3]",
+		result: "[1, 2, 3]\n",
+	},
+	{
+		name:   "raw-filtered-bytes",
+		tty:    true,
+		raw:    true,
+		filter: "body",
+		body:   []byte{0, 1, 2, 3, 4, 5},
+		result: "AAECAwQF\n",
+	},
+	{
+		name:   "raw-large-json-num",
+		raw:    true,
+		filter: "body",
+		body: []any{
+			nil,
+			float64(1000000000000000),
+			float64(1.2e5),
+			float64(1.234),
+			float64(0.00000000000005), // This should still use scientific notation!
+		},
+		result: "null\n1000000000000000\n120000\n1.234\n5e-14\n",
+	},
+	{
+		name:   "redirect-bytes",
+		body:   []byte{0, 1, 2, 3},
+		result: []byte{0, 1, 2, 3},
+	},
+	{
+		name: "redirect-json",
+		body: map[string]any{"example": true},
+		result: `{
+  "example": true
+}
+`,
+	},
+	{
+		name:   "redirect-explicit-full-response",
+		body:   "foo",
+		filter: "@",
+		result: "{\n  \"body\": \"foo\",\n  \"headers\": {},\n  \"links\": {},\n  \"proto\": \"\",\n  \"status\": 0\n}\n",
+	},
+	{
+		name:   "redirect-yaml",
+		format: "yaml",
+		body:   map[string]any{"example": true},
+		result: "example: true\n",
+	},
+	{
+		name:   "error-prefix",
+		filter: "boby.id", // should be body.id
+		body:   map[string]any{"id": 123},
+		err:    "filter must begin with one of",
+	},
+	{
+		name:   "error-missing-dot",
+		filter: "body{id}", // should be body.{id}
+		body:   map[string]any{"id": 123},
+		err:    "expected '.'",
+	},
+}
+
+// TestJSONFormatSkipsHeadersOnTTY verifies that --json output is pure JSON
+// (no HTTP status line or headers) even when stdout is a TTY. Regression
+// test for a bug where TTY mode always went through formatAuto which
+// prepended `HTTP/x.x NNN ...` and response headers to the body.
+func TestJSONFormatSkipsHeadersOnTTY(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(true, false) // tty=true
+
+	buf := &bytes.Buffer{}
+	Stdout = buf
+
+	viper.Set("rsh-output-format", "json")
+	viper.Set("rsh-filter", "")
+
+	err := formatter.Format(Response{
+		Proto:  "HTTP/2.0",
+		Status: 200,
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+			"Server":       "istio-envoy",
+		},
+		Body: map[string]any{"data": []any{"hello"}},
+	})
+	assert.NoError(t, err)
+
+	out := buf.String()
+	assert.NotContains(t, out, "HTTP/2.0", "TTY + --json should not emit HTTP status line")
+	assert.NotContains(t, out, "Content-Type:", "TTY + --json should not emit response headers")
+	assert.NotContains(t, out, "istio-envoy", "TTY + --json should not emit header values")
+	assert.Contains(t, out, `"data"`, "body should still be in output")
+	assert.Contains(t, out, `"hello"`)
+}
+
+// TestTTYWithoutJSONStillShowsHeaders verifies the pre-existing behavior
+// that TTY mode without explicit --json still shows HTTP status + headers
+// (readable format for humans).
+func TestTTYWithoutJSONStillShowsHeaders(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(true, false)
+
+	buf := &bytes.Buffer{}
+	Stdout = buf
+
+	viper.Set("rsh-output-format", "auto")
+	viper.Set("rsh-filter", "")
+
+	err := formatter.Format(Response{
+		Proto:   "HTTP/2.0",
+		Status:  200,
+		Headers: map[string]string{"Server": "istio-envoy"},
+		Body:    map[string]any{"data": []any{"hello"}},
+	})
+	assert.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "HTTP/2.0", "TTY without --json should still show status line")
+	assert.Contains(t, out, "istio-envoy", "TTY without --json should still show headers")
+}
+
+// TestTTYJSONWithExplicitFullFilter verifies that `-f @` on TTY still gives
+// the full response envelope (body + headers + status wrapped).
+func TestTTYJSONWithExplicitFullFilter(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(true, false)
+
+	buf := &bytes.Buffer{}
+	Stdout = buf
+
+	viper.Set("rsh-output-format", "json")
+	viper.Set("rsh-filter", "@")
+
+	err := formatter.Format(Response{
+		Proto:   "HTTP/2.0",
+		Status:  200,
+		Headers: map[string]string{"Server": "istio-envoy"},
+		Body:    map[string]any{"data": []any{"hello"}},
+	})
+	assert.NoError(t, err)
+
+	out := buf.String()
+	// With -f @, user explicitly asked for the full envelope shape
+	assert.Contains(t, out, `"body"`, "explicit -f @ should include body wrapper")
+	assert.Contains(t, out, `"headers"`, "explicit -f @ should include headers wrapper")
+	assert.Contains(t, out, `"status"`)
+}
+
+// TestFilterFallthroughOnError verifies that when -f body.data is applied to
+// a non-2xx response (which has no "data" field), the error body is written
+// to stderr instead of being silently swallowed.
+func TestFilterFallthroughOnError(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(false, false)
+
+	stdoutBuf := &bytes.Buffer{}
+	stderrBuf := &bytes.Buffer{}
+	Stdout = stdoutBuf
+	Stderr = stderrBuf
+
+	viper.Set("rsh-output-format", "json")
+	viper.Set("rsh-filter", "body.data")
+
+	errorBody := map[string]any{
+		"error": map[string]any{
+			"code":    "BAD_GATEWAY",
+			"message": "upstream unavailable",
+		},
+	}
+	err := formatter.Format(Response{
+		Status:  502,
+		Headers: map[string]string{"Content-Type": "application/json"},
+		Body:    errorBody,
+	})
+
+	// Format returns nil (no error from filterData itself), but stderr
+	// should have the error body JSON since filter didn't match on a non-2xx.
+	assert.NoError(t, err)
+	assert.Empty(t, stdoutBuf.String(), "stdout should be empty when filter doesn't match")
+
+	assert.Empty(t, stdoutBuf.String(), "stdout should be empty when filter doesn't match")
+	assert.Contains(t, stderrBuf.String(), "BAD_GATEWAY", "stderr should contain the error body")
+	assert.Contains(t, stderrBuf.String(), "upstream unavailable")
+}
+
+// TestFilterFallthroughOnlyOnError verifies that the stderr fallthrough does
+// NOT happen on 2xx responses where the filter path is simply missing.
+func TestFilterFallthroughOnlyOnError(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(false, false)
+
+	stdoutBuf := &bytes.Buffer{}
+	stderrBuf := &bytes.Buffer{}
+	Stdout = stdoutBuf
+	Stderr = stderrBuf
+
+	viper.Set("rsh-output-format", "json")
+	viper.Set("rsh-filter", "body.nonexistent")
+
+	err := formatter.Format(Response{
+		Status: 200,
+		Body: map[string]any{
+			"data": []any{"hello"},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.Empty(t, stdoutBuf.String())
+	assert.Empty(t, stderrBuf.String(), "stderr should be empty on 2xx even if filter doesn't match")
+}
+
+// TestExitCodeUnified verifies that all non-2xx status codes produce exit 4.
+func TestExitCodeUnified(t *testing.T) {
+	tests := []struct {
+		status int
+		want   int
+	}{
+		{200, 0},
+		{201, 0},
+		{301, 4},
+		{400, 4},
+		{401, 4},
+		{404, 4},
+		{429, 4},
+		{500, 4},
+		{502, 4},
+		{503, 4},
+	}
+	for _, tt := range tests {
+		viper.Set("rsh-ignore-status-code", false)
+		lastStatus = tt.status
+		got := GetExitCode()
+		assert.Equal(t, tt.want, got, "status %d should exit %d", tt.status, tt.want)
+	}
+}
+
+func TestFormatter(t *testing.T) {
+	for _, input := range formatterTests {
+		t.Run(input.name, func(t *testing.T) {
+			formatter := NewDefaultFormatter(input.tty, input.color)
+			buf := &bytes.Buffer{}
+			Stdout = buf
+			viper.Reset()
+			viper.Set("rsh-raw", input.raw)
+			viper.Set("rsh-filter", input.filter)
+			if input.format != "" {
+				viper.Set("rsh-output-format", input.format)
+			} else {
+				viper.Set("rsh-output-format", "auto")
+			}
+			err := formatter.Format(Response{
+				Headers: input.headers,
+				Body:    input.body,
+			})
+			if input.err != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), input.err)
+			} else {
+				assert.NoError(t, err)
+				if b, ok := input.result.([]byte); ok {
+					assert.Equal(t, b, buf.Bytes())
+				} else {
+					assert.Equal(t, input.result, buf.String())
+				}
+			}
+		})
+	}
+}
