@@ -45,3 +45,6 @@ blobs:
 
 release:
   disable: true
+
+snapshot:
+  version_template: "stg-{{ .ShortCommit }}"
