@@ -28,11 +28,12 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      # Snapshot mode: no tag required. Artifacts are suffixed with
-      # the short commit SHA (e.g. surf_linux_amd64_SNAPSHOT-abc1234).
+      # Snapshot mode: no tag required. Without explicit --skip, snapshot
+      # also skips publish (which is what uploads to S3), so binaries never
+      # leave the runner. Skip only announce + validate so blobs upload.
       - uses: goreleaser/goreleaser-action@v6
         with:
-          args: release --clean --snapshot
+          args: release --clean --snapshot --skip=announce,validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload install.sh to staging
