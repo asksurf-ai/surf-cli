@@ -109,38 +109,46 @@ func (p Param) OptionName() string {
 func (p Param) AddFlag(flags *pflag.FlagSet) any {
 	name := p.OptionName()
 	def := p.Default
+	desc := p.Description
+	if p.Required {
+		if desc != "" {
+			desc += " (required)"
+		} else {
+			desc = "(required)"
+		}
+	}
 
 	switch p.Type {
 	case "boolean":
 		if def == nil {
 			def = false
 		}
-		return flags.Bool(name, def.(bool), p.Description)
+		return flags.Bool(name, def.(bool), desc)
 	case "integer":
 		if def == nil {
 			def = 0
 		}
-		return flags.Int(name, typeConvert(def, 0).(int), p.Description)
+		return flags.Int(name, typeConvert(def, 0).(int), desc)
 	case "number":
 		if def == nil {
 			def = 0.0
 		}
-		return flags.Float64(name, typeConvert(def, float64(0.0)).(float64), p.Description)
+		return flags.Float64(name, typeConvert(def, float64(0.0)).(float64), desc)
 	case "string":
 		if def == nil {
 			def = ""
 		}
-		return flags.String(name, def.(string), p.Description)
+		return flags.String(name, def.(string), desc)
 	case "array[boolean]":
 		if def == nil {
 			def = []bool{}
 		}
-		return flags.BoolSlice(name, def.([]bool), p.Description)
+		return flags.BoolSlice(name, def.([]bool), desc)
 	case "array[integer]":
 		if def == nil {
 			def = []int{}
 		}
-		return flags.IntSlice(name, def.([]int), p.Description)
+		return flags.IntSlice(name, def.([]int), desc)
 	case "array[number]":
 		log.Printf("number slice not implemented for param %s", p.Name)
 		return nil
@@ -159,7 +167,7 @@ func (p Param) AddFlag(flags *pflag.FlagSet) any {
 			}
 			def = tmp
 		}
-		return flags.StringSlice(name, def.([]string), p.Description)
+		return flags.StringSlice(name, def.([]string), desc)
 	}
 
 	return nil
