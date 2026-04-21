@@ -78,13 +78,37 @@ Configuration is stored in `~/.surf/`.
 
 **Prerequisites:** Go 1.25+
 
-```sh
-# Build
-go build -o surf ./cmd/surf
+### Local development
 
-# Run
-./surf help
+Build the binary and symlink it into `~/.surf/bin/surf` so the `surf` in your
+PATH resolves to your local build:
+
+```sh
+go build -o bin/surf ./cmd/surf
+ln -sf "$(pwd)/bin/surf" ~/.surf/bin/surf
+
+surf version   # confirm you're on the local build
+surf help
 ```
+
+Rebuild after changes — the symlink keeps pointing at `bin/surf`, so a fresh
+`go build -o bin/surf ./cmd/surf` is all you need to re-run against new code.
+
+### Staging testing
+
+To test against the staging CDN + API, install from the staging installer:
+
+```sh
+curl -fsSL https://downloads-stg.asksurf.ai/cli/releases/install.sh | sh
+```
+
+> **Do not run `surf install` afterwards.** It pulls the production binary
+> from `downloads.asksurf.ai` and overwrites the staging one you just
+> installed. Use `surf sync` (spec refresh only) and direct API commands
+> for testing instead.
+
+To go back to production, re-run the production installer from the
+[Install](#install) section.
 
 ### Releasing
 
