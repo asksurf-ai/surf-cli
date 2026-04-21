@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/gosimple/slug"
@@ -200,8 +201,135 @@ func (o Operation) Command() *cobra.Command {
 	}
 
 	sub.Flags().SetNormalizeFunc(NormalizeSnakeCaseFlags)
+	sub.SetFlagErrorFunc(flagErrorFuncWithSuggestions)
 
 	return sub
+}
+
+// flagErrorFuncWithSuggestions intercepts pflag parse errors and, for unknown
+// flags, appends a "did you mean?" hint with the closest valid flags on the
+// same command. Common agent guesses like --query (→ --q), --username (→
+// --handle), --time-range (on an interval-only endpoint) will match their
+// intended flag via edit distance, so the agent sees the right answer without
+// having to rerun --help.
+func flagErrorFuncWithSuggestions(cmd *cobra.Command, err error) error {
+	msg := err.Error()
+	if !strings.HasPrefix(msg, "unknown flag:") && !strings.HasPrefix(msg, "unknown shorthand flag:") {
+		return err
+	}
+	bad := extractUnknownFlagName(msg)
+	if bad == "" {
+		return err
+	}
+	suggestions := suggestFlagNames(cmd, bad)
+	if len(suggestions) == 0 {
+		return err
+	}
+	hint := "\n\nDid you mean one of these?\n"
+	for _, s := range suggestions {
+		hint += "\t--" + s + "\n"
+	}
+	hint += "\nRun '" + cmd.Root().Name() + " " + cmd.Name() + " --help' for all flags."
+	return fmt.Errorf("%s%s", msg, hint)
+}
+
+// extractUnknownFlagName pulls the flag name out of pflag's error strings,
+// e.g. `unknown flag: --query` → `query`.
+func extractUnknownFlagName(msg string) string {
+	for _, prefix := range []string{"unknown flag: --", "unknown flag: -", "unknown shorthand flag: "} {
+		if strings.HasPrefix(msg, prefix) {
+			rest := strings.TrimPrefix(msg, prefix)
+			// Truncate at first whitespace or newline.
+			if i := strings.IndexAny(rest, " \t\n"); i >= 0 {
+				rest = rest[:i]
+			}
+			return strings.TrimSpace(rest)
+		}
+	}
+	return ""
+}
+
+// suggestFlagNames returns up to 3 valid flag names from cmd whose Levenshtein
+// distance to bad is ≤ 3. Shorter valid names get priority on ties so that a
+// 1-char guess like --query doesn't miss --q.
+func suggestFlagNames(cmd *cobra.Command, bad string) []string {
+	type candidate struct {
+		name string
+		dist int
+	}
+	var cands []candidate
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Hidden {
+			return
+		}
+		d := levenshtein(bad, f.Name)
+		// Allow up to 3 edits, OR if the bad name contains the real flag name
+		// as a substring (covers --query → --q, --keyword → --q harder but
+		// at least --timerange → --time-range).
+		if d <= 3 || strings.Contains(bad, f.Name) || strings.Contains(f.Name, bad) {
+			cands = append(cands, candidate{f.Name, d})
+		}
+	})
+	// Sort by distance asc, then by length asc (so short names like "q" win
+	// ties against longer partial matches), then alphabetically.
+	sort.Slice(cands, func(i, j int) bool {
+		if cands[i].dist != cands[j].dist {
+			return cands[i].dist < cands[j].dist
+		}
+		if len(cands[i].name) != len(cands[j].name) {
+			return len(cands[i].name) < len(cands[j].name)
+		}
+		return cands[i].name < cands[j].name
+	})
+	if len(cands) > 3 {
+		cands = cands[:3]
+	}
+	out := make([]string, 0, len(cands))
+	for _, c := range cands {
+		out = append(out, c.name)
+	}
+	return out
+}
+
+// levenshtein computes the edit distance between a and b. Classic DP; fine
+// for short flag-name inputs.
+func levenshtein(a, b string) int {
+	if a == b {
+		return 0
+	}
+	ar, br := []rune(a), []rune(b)
+	if len(ar) == 0 {
+		return len(br)
+	}
+	if len(br) == 0 {
+		return len(ar)
+	}
+	prev := make([]int, len(br)+1)
+	curr := make([]int, len(br)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(ar); i++ {
+		curr[0] = i
+		for j := 1; j <= len(br); j++ {
+			cost := 1
+			if ar[i-1] == br[j-1] {
+				cost = 0
+			}
+			del := prev[j] + 1
+			ins := curr[j-1] + 1
+			sub := prev[j-1] + cost
+			curr[j] = del
+			if ins < curr[j] {
+				curr[j] = ins
+			}
+			if sub < curr[j] {
+				curr[j] = sub
+			}
+		}
+		prev, curr = curr, prev
+	}
+	return prev[len(br)]
 }
 
 // NormalizeSnakeCaseFlags silently converts underscore-separated flag names

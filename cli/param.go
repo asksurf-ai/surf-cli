@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 
 	"github.com/iancoleman/strcase"
 	"github.com/spf13/pflag"
@@ -105,42 +106,61 @@ func (p Param) OptionName() string {
 	return strcase.ToDelimited(name, '-')
 }
 
+// helpDescription composes the description shown in --help for this param.
+// Prepends "[required] " for required params and appends " (example: X)"
+// for params with an example value, so agents reading --help see at a
+// glance which flags are mandatory and what a valid value looks like.
+func (p Param) helpDescription() string {
+	desc := p.Description
+	if p.Required {
+		desc = "[required] " + desc
+	}
+	if p.Example != nil {
+		ex := fmt.Sprintf("%v", p.Example)
+		if ex != "" && !strings.Contains(desc, "example:") && !strings.Contains(desc, "Example:") {
+			desc = strings.TrimRight(desc, " .") + " (example: " + ex + ")"
+		}
+	}
+	return desc
+}
+
 // AddFlag adds a new option flag to a command's flag set for this parameter.
 func (p Param) AddFlag(flags *pflag.FlagSet) any {
 	name := p.OptionName()
 	def := p.Default
+	desc := p.helpDescription()
 
 	switch p.Type {
 	case "boolean":
 		if def == nil {
 			def = false
 		}
-		return flags.Bool(name, def.(bool), p.Description)
+		return flags.Bool(name, def.(bool), desc)
 	case "integer":
 		if def == nil {
 			def = 0
 		}
-		return flags.Int(name, typeConvert(def, 0).(int), p.Description)
+		return flags.Int(name, typeConvert(def, 0).(int), desc)
 	case "number":
 		if def == nil {
 			def = 0.0
 		}
-		return flags.Float64(name, typeConvert(def, float64(0.0)).(float64), p.Description)
+		return flags.Float64(name, typeConvert(def, float64(0.0)).(float64), desc)
 	case "string":
 		if def == nil {
 			def = ""
 		}
-		return flags.String(name, def.(string), p.Description)
+		return flags.String(name, def.(string), desc)
 	case "array[boolean]":
 		if def == nil {
 			def = []bool{}
 		}
-		return flags.BoolSlice(name, def.([]bool), p.Description)
+		return flags.BoolSlice(name, def.([]bool), desc)
 	case "array[integer]":
 		if def == nil {
 			def = []int{}
 		}
-		return flags.IntSlice(name, def.([]int), p.Description)
+		return flags.IntSlice(name, def.([]int), desc)
 	case "array[number]":
 		log.Printf("number slice not implemented for param %s", p.Name)
 		return nil
@@ -159,7 +179,7 @@ func (p Param) AddFlag(flags *pflag.FlagSet) any {
 			}
 			def = tmp
 		}
-		return flags.StringSlice(name, def.([]string), p.Description)
+		return flags.StringSlice(name, def.([]string), desc)
 	}
 
 	return nil

@@ -31,7 +31,7 @@ go install github.com/asksurf-ai/surf-cli/cmd/surf@latest
 surf auth --api-key sk-xxx
 
 # Query market data
-surf market-futures --symbol BTC
+surf market-price --symbol BTC
 surf search-project --q bitcoin
 
 # Update available commands from latest API spec

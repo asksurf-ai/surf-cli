@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -71,7 +72,7 @@ func main() {
 	cli.Root.SuggestionsMinimumDistance = 2
 	cli.Root.Short = "Surf data platform CLI"
 	cli.Root.Long = "Query the Surf data platform — crypto market data, on-chain analytics, and more."
-	cli.Root.Example = "  surf market-futures --symbol BTC\n  surf search-project --q bitcoin"
+	cli.Root.Example = "  surf market-price --symbol BTC\n  surf search-project --q bitcoin"
 	// Override restish's default root behavior (acts as GET handler with MinimumNArgs(1)).
 	cli.Root.Args = nil
 	cli.Root.Run = func(cmd *cobra.Command, args []string) {
@@ -376,15 +377,22 @@ func newListOperationsCmd() *cobra.Command {
 	var groupByTag bool
 	var detail bool
 	var category string
+	var asJSON bool
 	cmd := &cobra.Command{
 		Use:   "list-operations",
 		Short: "List all available API operations",
-		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.\n\nUse --detail to show full descriptions (useful for choosing between similar endpoints).\nUse --category to filter by group name.",
+		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.\n\nUse --detail to show full descriptions (useful for choosing between similar endpoints).\nUse --category to filter by group name.\nUse --json to emit a machine-readable command catalog (for agents): name, method, group, required/optional flags with type, description, default, and example.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			api := cli.LoadCachedAPI("surf")
 			if api == nil {
 				return fmt.Errorf("no cached API spec — run `surf sync` first")
+			}
+
+			ops := filterOps(api.Operations, category)
+
+			if asJSON {
+				return printOperationsJSON(ops)
 			}
 
 			if groupByTag {
@@ -398,7 +406,82 @@ func newListOperationsCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&groupByTag, "group", "g", false, "Group operations by category")
 	cmd.Flags().BoolVarP(&detail, "detail", "d", false, "Show full description for each operation")
 	cmd.Flags().StringVarP(&category, "category", "c", "", "Filter by category name (case-insensitive substring match)")
+	cmd.Flags().BoolVar(&asJSON, "json", false, "Emit machine-readable JSON catalog (for agents)")
 	return cmd
+}
+
+// flagCatalog is the agent-facing shape of one CLI flag.
+type flagCatalog struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Required    bool   `json:"required"`
+	Description string `json:"description,omitempty"`
+	Default     any    `json:"default,omitempty"`
+	Example     any    `json:"example,omitempty"`
+}
+
+// opCatalog is the agent-facing shape of one API operation.
+type opCatalog struct {
+	Name          string        `json:"name"`
+	Method        string        `json:"method"`
+	Group         string        `json:"group,omitempty"`
+	Short         string        `json:"short,omitempty"`
+	PathFlags     []flagCatalog `json:"path_flags,omitempty"`
+	RequiredFlags []flagCatalog `json:"required_flags,omitempty"`
+	OptionalFlags []flagCatalog `json:"optional_flags,omitempty"`
+	BodyRequired  bool          `json:"body_required,omitempty"`
+}
+
+// printOperationsJSON emits the command catalog as JSON to stdout. Includes
+// only visible, non-deprecated operations. Ordering matches the spec order.
+func printOperationsJSON(ops []cli.Operation) error {
+	out := make([]opCatalog, 0, len(ops))
+	for _, op := range ops {
+		if op.Hidden || op.Deprecated != "" {
+			continue
+		}
+		c := opCatalog{
+			Name:         op.Name,
+			Method:       op.Method,
+			Group:        op.Group,
+			Short:        op.Short,
+			BodyRequired: op.BodyMediaType != "",
+		}
+		for _, p := range op.PathParams {
+			c.PathFlags = append(c.PathFlags, paramToCatalog(p))
+		}
+		for _, p := range op.QueryParams {
+			fc := paramToCatalog(p)
+			if p.Required {
+				c.RequiredFlags = append(c.RequiredFlags, fc)
+			} else {
+				c.OptionalFlags = append(c.OptionalFlags, fc)
+			}
+		}
+		for _, p := range op.HeaderParams {
+			fc := paramToCatalog(p)
+			if p.Required {
+				c.RequiredFlags = append(c.RequiredFlags, fc)
+			} else {
+				c.OptionalFlags = append(c.OptionalFlags, fc)
+			}
+		}
+		out = append(out, c)
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(out)
+}
+
+func paramToCatalog(p *cli.Param) flagCatalog {
+	return flagCatalog{
+		Name:        p.OptionName(),
+		Type:        p.Type,
+		Required:    p.Required,
+		Description: p.Description,
+		Default:     p.Default,
+		Example:     p.Example,
+	}
 }
 
 func filterOps(ops []cli.Operation, category string) []cli.Operation {
