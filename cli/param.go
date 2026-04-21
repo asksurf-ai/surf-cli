@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 
 	"github.com/iancoleman/strcase"
 	"github.com/spf13/pflag"
@@ -26,16 +27,30 @@ func typeConvert(from, to any) any {
 
 // Param represents an API operation input parameter.
 type Param struct {
-	Type        string `json:"type" yaml:"type"`
-	Name        string `json:"name" yaml:"name"`
-	DisplayName string `json:"display_name,omitempty" yaml:"display_name,omitempty"`
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
-	Style       Style  `json:"style,omitempty" yaml:"style,omitempty"`
-	Explode     bool   `json:"explode,omitempty" yaml:"explide,omitempty"`
-	Required    bool   `json:"required,omitempty" yaml:"required,omitempty"`
-	Default     any    `json:"default,omitempty" yaml:"default,omitempty"`
-	Example     any    `json:"example,omitempty" yaml:"example,omitempty"`
+	Type        string   `json:"type" yaml:"type"`
+	Name        string   `json:"name" yaml:"name"`
+	DisplayName string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
+	Style       Style    `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode     bool     `json:"explode,omitempty" yaml:"explide,omitempty"`
+	Required    bool     `json:"required,omitempty" yaml:"required,omitempty"`
+	Default     any      `json:"default,omitempty" yaml:"default,omitempty"`
+	Example     any      `json:"example,omitempty" yaml:"example,omitempty"`
+	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
 }
+
+// enumStringValue is a pflag.Value whose Type() reports a custom placeholder
+// like "{a|b|c}". pflag's UnquoteUsage falls back to Value.Type() when the
+// usage string has no back-quoted word, so this lets us render enum choices
+// directly in the flag's type column.
+type enumStringValue struct {
+	val     *string
+	typeStr string
+}
+
+func (e *enumStringValue) String() string     { return *e.val }
+func (e *enumStringValue) Set(s string) error { *e.val = s; return nil }
+func (e *enumStringValue) Type() string       { return e.typeStr }
 
 // Parse the parameter from a string input (e.g. command line argument)
 func (p Param) Parse(value string) (any, error) {
@@ -137,6 +152,16 @@ func (p Param) AddFlag(flags *pflag.FlagSet) any {
 	case "string":
 		if def == nil {
 			def = ""
+		}
+		if len(p.Enum) > 0 {
+			placeholder := "{" + strings.Join(p.Enum, "|") + "}"
+			// Skip the custom placeholder if it would be too wide and break
+			// alignment in --help output. pflag falls back to "string".
+			if len(placeholder) <= 40 {
+				v := def.(string)
+				flags.Var(&enumStringValue{val: &v, typeStr: placeholder}, name, desc)
+				return &v
+			}
 		}
 		return flags.String(name, def.(string), desc)
 	case "array[boolean]":
