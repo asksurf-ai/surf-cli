@@ -339,10 +339,21 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 
 		displayName := getExtOr(p.Extensions, ExtName, "")
 		description := getExtOr(p.Extensions, ExtDescription, p.Description)
+		// Strip Markdown backticks so pflag's UnquoteUsage doesn't pull the
+		// first back-quoted word out of the description as the flag's type
+		// placeholder (e.g. --metric `tier` → "--metric tier" column).
+		description = strings.ReplaceAll(description, "`", "")
 
-		// Append enum values and min/max constraints to the flag
-		// description so they appear in --help output.
+		var enums []string
 		if schema != nil {
+			if len(schema.Enum) > 0 {
+				enums = make([]string, 0, len(schema.Enum))
+				for _, e := range schema.Enum {
+					enums = append(enums, e.Value)
+				}
+			}
+			// Append enum values and min/max constraints to the flag
+			// description so they appear in --help output.
 			description = appendSchemaHints(description, schema)
 		}
 
@@ -355,6 +366,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 			Required:    p.Required != nil && *p.Required,
 			Default:     def,
 			Example:     example,
+			Enum:        enums,
 		}
 
 		if p.Explode != nil {
