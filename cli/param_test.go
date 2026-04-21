@@ -67,3 +67,33 @@ func TestParamFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestParamFlagRequiredSuffix(t *testing.T) {
+	tests := []struct {
+		name        string
+		required    bool
+		description string
+		wantUsage   string
+	}{
+		{"optional with description", false, "Some description", "Some description"},
+		{"optional without description", false, "", ""},
+		{"required with description", true, "Some description", "Some description (required)"},
+		{"required without description", true, "", "(required)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := Param{
+				Name:        "test",
+				Type:        "string",
+				Description: tt.description,
+				Required:    tt.required,
+			}
+			flags := pflag.NewFlagSet("", pflag.PanicOnError)
+			p.AddFlag(flags)
+
+			flag := flags.Lookup("test")
+			assert.NotNil(t, flag)
+			assert.Equal(t, tt.wantUsage, flag.Usage)
+		})
+	}
+}
