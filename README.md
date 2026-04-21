@@ -10,7 +10,7 @@ Every API endpoint is available as a CLI command, dynamically generated from the
 curl -fsSL https://downloads.asksurf.ai/cli/releases/install.sh | sh
 ```
 
-Installs to `~/.surf/bin`. No sudo required.
+Installs to `~/.local/bin`. No sudo required.
 
 To install a specific version:
 
@@ -80,12 +80,12 @@ Configuration is stored in `~/.surf/`.
 
 ### Local development
 
-Build the binary and symlink it into `~/.surf/bin/surf` so the `surf` in your
+Build the binary and symlink it into `~/.local/bin/surf` so the `surf` in your
 PATH resolves to your local build:
 
 ```sh
 go build -o bin/surf ./cmd/surf
-ln -sf "$(pwd)/bin/surf" ~/.surf/bin/surf
+ln -sf "$(pwd)/bin/surf" ~/.local/bin/surf
 
 surf version   # confirm you're on the local build
 surf help
