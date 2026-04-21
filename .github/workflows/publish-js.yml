@@ -106,7 +106,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${{ steps.version.outputs.npm_tag }}"
-          for repo in urania vulcan rania; do
+          for repo in vulcan rania; do
             gh api repos/cyberconnecthq/$repo/dispatches \
               -f event_type=create_surf_app_published \
               -f client_payload[package_name]=create-surf-app \
