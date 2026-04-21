@@ -190,6 +190,20 @@ func main() {
 		}
 	}
 
+	// Lazy-sync: fresh install (or expired cache) + user is invoking an API
+	// command → fetch the spec once so commands register and the call can
+	// proceed, instead of failing with "unknown command" or "no cached API
+	// spec — run surf sync first".
+	if cli.LoadCachedAPI("surf") == nil && needsCachedAPI() {
+		fmt.Fprintln(os.Stderr, "No cached API spec, syncing...")
+		viper.Set("rsh-no-cache", true)
+		if _, err := cli.Load("https://api.asksurf.ai/gateway", cli.Root); err != nil {
+			fmt.Fprintf(os.Stderr, "Auto-sync failed: %v\n", err)
+			// Fall through — the downstream "no cached API spec" /
+			// "unknown command" path will produce a more specific error.
+		}
+	}
+
 	// Populate "Available API Commands" from cached API spec as full
 	// operation commands (with flags, Long description, etc.). These are
 	// used when --help/-h skips injection, and also for Root help display.
@@ -228,6 +242,27 @@ func main() {
 
 	cli.ReportCLIEvent(cli.GetCurrentCommand(), exitCode, errMsg)
 	os.Exit(exitCode)
+}
+
+// needsCachedAPI reports whether the current argv invokes a command that
+// requires the cached OpenAPI spec. Meta commands (auth, sync, help, version,
+// install, completion, telemetry, feedback, catalog) work without it.
+// list-operations DOES need it — it enumerates the spec — so it's not in
+// the meta set and will trigger auto-sync on cache miss.
+func needsCachedAPI() bool {
+	meta := map[string]bool{
+		"auth": true, "sync": true, "catalog": true,
+		"help": true, "completion": true, "version": true, "install": true,
+		"telemetry": true, "feedback": true,
+	}
+	for _, arg := range os.Args[1:] {
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		return !meta[arg]
+	}
+	// No command given → will show root help, no sync needed.
+	return false
 }
 
 // shouldInjectAPIName returns true if os.Args represents an API operation
