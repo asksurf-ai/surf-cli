@@ -68,6 +68,36 @@ func TestParamFlag(t *testing.T) {
 	}
 }
 
+func TestParamFlagEnumPlaceholder(t *testing.T) {
+	tests := []struct {
+		name     string
+		enum     []string
+		wantType string
+	}{
+		{"no enum", nil, "string"},
+		{"two values", []string{"tier", "portfolio_count"}, "{tier|portfolio_count}"},
+		{"three values", []string{"asc", "desc", "none"}, "{asc|desc|none}"},
+		{"too wide falls back to string", []string{
+			"one_really_long_value", "another_really_long_value",
+		}, "string"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := Param{
+				Name: "test",
+				Type: "string",
+				Enum: tt.enum,
+			}
+			flags := pflag.NewFlagSet("", pflag.PanicOnError)
+			p.AddFlag(flags)
+
+			flag := flags.Lookup("test")
+			assert.NotNil(t, flag)
+			assert.Equal(t, tt.wantType, flag.Value.Type())
+		})
+	}
+}
+
 func TestParamFlagRequiredSuffix(t *testing.T) {
 	tests := []struct {
 		name        string
