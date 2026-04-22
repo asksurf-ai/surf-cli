@@ -15,13 +15,14 @@ Use `@surf-ai/sdk/server` in backend routes to talk to Surf data APIs.
 
 ```js
 const { dataApi } = require("@surf-ai/sdk/server");
-const data = await dataApi.market.price({ symbol: "BTC" });
-const holders = await dataApi.token.holders({
-  address: "0x...",
-  chain: "ethereum",
-});
-// Escape hatch for new endpoints:
-const raw = await dataApi.get("newcategory/endpoint", { foo: "bar" });
+
+// Typed methods per domain — check `@surf-ai/sdk/server` typings for the
+// available method on each domain and its exact parameter shape. Don't
+// copy parameters from one method to another; shapes differ per endpoint.
+const data = await dataApi.<domain>.<method>({ /* params */ });
+
+// Escape hatch for endpoints not yet in the typed API:
+const raw = await dataApi.get("<domain>/<endpoint>", { /* params */ });
 ```
 
 ## Structure
@@ -48,11 +49,7 @@ backend/db/schema.js       - define database tables
 | `/api/cron/:id`      | DELETE | Delete a cron task                                     |
 | `/api/cron/:id/run`  | POST   | Manually trigger a cron task                           |
 
-Auto-registered from `backend/routes/*.js`:
-| File | Endpoint |
-|------|----------|
-| `routes/btc.js` | `/api/btc` |
-| `routes/portfolio.js` | `/api/portfolio` |
+Auto-registered: any file at `backend/routes/<name>.js` is mounted at `/api/<name>`.
 
 ## Database
 
