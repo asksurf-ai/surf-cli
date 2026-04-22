@@ -3,3 +3,4 @@ dist/
 /surf
 /bin/
 node_modules
+.worktrees/
