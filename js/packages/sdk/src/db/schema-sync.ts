@@ -132,7 +132,7 @@ async function doSyncSchema(schemaPath: string): Promise<void> {
     for (const t of existingTables) {
       const cfg = getTableConfig(t as any)
       try {
-        const live: any = await get('db/table-schema', { table: cfg.name })
+        const live: any = await get(`db/tables/${encodeURIComponent(cfg.name)}/schema`)
         const liveCols = new Set((live.columns || []).map((c: any) => c.name))
         for (const col of cfg.columns) {
           if (!liveCols.has(col.name)) {

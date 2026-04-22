@@ -63,7 +63,7 @@ export async function dbTables(): Promise<string[]> {
  * Get schema for a specific table.
  */
 export async function dbTableSchema(table: string): Promise<any> {
-  return get('db/table-schema', { table })
+  return get(`db/tables/${encodeURIComponent(table)}/schema`)
 }
 
 /**

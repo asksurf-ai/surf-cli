@@ -100,7 +100,8 @@ export function startMockApiServer(): MockApiServer {
         ])
       }
 
-      if (path === 'db/table-schema') {
+      // Per-table schema: GET db/tables/{name}/schema
+      if (path.startsWith('db/tables/') && path.endsWith('/schema')) {
         return json({
           columns: [
             { name: 'id' },
