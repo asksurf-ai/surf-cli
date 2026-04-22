@@ -106,7 +106,10 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${{ steps.version.outputs.npm_tag }}"
-          for repo in vulcan rania; do
+          # rania consumes the surf CLI only (asksurf-ai/surf-cli cadence),
+          # not @surf-ai/sdk or create-surf-app — don't dispatch JS events
+          # to rania. vulcan is the only downstream for JS packages.
+          for repo in vulcan; do
             gh api repos/cyberconnecthq/$repo/dispatches \
               -f event_type=create_surf_app_published \
               -f client_payload[package_name]=create-surf-app \
