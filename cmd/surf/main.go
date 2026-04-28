@@ -50,7 +50,7 @@ func main() {
 
 	// Inject "surf" as the API name into os.Args so restish's Run() loads
 	// the API config. Skip injection for commands that don't need API loading.
-	//   surf market-futures --symbol BTC  →  [surf, surf, market-futures, --symbol, BTC]
+	//   surf market-price --symbol BTC  →  [surf, surf, market-price, --symbol, BTC]
 	//   surf auth                         →  [surf, auth]  (no injection)
 	if shouldInjectAPIName() {
 		os.Args = append([]string{os.Args[0], "surf"}, os.Args[1:]...)
@@ -71,7 +71,7 @@ func main() {
 	cli.Root.SuggestionsMinimumDistance = 2
 	cli.Root.Short = "Surf data platform CLI"
 	cli.Root.Long = "Query the Surf data platform — crypto market data, on-chain analytics, and more."
-	cli.Root.Example = "  surf market-futures --symbol BTC\n  surf search-project --q bitcoin"
+	cli.Root.Example = "  surf market-price --symbol BTC\n  surf search-project --q bitcoin"
 	// Override restish's default root behavior (acts as GET handler with MinimumNArgs(1)).
 	cli.Root.Args = nil
 	cli.Root.Run = func(cmd *cobra.Command, args []string) {
