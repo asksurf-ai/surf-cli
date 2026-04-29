@@ -110,7 +110,7 @@ module.exports = router;
 - `backend/server.js` - uses @surf-ai/sdk/server
 - `entry-client.tsx` - app bootstrap with SSR hydration
 - `entry-server.tsx` - SSR render for deploy
-- `index.html` - cold-start guard and Surf badge
+- `index.html` - cold-start guard, Surf badge, and Plaza badge script
 - `eslint.config.*` - lint rules
 - `index.css` - only imports, do not add styles here (use Tailwind classes)
 

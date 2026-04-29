@@ -42,5 +42,36 @@
         <path d="M61.6788 7.72949C61.6788 8.16229 61.4457 8.39533 61.013 8.39533H59.4749V16.3588C59.4749 16.7915 59.2418 17.0246 58.809 17.0246H58.1432C57.7104 17.0246 57.4774 16.7915 57.4774 16.3588V8.39533H56.5652C56.1324 8.39533 55.8993 8.16229 55.8993 7.72949V7.46316C55.8993 7.03036 56.1324 6.79732 56.5652 6.79732H57.4774V5.61213C57.4774 3.69451 58.8956 2.74902 60.5136 2.74902C60.9131 2.74902 61.2593 2.78897 61.539 2.84224C61.9651 2.9288 62.1116 3.2484 61.9917 3.66122L61.8919 4.01412C61.7787 4.42028 61.5656 4.57342 61.2726 4.52015C61.1395 4.49352 60.993 4.4802 60.8199 4.4802C59.8477 4.4802 59.4749 4.97292 59.4749 5.87846V6.79732H61.013C61.4457 6.79732 61.6788 7.03036 61.6788 7.46316V7.72949Z"/>
       </svg>
     </a>
+    <!-- Plaza badge: rendered only when this deployed site is shared on Surf Plaza. -->
+    <script>
+    (function(){
+      try{
+        var m=location.hostname.match(/^([a-z0-9][a-z0-9-]{0,51})\.(?:surf\.computer|stg\.ask\.surf)$/i);
+        if(!m)return;
+        var slug=m[1].toLowerCase();
+        fetch('https://api.asksurf.ai/muninn/v1/plaza/by-subdomain?subdomain='+encodeURIComponent(slug))
+          .then(function(r){return r.ok?r.json():null;})
+          .then(function(j){
+            var d=j&&j.data;
+            if(!d||!d.shared||!d.listing_id)return;
+            var a=document.createElement('a');
+            a.id='plaza-badge';
+            a.href='https://asksurf.ai/studio/gallery?id='+encodeURIComponent(d.listing_id);
+            a.target='_blank';
+            a.rel='noopener noreferrer';
+            a.setAttribute('aria-label','Remix this on Surf Plaza');
+            a.style.cssText='position:fixed;bottom:56px;right:16px;z-index:2147483647;display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-family:"Lato",system-ui,sans-serif;font-size:12px;font-weight:500;line-height:16px;text-decoration:none;background:#fd5587;color:#fff;box-shadow:0 1px 1px rgba(51,51,51,.08),0 6px 12px rgba(51,51,51,.16);opacity:.92;transition:opacity .2s';
+            a.onmouseenter=function(){a.style.opacity='1';};
+            a.onmouseleave=function(){a.style.opacity='.92';};
+            a.innerHTML='<span aria-hidden="true" style="font-size:13px;line-height:1">↻</span><span>Remix on Plaza</span>';
+            var s=document.createElement('style');
+            s.textContent='@media print{#plaza-badge{display:none}}';
+            document.head.appendChild(s);
+            document.body.appendChild(a);
+          })
+          .catch(function(){});
+      }catch(e){}
+    })();
+    </script>
   </body>
 </html>
