@@ -208,7 +208,7 @@ func TestHelpFooterDocLink(t *testing.T) {
 	t.Run("root help has footer", func(t *testing.T) {
 		out, _ := exec.Command(bin, "--help").CombinedOutput()
 		s := string(out)
-		if !strings.Contains(s, "https://docs.asksurf.ai/llms.txt") {
+		if !strings.Contains(s, "https://agents.asksurf.ai/llms.txt") {
 			t.Errorf("root --help missing docs link:\n%s", s)
 		}
 		if !strings.Contains(s, "https://github.com/asksurf-ai/surf-cli/issues") {
@@ -219,7 +219,7 @@ func TestHelpFooterDocLink(t *testing.T) {
 	t.Run("subcommand help has no footer", func(t *testing.T) {
 		out, _ := exec.Command(bin, "market-price", "--help").CombinedOutput()
 		s := string(out)
-		if strings.Contains(s, "https://docs.asksurf.ai/llms.txt") {
+		if strings.Contains(s, "https://agents.asksurf.ai/llms.txt") {
 			t.Errorf("market-price --help should NOT carry root footer:\n%s", s)
 		}
 	})
