@@ -574,6 +574,11 @@ func MakeRequestAndFormat(req *http.Request) {
 			// GetExitCode to return 4, matching the §4.1 contract.
 			synthetic := newTransportErrorResponse(code, msg)
 			lastStatus = synthetic.Status
+			// Mirror the synthesized transport-error envelope too, so the sink
+			// reflects every response surf formats to stdout — not just parsed
+			// HTTP responses. (A consumer reads the error body and extracts
+			// nothing from it, which is the correct outcome.)
+			mirrorResponse(req, synthetic)
 			if fmtErr := Formatter.Format(synthetic); fmtErr != nil {
 				panic(fmtErr)
 			}
@@ -581,6 +586,12 @@ func MakeRequestAndFormat(req *http.Request) {
 		}
 		panic(err)
 	}
+
+	// Mirror the parsed response out-of-band for machine consumers
+	// ($SURF_RESPONSE_SINK_DIR) before formatting to stdout, so the full
+	// structured body is captured regardless of the selected output format or
+	// any downstream reshaping of stdout. No-op unless the env var is set.
+	mirrorResponse(req, parsed)
 
 	if err := Formatter.Format(parsed); err != nil {
 		if e, ok := err.(shorthand.Error); ok {
