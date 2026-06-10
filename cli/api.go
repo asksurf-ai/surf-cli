@@ -93,7 +93,12 @@ func cacheAPI(name string, api *API) {
 	}
 
 	Cache.Set(name+".expires", time.Now().Add(24*time.Hour))
-	Cache.WriteConfig()
+	if err := Cache.WriteConfig(); err != nil {
+		// Without the persisted expiry, LoadCachedAPI treats the cache as
+		// missing and every subsequent invocation re-syncs the spec.
+		// Surface the reason on stderr instead of silently degrading.
+		LogError("Could not persist API cache expiry (next runs will re-sync): %s", err)
+	}
 
 	b, err := cbor.Marshal(api)
 	if err != nil {
@@ -101,7 +106,7 @@ func cacheAPI(name string, api *API) {
 	}
 	filename := filepath.Join(getCacheDir(), name+".cbor")
 	if err := os.WriteFile(filename, b, 0o600); err != nil {
-		LogError("Could not write API cache %s", err)
+		LogError("Could not write API cache %s (next runs will re-sync): %s", filename, err)
 	}
 }
 
