@@ -94,6 +94,7 @@ func main() {
 	cli.Root.PersistentFlags().Bool("json", false, "Output result as JSON (alias for -o json)")
 	cli.Root.PersistentFlags().Bool("debug", false, "Enable debug log output")
 	cli.Root.PersistentFlags().Bool("quiet", false, "Suppress non-error diagnostic output")
+	addHiddenCompatRootFlags(cli.Root)
 
 	// Add -v as shorthand for --version. Cobra auto-registers --version
 	// (from Root.Version) but without a short flag.
@@ -214,6 +215,7 @@ func main() {
 			}
 			cmd := op.Command()
 			cmd.GroupID = "api"
+			addHiddenCompatOperationFlags(cmd)
 			cli.Root.AddCommand(cmd)
 		}
 	}
@@ -243,6 +245,40 @@ func main() {
 
 	cli.ReportCLIEvent(cli.GetCurrentCommand(), exitCode, errMsg)
 	os.Exit(exitCode)
+}
+
+func addHiddenCompatRootFlags(root *cobra.Command) {
+	root.PersistentFlags().String("agent-view", "", "Compatibility no-op for legacy instant skill examples")
+	_ = root.PersistentFlags().MarkHidden("agent-view")
+}
+
+func addHiddenCompatOperationFlags(cmd *cobra.Command) {
+	if cmd.Name() != "search-web" {
+		return
+	}
+
+	var queryAlias string
+	cmd.Flags().StringVar(&queryAlias, "query", "", "Alias for --q (hidden compatibility)")
+	_ = cmd.Flags().MarkHidden("query")
+
+	origPreRun := cmd.PreRun
+	origPreRunE := cmd.PreRunE
+	cmd.PreRunE = func(c *cobra.Command, args []string) error {
+		if f := c.Flags().Lookup("query"); f != nil && f.Changed {
+			if qf := c.Flags().Lookup("q"); qf != nil && !qf.Changed {
+				if err := c.Flags().Set("q", queryAlias); err != nil {
+					return err
+				}
+			}
+		}
+		if origPreRunE != nil {
+			return origPreRunE(c, args)
+		}
+		if origPreRun != nil {
+			origPreRun(c, args)
+		}
+		return nil
+	}
 }
 
 // needsCachedAPI reports whether the current argv invokes a command that
