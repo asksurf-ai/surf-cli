@@ -224,6 +224,7 @@ func main() {
 	cli.Root.AddCommand(newVersionCmd())
 	cli.Root.AddCommand(newInstallCmd())
 	cli.Root.AddCommand(newListOperationsCmd())
+	cli.Root.AddCommand(newListInstantOperationsCmd())
 	cli.Root.AddCommand(newCatalogCmd())
 	cli.Root.AddCommand(newTelemetryCmd())
 	cli.Root.AddCommand(newFeedbackCmd())
@@ -247,8 +248,8 @@ func main() {
 // needsCachedAPI reports whether the current argv invokes a command that
 // requires the cached OpenAPI spec. Meta commands (auth, sync, help, version,
 // install, completion, telemetry, feedback, catalog) work without it.
-// list-operations DOES need it — it enumerates the spec — so it's not in
-// the meta set and will trigger auto-sync on cache miss.
+// list-operations and list-instant-operations DO need it: they enumerate the
+// spec, so they are not in the meta set and will trigger auto-sync on cache miss.
 func needsCachedAPI() bool {
 	meta := map[string]bool{
 		"auth": true, "sync": true, "catalog": true,
@@ -274,7 +275,8 @@ func shouldInjectAPIName() bool {
 	local := map[string]bool{
 		"auth": true, "sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
-		"list-operations": true, "telemetry": true, "feedback": true,
+		"list-operations": true, "list-instant-operations": true,
+		"list-instant-operation": true, "telemetry": true, "feedback": true,
 	}
 	// If --help or -h appears anywhere, don't inject.
 	for _, arg := range os.Args[1:] {

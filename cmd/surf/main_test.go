@@ -36,6 +36,16 @@ func TestShouldInjectAPIName(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "list instant operations command does not inject",
+			args: []string{"surf", "list-instant-operations"},
+			want: false,
+		},
+		{
+			name: "list instant operation alias does not inject",
+			args: []string{"surf", "list-instant-operation"},
+			want: false,
+		},
+		{
 			name: "no args does not inject",
 			args: []string{"surf"},
 			want: false,
@@ -80,6 +90,8 @@ func TestNeedsCachedAPI(t *testing.T) {
 		{"feedback is meta", []string{"surf", "feedback", "test"}, false},
 		{"API command needs cache", []string{"surf", "polymarket-markets"}, true},
 		{"list-operations needs cache", []string{"surf", "list-operations"}, true},
+		{"list-instant-operations needs cache", []string{"surf", "list-instant-operations"}, true},
+		{"list-instant-operation alias needs cache", []string{"surf", "list-instant-operation"}, true},
 		{"API command with --help needs cache", []string{"surf", "polymarket-markets", "--help"}, true},
 		{"leading flags skipped when finding command", []string{"surf", "--debug", "polymarket-markets"}, true},
 		{"leading flags skipped before meta command", []string{"surf", "--debug", "auth"}, false},
