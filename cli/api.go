@@ -45,6 +45,7 @@ func (a *API) Merge(other API) {
 }
 
 var loaders []Loader
+var operationCommandHooks []func(*cobra.Command)
 
 // Loader is used to detect and load an API spec, turning it into CLI commands.
 type Loader interface {
@@ -56,6 +57,12 @@ type Loader interface {
 // AddLoader adds a new API spec loader to the CLI.
 func AddLoader(loader Loader) {
 	loaders = append(loaders, loader)
+}
+
+// AddOperationCommandHook registers a callback that can customize generated
+// operation commands before they are added to the Cobra command tree.
+func AddOperationCommandHook(hook func(*cobra.Command)) {
+	operationCommandHooks = append(operationCommandHooks, hook)
 }
 
 func setupRootFromAPI(root *cobra.Command, api *API) {
@@ -73,7 +80,11 @@ func setupRootFromAPI(root *cobra.Command, api *API) {
 			group := &cobra.Group{ID: op.Group, Title: groupName}
 			root.AddGroup(group)
 		}
-		root.AddCommand(op.Command())
+		cmd := op.Command()
+		for _, hook := range operationCommandHooks {
+			hook(cmd)
+		}
+		root.AddCommand(cmd)
 	}
 }
 

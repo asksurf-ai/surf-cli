@@ -60,6 +60,7 @@ func main() {
 	cli.Init("surf", version)
 	cli.Defaults()
 	cli.AddLoader(openapi.New())
+	cli.AddOperationCommandHook(addHiddenCompatOperationFlags)
 
 	// Send Cobra diagnostics (deprecation warnings, usage errors) to stderr
 	// so they don't pollute JSON output on stdout.
@@ -153,6 +154,9 @@ func main() {
 			// Errors are still printed by cli.Run()'s error handling.
 			cmd.SilenceErrors = true
 			cmd.SilenceUsage = true
+			for _, child := range cmd.Commands() {
+				addHiddenCompatOperationFlags(child)
+			}
 
 			// Catch unknown commands that fall through to the API subcommand.
 			// Without this, `surf nonexistent` shows the API subcommand's
@@ -253,7 +257,10 @@ func addHiddenCompatRootFlags(root *cobra.Command) {
 }
 
 func addHiddenCompatOperationFlags(cmd *cobra.Command) {
-	if cmd.Name() != "search-web" {
+	if !isSearchWebCommand(cmd) {
+		return
+	}
+	if cmd.Flags().Lookup("query") != nil {
 		return
 	}
 
@@ -279,6 +286,14 @@ func addHiddenCompatOperationFlags(cmd *cobra.Command) {
 		}
 		return nil
 	}
+}
+
+func isSearchWebCommand(cmd *cobra.Command) bool {
+	if cmd.Name() == "search-web" {
+		return true
+	}
+	fields := strings.Fields(cmd.Use)
+	return len(fields) > 0 && fields[0] == "search-web"
 }
 
 // needsCachedAPI reports whether the current argv invokes a command that

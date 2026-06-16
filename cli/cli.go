@@ -193,6 +193,7 @@ func Init(name string, version string) {
 	encodings = map[string]ContentEncoding{}
 	linkParsers = []LinkParser{}
 	loaders = []Loader{}
+	operationCommandHooks = nil
 
 	// Determine if we are using a TTY or colored output is forced-on.
 	tty := false

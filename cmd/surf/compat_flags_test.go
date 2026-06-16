@@ -21,10 +21,11 @@ func TestHiddenCompatRootFlags(t *testing.T) {
 
 func TestSearchWebQueryCompatAlias(t *testing.T) {
 	cmd := &cobra.Command{
-		Use: "search-web",
+		Use: "search-web [flags]",
 		Run: func(cmd *cobra.Command, args []string) {},
 	}
 	cmd.Flags().String("q", "", "query")
+	addHiddenCompatOperationFlags(cmd)
 	addHiddenCompatOperationFlags(cmd)
 
 	f := cmd.Flags().Lookup("query")

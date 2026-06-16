@@ -74,3 +74,45 @@ func TestBadSpecURL(t *testing.T) {
 	_, err := Load("https://api.example.com", &cobra.Command{})
 	assert.Error(t, err)
 }
+
+func TestLoadAppliesOperationCommandHooks(t *testing.T) {
+	reset(false)
+	viper.Set("rsh-no-cache", true)
+
+	called := false
+	AddOperationCommandHook(func(cmd *cobra.Command) {
+		if cmd.Name() != "search-web" {
+			return
+		}
+		called = true
+		cmd.Flags().Bool("hooked", false, "hooked by test")
+	})
+
+	AddLoader(&overrideLoader{
+		load: func(entrypoint, spec url.URL, resp *http.Response) (API, error) {
+			return API{
+				Operations: []Operation{
+					{
+						Name:        "search web",
+						Method:      http.MethodGet,
+						URITemplate: "https://api.example.com/search",
+					},
+				},
+			}, nil
+		},
+	})
+
+	configs["hook-test"] = &APIConfig{
+		Base:      "https://api.example.com",
+		SpecFiles: []string{"testdata/petstore.json"},
+	}
+
+	root := &cobra.Command{Use: "test"}
+	_, err := Load("https://api.example.com", root)
+	assert.NoError(t, err)
+	assert.True(t, called)
+
+	cmd, _, err := root.Find([]string{"search-web"})
+	assert.NoError(t, err)
+	assert.NotNil(t, cmd.Flags().Lookup("hooked"))
+}
