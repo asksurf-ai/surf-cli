@@ -307,10 +307,11 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 			return API{}, err
 		}
 		if err := DecodeResponse(resp); err != nil {
+			resp.Body.Close()
 			return API{}, err
 		}
-		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			return API{}, err
 		}
