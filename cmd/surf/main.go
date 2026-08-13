@@ -22,6 +22,11 @@ var embeddedAPIsJSON []byte
 var version = "dev"
 var configDir string
 
+const productionSurfGatewayBase = "https://api.asksurf.ai/gateway"
+
+// buildSurfGatewayBase is overridden by GoReleaser for staging builds.
+var buildSurfGatewayBase = productionSurfGatewayBase
+
 func main() {
 	// Force config and cache to ~/.surf/ on all platforms.
 	home, err := os.UserHomeDir()
@@ -59,6 +64,7 @@ func main() {
 	// Initialize restish.
 	cli.Init("surf", version)
 	cli.Defaults()
+	applySurfAPIBaseURLOverride()
 	cli.AddLoader(openapi.New())
 	cli.AddOperationCommandHook(addHiddenCompatOperationFlags)
 
@@ -202,7 +208,7 @@ func main() {
 	if cli.LoadCachedAPI("surf") == nil && needsCachedAPI() {
 		fmt.Fprintln(os.Stderr, "No cached API spec, syncing...")
 		viper.Set("rsh-no-cache", true)
-		if _, err := cli.Load("https://api.asksurf.ai/gateway", cli.Root); err != nil {
+		if _, err := cli.Load(currentSurfGatewayBase(), cli.Root); err != nil {
 			fmt.Fprintf(os.Stderr, "Auto-sync failed: %v\n", err)
 			// Fall through — the downstream "no cached API spec" /
 			// "unknown command" path will produce a more specific error.
@@ -345,6 +351,56 @@ func shouldInjectAPIName() bool {
 	return false
 }
 
+func explicitSurfAPIBaseURLOverride(args []string) string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case strings.HasPrefix(arg, "--surf-api-base-url="):
+			return strings.TrimPrefix(arg, "--surf-api-base-url=")
+		case arg == "--surf-api-base-url" && i+1 < len(args):
+			return args[i+1]
+		case strings.HasPrefix(arg, "-s="):
+			return strings.TrimPrefix(arg, "-s=")
+		case arg == "-s" && i+1 < len(args):
+			return args[i+1]
+		case strings.HasPrefix(arg, "-s") && len(arg) > 2:
+			return strings.TrimPrefix(arg, "-s")
+		}
+	}
+	return os.Getenv("SURF_API_BASE_URL")
+}
+
+func normalizeSurfGatewayBase(raw string) string {
+	base := strings.TrimRight(strings.TrimSpace(raw), "/")
+	if strings.HasSuffix(base, "/v1") {
+		base = strings.TrimSuffix(base, "/v1")
+	}
+	return base
+}
+
+func effectiveSurfAPIBaseURL() string {
+	if raw := explicitSurfAPIBaseURLOverride(os.Args[1:]); raw != "" {
+		return raw
+	}
+	return currentSurfGatewayBase() + "/v1"
+}
+
+func currentSurfGatewayBase() string {
+	base := normalizeSurfGatewayBase(buildSurfGatewayBase)
+	if base == "" {
+		base = productionSurfGatewayBase
+	}
+	return base
+}
+
+func applySurfAPIBaseURLOverride() {
+	base := currentSurfGatewayBase()
+	if explicitSurfAPIBaseURLOverride(os.Args[1:]) == "" {
+		viper.Set("surf-api-base-url", base+"/v1")
+	}
+	cli.OverrideAPIConfig("surf", base, []string{base + "/openapi.json"})
+}
+
 func removeCommands(root *cobra.Command, names ...string) {
 	unwanted := make(map[string]bool, len(names))
 	for _, n := range names {
@@ -451,7 +507,7 @@ func newSyncCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			viper.Set("rsh-no-cache", true)
-			if _, err := cli.Load("https://api.asksurf.ai/gateway", cli.Root); err != nil {
+			if _, err := cli.Load(currentSurfGatewayBase(), cli.Root); err != nil {
 				return fmt.Errorf("sync failed: %w", err)
 			}
 			fmt.Fprintln(os.Stderr, "API spec synced.")

@@ -3,7 +3,10 @@ package cli
 import (
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -115,4 +118,25 @@ func TestLoadAppliesOperationCommandHooks(t *testing.T) {
 	cmd, _, err := root.Find([]string{"search-web"})
 	assert.NoError(t, err)
 	assert.NotNil(t, cmd.Flags().Lookup("hooked"))
+}
+
+func TestLoadCachedAPIIsScopedToConfiguredBase(t *testing.T) {
+	reset(false)
+	name := "base-scoped-cache"
+	configs[name] = &APIConfig{
+		name:     name,
+		Base:     "https://api.stg.example/gateway",
+		Profiles: map[string]*APIProfile{"default": {}},
+	}
+
+	Cache.Set(name+".base", "https://api.prod.example/gateway")
+	Cache.Set(name+".expires", time.Now().Add(time.Hour))
+	if err := Cache.WriteConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(getCacheDir(), name+".cbor"), []byte("stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Nil(t, LoadCachedAPI(name))
 }
