@@ -107,3 +107,56 @@ func TestNeedsCachedAPI(t *testing.T) {
 		})
 	}
 }
+
+func TestEffectiveSurfAPIBaseURLUsesBuildDefault(t *testing.T) {
+	t.Setenv("SURF_API_BASE_URL", "")
+	oldArgs := os.Args
+	oldBuildBase := buildSurfGatewayBase
+	t.Cleanup(func() {
+		os.Args = oldArgs
+		buildSurfGatewayBase = oldBuildBase
+	})
+	os.Args = []string{"surf", "sync"}
+	buildSurfGatewayBase = "https://api.stg.ask.surf/gateway"
+
+	if got, want := effectiveSurfAPIBaseURL(), "https://api.stg.ask.surf/gateway/v1"; got != want {
+		t.Fatalf("effectiveSurfAPIBaseURL() = %q, want %q", got, want)
+	}
+}
+
+func TestEffectiveSurfAPIBaseURLPrefersExplicitOverride(t *testing.T) {
+	t.Setenv("SURF_API_BASE_URL", "https://env.example/gateway/v1")
+	oldArgs := os.Args
+	oldBuildBase := buildSurfGatewayBase
+	t.Cleanup(func() {
+		os.Args = oldArgs
+		buildSurfGatewayBase = oldBuildBase
+	})
+	buildSurfGatewayBase = "https://api.stg.ask.surf/gateway"
+
+	os.Args = []string{"surf", "sync"}
+	if got, want := effectiveSurfAPIBaseURL(), "https://env.example/gateway/v1"; got != want {
+		t.Fatalf("env override = %q, want %q", got, want)
+	}
+
+	os.Args = []string{"surf", "--surf-api-base-url", "https://flag.example/gateway/v1", "sync"}
+	if got, want := effectiveSurfAPIBaseURL(), "https://flag.example/gateway/v1"; got != want {
+		t.Fatalf("flag override = %q, want %q", got, want)
+	}
+}
+
+func TestCurrentSurfGatewayBaseUsesBuildDefaultDespiteRuntimeOverride(t *testing.T) {
+	t.Setenv("SURF_API_BASE_URL", "https://runtime.example/gateway/v1")
+	oldArgs := os.Args
+	oldBuildBase := buildSurfGatewayBase
+	t.Cleanup(func() {
+		os.Args = oldArgs
+		buildSurfGatewayBase = oldBuildBase
+	})
+	os.Args = []string{"surf", "sync"}
+	buildSurfGatewayBase = "https://api.stg.ask.surf/gateway"
+
+	if got, want := currentSurfGatewayBase(), "https://api.stg.ask.surf/gateway"; got != want {
+		t.Fatalf("currentSurfGatewayBase() = %q, want %q", got, want)
+	}
+}

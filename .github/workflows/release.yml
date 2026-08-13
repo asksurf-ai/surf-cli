@@ -15,6 +15,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       RELEASE_BUCKET: ${{ secrets.RELEASE_BUCKET }}
       RELEASE_DIRECTORY: ${{ secrets.RELEASE_DIRECTORY }}
+      SURF_GATEWAY_BASE: https://api.asksurf.ai/gateway
     steps:
       - uses: actions/checkout@v4
         with:

@@ -103,6 +103,9 @@ func cacheAPI(name string, api *API) {
 		return
 	}
 
+	if base := apiCacheBase(name); base != "" {
+		Cache.Set(name+".base", base)
+	}
 	Cache.Set(name+".expires", time.Now().Add(24*time.Hour))
 	Cache.WriteConfig()
 
@@ -116,11 +119,37 @@ func cacheAPI(name string, api *API) {
 	}
 }
 
+func apiCacheBase(name string) string {
+	config := configs[name]
+	if config == nil {
+		return ""
+	}
+	base := config.Base
+	profile := viper.GetString("rsh-profile")
+	if profile != "" && profile != "default" {
+		if profileConfig := config.Profiles[profile]; profileConfig != nil && profileConfig.Base != "" {
+			base = profileConfig.Base
+		}
+	}
+	return strings.TrimRight(base, "/")
+}
+
+func apiCacheMatchesBase(name string) bool {
+	expected := apiCacheBase(name)
+	if expected == "" {
+		return true
+	}
+	return Cache.GetString(name+".base") == expected
+}
+
 // LoadCachedAPI loads an API from the local cache without making network
 // requests. Returns nil if no valid cache exists or is expired.
 // Unlike Load, this skips the version check since it is used only to
 // populate command names and descriptions for help output.
 func LoadCachedAPI(name string) *API {
+	if !apiCacheMatchesBase(name) {
+		return nil
+	}
 	expires := Cache.GetTime(name + ".expires")
 	if expires.IsZero() || !time.Now().Before(expires) {
 		return nil
@@ -161,12 +190,12 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 
 	// See if there is a cache we can quickly load.
 	expires := Cache.GetTime(name + ".expires")
-	if !viper.GetBool("rsh-no-cache") && !expires.IsZero() && expires.After(time.Now()) {
+	if !viper.GetBool("rsh-no-cache") && apiCacheMatchesBase(name) && !expires.IsZero() && expires.After(time.Now()) {
 		var cached API
 		filename := filepath.Join(getCacheDir(), name+".cbor")
 		if data, err := os.ReadFile(filename); err == nil {
 			if err := cbor.Unmarshal(data, &cached); err == nil {
-				if cached.RestishVersion == root.Version {
+				if root.Version == "" || cached.RestishVersion == root.Version {
 					setupRootFromAPI(root, &cached)
 					return cached, nil
 				}

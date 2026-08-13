@@ -87,6 +87,32 @@ type apiConfigs map[string]*APIConfig
 var configs apiConfigs
 var apiCommand *cobra.Command
 
+// OverrideAPIConfig updates an API config in memory before operations are
+// loaded. Surf uses this to select the gateway baked into each release build.
+func OverrideAPIConfig(name, base string, specFiles []string) {
+	config := configs[name]
+	if config == nil {
+		config = &APIConfig{name: name}
+	}
+	config.name = name
+	config.Base = base
+	config.SpecFiles = specFiles
+	if config.Profiles == nil {
+		config.Profiles = map[string]*APIProfile{}
+	}
+	if config.Profiles["default"] == nil {
+		config.Profiles["default"] = &APIProfile{}
+	}
+	configs[name] = config
+
+	for _, cmd := range Root.Commands() {
+		if cmd.Use == name {
+			cmd.Short = base
+			break
+		}
+	}
+}
+
 func initAPIConfig() {
 	apis = viper.New()
 

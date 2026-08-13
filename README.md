@@ -100,6 +100,8 @@ To test against the staging CDN + API, install from the staging installer:
 
 ```sh
 curl -fsSL https://downloads-stg.asksurf.ai/cli/releases/install.sh | sh
+surf sync
+surf list-operations --category equity
 ```
 
 > **Do not run `surf install` afterwards.** It pulls the production binary
