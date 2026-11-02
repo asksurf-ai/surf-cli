@@ -90,6 +90,18 @@ Creating the job is the billed step (same price as a sync SQL call); polling and
 result download are free, and results are retained for 24 hours. `HTTP 202` means
 accepted, not finished — poll `onchain-sql-job-get` until the status is terminal.
 
+To see how a query would scan without running it, use preflight — it returns
+estimated rows/bytes and the enforced budgets:
+
+```sh
+echo '{"sql":"SELECT ..."}' | surf onchain-sql-preflight
+```
+
+Preflight costs the same 4 credits as a SQL call, so reach for it when a query
+keeps getting rejected rather than before every query. Check `data.accepted`:
+a rejected plan still returns HTTP 200, with `accepted: false` and `warnings[]`
+entries carrying a `recommended_action`.
+
 ## Authentication
 
 API keys are resolved in this order:
