@@ -49,6 +49,41 @@ surf auth --clear
 
 Run `surf help` to see all available commands.
 
+## On-chain SQL
+
+Every on-chain table lives in the `agent` database. Discover schema first:
+
+```sh
+surf catalog search "dex trades"
+surf catalog show ethereum_dex_trades
+```
+
+Short queries run synchronously with a 30s budget:
+
+```sh
+echo '{"sql":"SELECT project, sum(amount_usd) FROM agent.ethereum_dex_trades WHERE block_date = today() - 1 GROUP BY project ORDER BY 2 DESC LIMIT 10"}' \
+  | surf onchain-sql
+```
+
+Heavy queries — joins, multi-table scans, wide windows — are rejected from the
+synchronous path. Run them as a durable job:
+
+```sh
+echo '{"sql":"SELECT ..."}' | surf onchain-sql-job-create
+surf onchain-sql-job-get <job_id>                 # poll until terminal
+surf onchain-sql-job-results <job_id> --format json
+```
+
+Or keep one call and request async inline:
+
+```sh
+echo '{"sql":"SELECT ..."}' | surf onchain-sql --prefer respond-async
+```
+
+Job creation is billed once; polling and result download are free, and results
+are retained for 24 hours. `HTTP 202` means accepted, not finished — poll
+`onchain-sql-job-get` until the status is terminal.
+
 ## Authentication
 
 API keys are resolved in this order:
