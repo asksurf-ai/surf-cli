@@ -82,12 +82,13 @@ echo '{"sql":"SELECT ..."}' | surf onchain-sql --prefer respond-async
 ```
 
 Pass `--idempotency-key <key>` on `onchain-sql` or `onchain-sql-job-create` to
-reuse an accepted job on retry instead of running the query twice — the async
-job path is the one place where a retry is otherwise ambiguous.
+reuse an accepted job on retry instead of running the query twice. The reused
+submission is still billed like any other SQL call — the key prevents duplicate
+execution, not duplicate charging.
 
-Job creation is billed once; polling and result download are free, and results
-are retained for 24 hours. `HTTP 202` means accepted, not finished — poll
-`onchain-sql-job-get` until the status is terminal.
+Creating the job is the billed step (same price as a sync SQL call); polling and
+result download are free, and results are retained for 24 hours. `HTTP 202` means
+accepted, not finished — poll `onchain-sql-job-get` until the status is terminal.
 
 ## Authentication
 
