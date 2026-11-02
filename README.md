@@ -65,8 +65,9 @@ echo '{"sql":"SELECT project, sum(amount_usd) FROM agent.ethereum_dex_trades WHE
   | surf onchain-sql
 ```
 
-Heavy queries — joins, multi-table scans, wide windows — are rejected from the
-synchronous path. Run them as a durable job:
+Heavy queries — joins, multi-table scans, or scans whose estimated size exceeds
+the synchronous budget — are rejected from the sync path with
+`SYNC_QUERY_REQUIRES_ASYNC`. Run them as a durable job:
 
 ```sh
 echo '{"sql":"SELECT ..."}' | surf onchain-sql-job-create
@@ -79,6 +80,10 @@ Or keep one call and request async inline:
 ```sh
 echo '{"sql":"SELECT ..."}' | surf onchain-sql --prefer respond-async
 ```
+
+Pass `--idempotency-key <key>` on `onchain-sql` or `onchain-sql-job-create` to
+reuse an accepted job on retry instead of running the query twice — the async
+job path is the one place where a retry is otherwise ambiguous.
 
 Job creation is billed once; polling and result download are free, and results
 are retained for 24 hours. `HTTP 202` means accepted, not finished — poll
