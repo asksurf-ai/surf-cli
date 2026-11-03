@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -554,15 +555,30 @@ func newListOperationsCmd() *cobra.Command {
 	var groupByTag bool
 	var detail bool
 	var category string
+	var asJSON bool
+	var compact bool
+	var index bool
 	cmd := &cobra.Command{
 		Use:   "list-operations",
 		Short: "List all available API operations",
-		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.\n\nUse --detail to show full descriptions (useful for choosing between similar endpoints).\nUse --category to filter by group name.",
+		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.\n\nUse --detail to show full descriptions (useful for choosing between similar endpoints).\nUse --category to filter by group name.\nUse --json to emit a machine-readable command catalog (for agents): name, method, group, required/optional flags with type, enum values, bounds, description, default, and example.\nAdd --compact to --json to drop descriptions and summaries.\nUse --index to emit just name, group, and one-line summary for every operation (~11 KB / ~3k tokens for the full Surf API), enough to pick a command before reading its --help.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			api := cli.LoadCachedAPI("surf")
 			if api == nil {
 				return fmt.Errorf("no cached API spec — run `surf sync` first")
+			}
+
+			ops := filterOps(api.Operations, category)
+
+			if compact || index {
+				asJSON = true
+			}
+			if asJSON {
+				if index {
+					return printOperationsIndex(ops)
+				}
+				return printOperationsJSON(ops, compact)
 			}
 
 			if groupByTag {
@@ -576,7 +592,166 @@ func newListOperationsCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&groupByTag, "group", "g", false, "Group operations by category")
 	cmd.Flags().BoolVarP(&detail, "detail", "d", false, "Show full description for each operation")
 	cmd.Flags().StringVarP(&category, "category", "c", "", "Filter by category name (case-insensitive substring match)")
+	cmd.Flags().BoolVar(&asJSON, "json", false, "Emit machine-readable JSON catalog (for agents)")
+	cmd.Flags().BoolVar(&compact, "compact", false, "With --json: omit descriptions and summaries (implies --json)")
+	cmd.Flags().BoolVar(&index, "index", false, "With --json: emit only name, group, and summary (implies --json)")
 	return cmd
+}
+
+// flagCatalog is the agent-facing shape of one CLI flag. Description is omitted
+// in compact mode; enums/min/max are always kept because they decide whether a
+// call will be rejected.
+type flagCatalog struct {
+	Name        string   `json:"name"`
+	In          string   `json:"in,omitempty"`
+	Type        string   `json:"type"`
+	Required    bool     `json:"required,omitempty"`
+	Enum        []string `json:"enum,omitempty"`
+	Min         *float64 `json:"min,omitempty"`
+	Max         *float64 `json:"max,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Default     any      `json:"default,omitempty"`
+	Example     any      `json:"example,omitempty"`
+}
+
+// opCatalog is the agent-facing shape of one API operation.
+type opCatalog struct {
+	Name           string          `json:"name"`
+	Method         string          `json:"method"`
+	Group          string          `json:"group,omitempty"`
+	Short          string          `json:"short,omitempty"`
+	PositionalArgs []positionalArg `json:"positional_args,omitempty"`
+	RequiredFlags  []flagCatalog   `json:"required_flags,omitempty"`
+	OptionalFlags  []flagCatalog   `json:"optional_flags,omitempty"`
+	HasBody        bool            `json:"has_body,omitempty"`
+	BodyRequired   bool            `json:"body_required,omitempty"`
+	BodyMediaType  string          `json:"body_media_type,omitempty"`
+}
+
+// positionalArg is a path parameter. It is passed positionally
+// (`surf onchain-sql-job-get <job-id>`), not as a flag, so it must not be
+// listed among the flags an agent can pass.
+type positionalArg struct {
+	Name        string   `json:"name"`
+	Position    int      `json:"position"`
+	Type        string   `json:"type"`
+	Required    bool     `json:"required,omitempty"`
+	Enum        []string `json:"enum,omitempty"`
+	Min         *float64 `json:"min,omitempty"`
+	Max         *float64 `json:"max,omitempty"`
+	Example     any      `json:"example,omitempty"`
+	Description string   `json:"description,omitempty"`
+}
+
+// printOperationsJSON emits the command catalog as JSON to stdout. Includes
+// only visible, non-deprecated operations. Ordering matches the spec order.
+// With compact set, flag descriptions and the operation summary are dropped,
+// which is what an agent needs to plan calls without reading --help.
+func printOperationsJSON(ops []cli.Operation, compact bool) error {
+	out := make([]opCatalog, 0, len(ops))
+	for _, op := range ops {
+		if op.Hidden || op.Deprecated != "" {
+			continue
+		}
+		c := opCatalog{
+			Name:          op.Name,
+			Method:        op.Method,
+			Group:         op.Group,
+			HasBody:       op.BodyMediaType != "",
+			BodyRequired:  op.BodyRequired,
+			BodyMediaType: op.BodyMediaType,
+		}
+		if !compact {
+			c.Short = op.Short
+		}
+		for i, p := range op.PathParams {
+			desc := conditionalDescription(p.Description, compact)
+			c.PositionalArgs = append(c.PositionalArgs, positionalArg{
+				Name:        p.Name,
+				Position:    i + 1,
+				Type:        p.Type,
+				Required:    p.Required,
+				Enum:        p.Enum,
+				Min:         p.Minimum,
+				Max:         p.Maximum,
+				Example:     p.HelpfulExampleFor(desc),
+				Description: desc,
+			})
+		}
+		for _, p := range op.QueryParams {
+			if !p.SupportsFlag() {
+				continue
+			}
+			fc := paramToCatalog(p, compact)
+			if p.Required {
+				c.RequiredFlags = append(c.RequiredFlags, fc)
+			} else {
+				c.OptionalFlags = append(c.OptionalFlags, fc)
+			}
+		}
+		for _, p := range op.HeaderParams {
+			if !p.SupportsFlag() {
+				continue
+			}
+			fc := paramToCatalog(p, compact)
+			fc.In = "header"
+			if p.Required {
+				c.RequiredFlags = append(c.RequiredFlags, fc)
+			} else {
+				c.OptionalFlags = append(c.OptionalFlags, fc)
+			}
+		}
+		out = append(out, c)
+	}
+	enc := json.NewEncoder(cli.Stdout)
+	if !compact {
+		enc.SetIndent("", "  ")
+	}
+	return enc.Encode(out)
+}
+
+// opIndexEntry is the smallest useful discovery payload: enough to choose a
+// command, without the flag tables that make a full catalog cost ~12k tokens.
+type opIndexEntry struct {
+	Name  string `json:"name"`
+	Group string `json:"group,omitempty"`
+	Short string `json:"short,omitempty"`
+}
+
+// printOperationsIndex emits the discovery index for agents. One line per
+// operation, no indentation.
+func printOperationsIndex(ops []cli.Operation) error {
+	out := make([]opIndexEntry, 0, len(ops))
+	for _, op := range ops {
+		if op.Hidden || op.Deprecated != "" {
+			continue
+		}
+		out = append(out, opIndexEntry{Name: op.Name, Group: op.Group, Short: op.Short})
+	}
+	return json.NewEncoder(cli.Stdout).Encode(out)
+}
+
+// conditionalDescription drops flag documentation in compact mode.
+func conditionalDescription(desc string, compact bool) string {
+	if compact {
+		return ""
+	}
+	return desc
+}
+
+func paramToCatalog(p *cli.Param, compact bool) flagCatalog {
+	desc := conditionalDescription(p.Description, compact)
+	return flagCatalog{
+		Name:        p.OptionName(),
+		Type:        p.Type,
+		Required:    p.Required,
+		Enum:        p.Enum,
+		Min:         p.Minimum,
+		Max:         p.Maximum,
+		Default:     p.Default,
+		Example:     p.HelpfulExampleFor(desc),
+		Description: desc,
+	}
 }
 
 func filterOps(ops []cli.Operation, category string) []cli.Operation {

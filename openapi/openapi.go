@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/danielgtaylor/casing"
@@ -236,23 +237,32 @@ func appendSchemaHints(desc string, s *base.Schema) string {
 		// Skip if the description already lists the first enum value
 		// (some specs embed enum info in the description text).
 		if !strings.Contains(desc, vals[0]) {
-			desc += " (one of: " + strings.Join(vals, ", ") + ")"
+			desc = appendHint(desc, "one of: "+strings.Join(vals, ", "))
 		}
 	}
 	if s.Minimum != nil || s.Maximum != nil {
 		var parts []string
 		if s.Minimum != nil {
-			parts = append(parts, fmt.Sprintf("min %.0f", *s.Minimum))
+			parts = append(parts, "min "+strconv.FormatFloat(*s.Minimum, 'f', -1, 64))
 		}
 		if s.Maximum != nil {
-			parts = append(parts, fmt.Sprintf("max %.0f", *s.Maximum))
+			parts = append(parts, "max "+strconv.FormatFloat(*s.Maximum, 'f', -1, 64))
 		}
-		hint := strings.Join(parts, ", ")
-		if !strings.Contains(desc, hint) {
-			desc += " (" + hint + ")"
-		}
+		desc = appendHint(desc, strings.Join(parts, ", "))
 	}
 	return desc
+}
+
+// appendHint adds a parenthesised note without leaving a leading space when
+// the description is empty.
+func appendHint(desc, hint string) string {
+	if strings.Contains(desc, hint) {
+		return desc
+	}
+	if desc == "" {
+		return "(" + hint + ")"
+	}
+	return strings.TrimRight(desc, " .") + " (" + hint + ")"
 }
 
 func paramSchema(p *cli.Param, s *base.Schema) string {
@@ -321,6 +331,14 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 					log.Fatal(err)
 				}
 				example = newExample
+			} else if len(s.Examples) > 0 {
+				// OpenAPI 3.1 uses the plural form; the Surf spec only has
+				// `examples`, so without this fallback no flag ever shows one.
+				newExample, err := decodeYAML(s.Examples[0])
+				if err != nil {
+					log.Fatal(err)
+				}
+				example = newExample
 			}
 		}
 
@@ -345,6 +363,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		description = strings.ReplaceAll(description, "`", "")
 
 		var enums []string
+		var minimum, maximum *float64
 		if schema != nil {
 			if len(schema.Enum) > 0 {
 				enums = make([]string, 0, len(schema.Enum))
@@ -352,6 +371,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 					enums = append(enums, e.Value)
 				}
 			}
+			minimum, maximum = schema.Minimum, schema.Maximum
 			// Append enum values and min/max constraints to the flag
 			// description so they appear in --help output.
 			description = appendSchemaHints(description, schema)
@@ -367,6 +387,8 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 			Default:     def,
 			Example:     example,
 			Enum:        enums,
+			Minimum:     minimum,
+			Maximum:     maximum,
 		}
 
 		if p.Explode != nil {
@@ -626,6 +648,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		QueryParams:   queryParams,
 		HeaderParams:  headerParams,
 		BodyMediaType: mediaType,
+		BodyRequired:  op.RequestBody != nil && op.RequestBody.Required != nil && *op.RequestBody.Required,
 		Examples:      examples,
 		Hidden:        hidden,
 		Deprecated:    dep,
