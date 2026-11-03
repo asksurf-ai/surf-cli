@@ -275,6 +275,17 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 	return resp, nil
 }
 
+// capRetryDelay bounds how long an interactive command blocks between
+// automatic retries. Servers may advertise a real provider cooldown of 30s or
+// more; a terminal tool should surface the error sooner rather than stall.
+func capRetryDelay(d time.Duration) time.Duration {
+	max := viper.GetDuration("rsh-max-retry-after")
+	if max > 0 && d > max {
+		return max
+	}
+	return d
+}
+
 // isRetryable returns true if a request should be retried.
 func isRetryable(code int) bool {
 	if code == /* 408 */ http.StatusRequestTimeout ||
@@ -366,6 +377,7 @@ func doRequestWithRetry(log bool, client *http.Client, req *http.Request) (*http
 				}
 			}
 
+			retryAfter = capRetryDelay(retryAfter)
 			LogWarning("Got %s, retrying in %s", resp.Status, retryAfter.Truncate(time.Millisecond))
 			time.Sleep(retryAfter)
 

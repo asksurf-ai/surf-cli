@@ -183,6 +183,22 @@ func TestRequestRetryIn(t *testing.T) {
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 }
 
+func TestCapRetryDelay(t *testing.T) {
+	viper.Set("rsh-max-retry-after", 2*time.Second)
+	defer viper.Set("rsh-max-retry-after", 5*time.Second)
+
+	if got := capRetryDelay(30 * time.Second); got != 2*time.Second {
+		t.Errorf("capRetryDelay(30s) = %s, want 2s", got)
+	}
+	if got := capRetryDelay(time.Second); got != time.Second {
+		t.Errorf("capRetryDelay(1s) = %s, want 1s", got)
+	}
+	viper.Set("rsh-max-retry-after", time.Duration(0))
+	if got := capRetryDelay(30 * time.Second); got != 30*time.Second {
+		t.Errorf("capRetryDelay with no cap = %s, want 30s", got)
+	}
+}
+
 func TestRequestRetryAfter(t *testing.T) {
 	defer gock.Off()
 
