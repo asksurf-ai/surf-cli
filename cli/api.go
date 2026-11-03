@@ -136,15 +136,28 @@ func apiCacheMatchesBase(name string) bool {
 
 // LoadCachedAPI loads an API from the local cache without making network
 // requests. Returns nil if no valid cache exists or is expired.
-// Unlike Load, this skips the version check since it is used only to
-// populate command names and descriptions for help output.
 func LoadCachedAPI(name string) *API {
+	return loadCachedAPI(name, false)
+}
+
+// LoadCachedAPIAllowStale is LoadCachedAPI without the TTL check. Command
+// registration and shell completion only need the cached names and flags,
+// which stay useful past the cache expiry; refusing them made `surf --help`
+// and Tab completion lose every API command until a networked command
+// happened to refresh the spec.
+func LoadCachedAPIAllowStale(name string) *API {
+	return loadCachedAPI(name, true)
+}
+
+func loadCachedAPI(name string, allowExpired bool) *API {
 	if !apiCacheMatchesBase(name) {
 		return nil
 	}
-	expires := Cache.GetTime(name + ".expires")
-	if expires.IsZero() || !time.Now().Before(expires) {
-		return nil
+	if !allowExpired {
+		expires := Cache.GetTime(name + ".expires")
+		if expires.IsZero() || !time.Now().Before(expires) {
+			return nil
+		}
 	}
 	filename := filepath.Join(getCacheDir(), name+".cbor")
 	data, err := os.ReadFile(filename)

@@ -228,7 +228,10 @@ func main() {
 	// Populate "Available API Commands" from cached API spec as full
 	// operation commands (with flags, Long description, etc.). These are
 	// used when --help/-h skips injection, and also for Root help display.
-	if api := cli.LoadCachedAPI("surf"); api != nil {
+	// Registration reads the cache even when it has expired: the command
+	// names and flags it needs are still valid, and an expired cache must not
+	// empty `surf --help` until the next network call refreshes it.
+	if api := cli.LoadCachedAPIAllowStale("surf"); api != nil {
 		for _, op := range api.Operations {
 			if op.Hidden || op.Deprecated != "" {
 				continue
