@@ -172,8 +172,10 @@ func (p Param) AddFlag(flags *pflag.FlagSet) any {
 		}
 		if len(p.Enum) > 0 {
 			placeholder := "{" + strings.Join(p.Enum, "|") + "}"
-			// Skip the custom placeholder if it would be too wide and break
-			// alignment in --help output. pflag falls back to "string".
+			// Skip the custom placeholder if it would be too wide: pflag pads
+			// every flag line to the widest type column, so one long enum
+			// would push every description onto its own line. Wide enums are
+			// still listed in the description by appendSchemaHints.
 			if len(placeholder) <= 40 {
 				v := def.(string)
 				flags.Var(&enumStringValue{val: &v, typeStr: placeholder}, name, desc)

@@ -405,3 +405,92 @@ func TestFormatter(t *testing.T) {
 		})
 	}
 }
+
+func emptyEnvelope() Response {
+	return Response{
+		Proto:   "HTTP/2.0",
+		Status:  200,
+		Headers: map[string]string{"Content-Type": "application/json"},
+		Body: map[string]any{
+			"data": []any{},
+			"meta": map[string]any{"total": float64(0)},
+		},
+	}
+}
+
+// TestEmptyResultHintOnReadableDefault verifies that a successful but empty
+// response explains itself in human-facing output instead of printing a bare
+// `data: []` that an agent cannot distinguish from a malformed call.
+func TestEmptyResultHintOnReadableDefault(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(false, false) // non-tty → auto resolves to json
+	buf := &bytes.Buffer{}
+	Stdout = buf
+
+	viper.Set("rsh-output-format", "readable")
+	viper.Set("rsh-filter", "")
+
+	assert.NoError(t, formatter.Format(emptyEnvelope()))
+
+	out := buf.String()
+	assert.Contains(t, out, "(no data)")
+	assert.Contains(t, out, "returned no rows")
+	assert.Contains(t, out, "list-operations")
+	assert.NotContains(t, out, "HTTP/2.0", "empty hint replaces the full response dump")
+}
+
+func TestEmptyResultHintIncludesEmptyReason(t *testing.T) {
+	reset(false)
+	formatter := NewDefaultFormatter(false, false)
+	buf := &bytes.Buffer{}
+	Stdout = buf
+
+	viper.Set("rsh-output-format", "readable")
+	viper.Set("rsh-filter", "")
+
+	resp := emptyEnvelope()
+	resp.Body.(map[string]any)["meta"] = map[string]any{"empty_reason": "no articles matched the project filter"}
+	assert.NoError(t, formatter.Format(resp))
+	assert.Contains(t, buf.String(), "empty_reason: no articles matched the project filter")
+}
+
+// TestEmptyResultHintSkippedForStructuredFormats verifies JSON consumers still
+// receive the exact response envelope for empty results.
+func TestEmptyResultHintSkippedForStructuredFormats(t *testing.T) {
+	for _, format := range []string{"json", "yaml", "table", "gron"} {
+		t.Run(format, func(t *testing.T) {
+			reset(false)
+			formatter := NewDefaultFormatter(false, false)
+			buf := &bytes.Buffer{}
+			Stdout = buf
+
+			viper.Set("rsh-output-format", format)
+			viper.Set("rsh-filter", "")
+
+			assert.NoError(t, formatter.Format(emptyEnvelope()))
+			out := buf.String()
+			assert.NotContains(t, out, "(no data)")
+			assert.NotContains(t, out, "returned no rows")
+			if format == "table" {
+				assert.Contains(t, out, "(no rows)")
+			}
+		})
+	}
+}
+
+func TestEmptyResultHintSkipsNonEmptyAndErrorResponses(t *testing.T) {
+	reset(false)
+	viper.Set("rsh-output-format", "readable")
+	viper.Set("rsh-filter", "")
+
+	nonEmpty := emptyEnvelope()
+	nonEmpty.Body.(map[string]any)["data"] = []any{map[string]any{"id": "x"}}
+	assert.Empty(t, emptyResultHint(nonEmpty, "readable", ""))
+
+	errorResp := emptyEnvelope()
+	errorResp.Status = 400
+	assert.Empty(t, emptyResultHint(errorResp, "readable", ""))
+
+	filtered := emptyEnvelope()
+	assert.Empty(t, emptyResultHint(filtered, "json", "body.data"))
+}

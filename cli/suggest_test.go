@@ -104,7 +104,7 @@ func assertError(msg string) error {
 func TestHelpDescription_Required(t *testing.T) {
 	p := Param{Name: "market_slug", Type: "string", Description: "Market slug", Required: true}
 	got := p.helpDescription()
-	assert.True(t, strings.HasPrefix(got, "[required] "), "got=%q", got)
+	assert.True(t, strings.HasSuffix(got, "(required)"), "got=%q", got)
 }
 
 func TestHelpDescription_Example(t *testing.T) {
@@ -116,8 +116,8 @@ func TestHelpDescription_Example(t *testing.T) {
 func TestHelpDescription_RequiredAndExample(t *testing.T) {
 	p := Param{Name: "symbol", Type: "string", Description: "Ticker", Required: true, Example: "BTC"}
 	got := p.helpDescription()
-	assert.True(t, strings.HasPrefix(got, "[required] "), "got=%q", got)
-	assert.Contains(t, got, "(example: BTC)", "got=%q", got)
+	assert.True(t, strings.HasSuffix(got, "(example: BTC)"), "got=%q", got)
+	assert.Contains(t, got, "(required)", "got=%q", got)
 }
 
 func TestHelpDescription_SkipsExampleIfAlreadyInText(t *testing.T) {

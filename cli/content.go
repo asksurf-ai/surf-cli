@@ -208,6 +208,10 @@ func (t Table) Unmarshal(data []byte, value any) error {
 // Filter down to a collection of objects first then apply the table output.
 // Simpletable has much more styling that can be applied.
 func setTable(data []any) ([]byte, error) {
+	if len(data) == 0 {
+		return []byte("(no rows)"), nil
+	}
+
 	table := simpletable.New()
 
 	var headerCells []*simpletable.Cell

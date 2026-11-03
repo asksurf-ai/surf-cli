@@ -221,3 +221,82 @@ func TestIsDroppedSchemaHeading(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitHelpBlocks(t *testing.T) {
+	in := strings.Join([]string{
+		"Returns crypto news.",
+		"",
+		"## Input Example",
+		"",
+		"```json",
+		`{"q": "x"}`,
+		"```",
+		"",
+		"## Response 200 (application/json)",
+		"",
+		"```schema",
+		"{",
+		"  data*: [",
+		"    {",
+		"      id*: (string) Article ID. Use with the detail endpoint",
+		"      title*: (string) Article headline",
+		"    }",
+		"  ]",
+		"  meta*: {",
+		"    cached*: (boolean) Whether cached",
+		"    credits_used*: (integer) Credits deducted",
+		"    empty_reason: (string) Hint explaining why empty",
+		"    total: (integer) Total matching items",
+		"    watermark: (integer) Warehouse watermark",
+		"  }",
+		"}",
+		"```",
+		"",
+		"## Response default (application/json)",
+		"",
+		"```schema",
+		"{",
+		"  error*: {",
+		"    code*: (string)",
+		"  }",
+		"}",
+		"```",
+	}, "\n")
+
+	above, below := splitHelpBlocks(in)
+
+	assert.Contains(t, above, "Returns crypto news.")
+	assert.Contains(t, above, "## Input Example")
+	assert.Contains(t, above, "## Response default", "error envelope stays with the prose")
+	assert.NotContains(t, above, "## Response 200")
+
+	assert.Contains(t, below, "## Response 200")
+	assert.NotContains(t, below, "## Response default", "error response must not move")
+
+	// Compacted: decision fields survive, noise goes.
+	assert.Contains(t, below, "empty_reason:")
+	assert.Contains(t, below, "total:")
+	assert.NotContains(t, below, "cached*:")
+	assert.NotContains(t, below, "credits_used*:")
+	assert.NotContains(t, below, "watermark:")
+	assert.NotContains(t, below, "$schema")
+
+	// Chaining hints survive; other field docs are stripped.
+	assert.Contains(t, below, "id*: (string) Article ID.")
+	assert.NotContains(t, below, "Article headline")
+	assert.Contains(t, below, "title*: (string)")
+}
+
+func TestSplitHelpBlocks_Empty(t *testing.T) {
+	above, below := splitHelpBlocks("")
+	assert.Empty(t, above)
+	assert.Empty(t, below)
+}
+
+func TestIsBelowSchemaHeading(t *testing.T) {
+	assert.True(t, isBelowSchemaHeading("## Response 200 (application/json)"))
+	assert.True(t, isBelowSchemaHeading("## Responses 200/201 (application/json)"))
+	assert.False(t, isBelowSchemaHeading("## Response default (application/json)"))
+	assert.False(t, isBelowSchemaHeading("## Input Example"))
+	assert.False(t, isBelowSchemaHeading("## Request Schema (application/json)"))
+}

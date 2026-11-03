@@ -589,11 +589,74 @@ func (f *DefaultFormatter) formatAuto(format string, resp Response) ([]byte, err
 	return encoded, nil
 }
 
+// emptyResultHint returns a one-paragraph note for a successful response whose
+// data is empty, or "" when the response should be rendered normally. Only
+// human-readable formats get the hint: JSON/YAML/table consumers parse the
+// structure and must keep receiving it unchanged.
+func emptyResultHint(resp Response, outFormat, filter string) string {
+	if filter != "" || resp.Status < 200 || resp.Status >= 300 {
+		return ""
+	}
+	body, ok := resp.Body.(map[string]any)
+	if !ok {
+		return ""
+	}
+	data, ok := body["data"]
+	if !ok {
+		return ""
+	}
+	empty := false
+	switch d := data.(type) {
+	case []any:
+		empty = len(d) == 0
+	case map[string]any:
+		empty = len(d) == 0
+	}
+	if !empty {
+		return ""
+	}
+
+	// Only the human-facing default and explicit readable ask for this hint.
+	// JSON, table, gron and --filter consumers parse the body and must keep
+	// receiving exactly what the API returned.
+	if outFormat != "auto" && outFormat != "readable" {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("(no data) The request succeeded but returned no rows.\n\n")
+	b.WriteString("This is an empty result, not necessarily an invalid call. Common causes:\n")
+	b.WriteString("  - filters that match nothing (project name, address, time window)\n")
+	b.WriteString("  - required parameters accepted but too narrow\n\n")
+	b.WriteString("Check the parameters with `--help`, or find the right endpoint with `list-operations`.\n")
+	b.WriteString("Use `--json` to print the full response envelope unchanged.")
+	if hint, ok := body["meta"].(map[string]any); ok {
+		if reason, ok := hint["empty_reason"].(string); ok && reason != "" {
+			b.WriteString("\n\nempty_reason: " + reason)
+		}
+	}
+	return b.String()
+}
+
 // Format will filter, prettify, colorize and output the data.
 func (f *DefaultFormatter) Format(resp Response) error {
 	var err error
 	outFormat := viper.GetString("rsh-output-format")
 	filter := viper.GetString("rsh-filter")
+
+	// Empty result: say so instead of printing a bare `data: []` that reads the
+	// same as a malformed call. The hint points at the discovery tooling
+	// rather than guessing whether the parameters were wrong.
+	if hint := emptyResultHint(resp, outFormat, filter); hint != "" {
+		encoded := []byte(hint)
+		if f.color {
+			if colored, err := Highlight("md", encoded); err == nil {
+				encoded = colored
+			}
+		}
+		Stdout.Write(append(encoded, '\n'))
+		return nil
+	}
 
 	// Special case: raw response output mode. The response wasn't decoded so we
 	// have a bunch of bytes and the user asked for raw output, so just write it.

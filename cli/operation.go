@@ -91,7 +91,9 @@ func (o Operation) Command() *cobra.Command {
 		argSpec = cobra.MinimumNArgs(len(o.PathParams))
 	}
 
-	long := stripSchemaBlocks(o.Long)
+	// Split the description so response schemas render after Usage/Flags
+	// instead of pushing them down. See splitHelpBlocks for the rationale.
+	long, responses := splitHelpBlocks(o.Long)
 
 	examples := ""
 	for _, ex := range o.Examples {
@@ -108,6 +110,9 @@ func (o Operation) Command() *cobra.Command {
 		Args:       argSpec,
 		Hidden:     o.Hidden,
 		Deprecated: o.Deprecated,
+		Annotations: map[string]string{
+			HelpAfterUsageAnnotation: responses,
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			currentCommand = slug.Make(o.Name)
 			uri := o.URITemplate
