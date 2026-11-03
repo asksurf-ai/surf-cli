@@ -269,7 +269,7 @@ func TestUnknownCommandShowsError(t *testing.T) {
 // the prose description sourced from the cached OpenAPI spec. We assert
 // on a distinctive phrase from each operation's prose rather than on
 // auto-generated section headers like `## Option Schema` — those are
-// stripped by stripSchemaBlocks (see cli/schema_strip.go and review #5).
+// stripped by splitHelpBlocks (see cli/schema_strip.go and review #5).
 func TestOperationHelpShowsParametersAndDescription(t *testing.T) {
 	bin := buildSurfBin(t)
 
