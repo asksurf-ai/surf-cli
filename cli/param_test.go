@@ -127,3 +127,39 @@ func TestParamFlagRequiredSuffix(t *testing.T) {
 		})
 	}
 }
+
+func TestHelpfulExampleFor(t *testing.T) {
+	tests := []struct {
+		name string
+		p    Param
+		desc string
+		want any
+	}{
+		{
+			name: "plain example is kept",
+			p:    Param{Type: "string", Example: "uniswap"},
+			want: "uniswap",
+		},
+		{
+			name: "example already in description is dropped",
+			p:    Param{Type: "string", Example: "uniswap"},
+			desc: "Search for uniswap pools",
+			want: nil,
+		},
+		{
+			name: "example equal to an enum value is dropped",
+			p:    Param{Type: "string", Enum: []string{"ethereum", "base"}, Example: "ethereum"},
+			want: nil,
+		},
+		{
+			name: "example equal to the default is dropped",
+			p:    Param{Type: "string", Default: "recency", Example: "recency"},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.p.HelpfulExampleFor(tt.desc))
+		})
+	}
+}

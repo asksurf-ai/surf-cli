@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -122,12 +121,6 @@ func (p Param) OptionName() string {
 	return strcase.ToDelimited(name, '-')
 }
 
-// HelpfulExample returns the example when it adds information beyond the
-// description and default, or nil when it would just repeat them.
-func (p Param) HelpfulExample() any {
-	return p.HelpfulExampleFor(p.Description)
-}
-
 // HelpfulExampleFor judges redundancy against the description that will
 // actually be shown. Compact output drops descriptions, so an example that was
 // "already in the description" must reappear there.
@@ -153,6 +146,11 @@ func (p Param) exampleRedundant(desc, example string) bool {
 	if strings.Contains(desc, example) {
 		return true
 	}
+	for _, v := range p.Enum {
+		if v == example {
+			return true
+		}
+	}
 	return p.Default != nil && fmt.Sprintf("%v", p.Default) == example
 }
 
@@ -171,7 +169,8 @@ func (p Param) SupportsFlag() bool {
 func (p Param) AddFlag(flags *pflag.FlagSet) any {
 	name := p.OptionName()
 	if !p.SupportsFlag() {
-		log.Printf("unsupported flag type %q for param %s", p.Type, p.Name)
+		// The catalog uses SupportsFlag too, so the flag is simply absent
+		// everywhere instead of logging on every command startup.
 		return nil
 	}
 	def := p.Default
