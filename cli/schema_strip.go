@@ -1,31 +1,51 @@
 package cli
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
-// stripSchemaBlocks removes auto-generated sections from an operation's
-// long description that duplicate information Cobra already renders.
+// HelpAfterUsageAnnotation is the command annotation that carries the
+// response-format block rendered below Usage/Flags. Set by Operation.Command
+// and inlined by the help template in cli.go.
+const HelpAfterUsageAnnotation = "surf-help-after-usage"
+
+// splitHelpBlocks splits an operation's Long description into the prose that
+// should render above Cobra's Usage/Flags and the auto-generated success
+// responses that should render below them.
 //
-// Stripped (redundant — Cobra shows the same info under Flags:/Usage):
+// Cobra renders .Long before .UsageString(), so anything left in Long pushes
+// Usage/Flags down. On the Surf spec the response schemas are 50–62% of
+// --help, which buried the flags an agent needs to construct a call. The help
+// template in cli.go emits the returned `below` after Usage/Flags instead.
+//
+// Stripped from Long entirely (redundant with Cobra's rendering):
 //   - `## Argument Schema:`   — duplicates positional args in Cobra Usage line
 //   - `## Option Schema:`     — duplicates Cobra's `Flags:` section exactly
 //
-// Kept (unique information not available elsewhere in --help):
-//   - `## Response <code>`    — response field names, types, required markers
-//   - `## Responses <codes>`  — merged response schemas
+// Returned separately in `below` (rendered after Usage/Flags):
+//   - `## Response 2xx`       — success response field names/types
+//   - `## Responses 2xx`      — merged success schemas
+//
+// Kept in `above`:
 //   - `## Input Example`      — concrete example body
 //   - `## Request Schema`     — body field shapes not in Cobra Flags
+//   - Every error response (`default`, 4xx, 5xx) — recovery guidance such as
+//     `recommended_action: use_async_job` belongs next to the call, not after
+//     the flags
 //   - User-authored prose (`## Rules`, `## Example`, ...)
 //
 // See docs/CLI_DESIGN_PRINCIPLES.md §3.5 and
 // docs/CLI_V1_ALPHA_26_REVIEW.md item #5.
-func stripSchemaBlocks(long string) string {
+func splitHelpBlocks(long string) (above, below string) {
 	if long == "" {
-		return ""
+		return "", ""
 	}
 	lines := strings.Split(long, "\n")
-	out := make([]string, 0, len(lines))
+	var aboveOut, belowOut []string
 	inFence := false
-	dropping := false
+	mode := 0 // 0 = above, 1 = dropping, 2 = below
+
 	for _, line := range lines {
 		// Track fenced code blocks so a literal `## Response` inside a
 		// user-authored code example is never mistaken for a section
@@ -33,25 +53,36 @@ func stripSchemaBlocks(long string) string {
 		// insurance against future prose.)
 		if strings.HasPrefix(strings.TrimLeft(line, " \t"), "```") {
 			inFence = !inFence
-			if !dropping {
-				out = append(out, line)
-			}
+			appendTo(mode, line, &aboveOut, &belowOut)
 			continue
 		}
 
 		if !inFence && strings.HasPrefix(line, "## ") {
-			if isDroppedSchemaHeading(line) {
-				dropping = true
+			switch {
+			case isDroppedSchemaHeading(line):
+				mode = 1
 				continue
+			case isBelowSchemaHeading(line):
+				mode = 2
+			default:
+				mode = 0
 			}
-			dropping = false
 		}
 
-		if !dropping {
-			out = append(out, line)
-		}
+		appendTo(mode, line, &aboveOut, &belowOut)
 	}
-	return strings.TrimRight(strings.Join(out, "\n"), "\n")
+
+	return strings.TrimRight(strings.Join(aboveOut, "\n"), "\n"),
+		strings.TrimRight(strings.Join(belowOut, "\n"), "\n")
+}
+
+func appendTo(mode int, line string, above, below *[]string) {
+	switch mode {
+	case 0:
+		*above = append(*above, line)
+	case 2:
+		*below = append(*below, line)
+	}
 }
 
 // isDroppedSchemaHeading reports whether a `## …` heading introduces one
@@ -67,4 +98,30 @@ func isDroppedSchemaHeading(line string) bool {
 		return true
 	}
 	return false
+}
+
+// isBelowSchemaHeading reports whether a `## …` heading should be rendered
+// after Usage/Flags. Only 2xx responses move: error responses carry recovery
+// guidance and stay next to the prose that explains how to call the command.
+func isBelowSchemaHeading(line string) bool {
+	h := strings.TrimSpace(strings.TrimPrefix(line, "## "))
+	var codes string
+	switch {
+	case strings.HasPrefix(h, "Responses "):
+		codes = strings.TrimPrefix(h, "Responses ")
+	case strings.HasPrefix(h, "Response "):
+		codes = strings.TrimPrefix(h, "Response ")
+	default:
+		return false
+	}
+	if i := strings.Index(codes, " "); i >= 0 {
+		codes = codes[:i]
+	}
+	for _, code := range strings.Split(codes, "/") {
+		n, err := strconv.Atoi(code)
+		if err != nil || n < 200 || n >= 300 {
+			return false
+		}
+	}
+	return true
 }
