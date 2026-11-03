@@ -92,8 +92,16 @@ func cacheAPI(name string, api *API) {
 		return
 	}
 
+	if base := apiCacheBase(name); base != "" {
+		Cache.Set(name+".base", base)
+	}
 	Cache.Set(name+".expires", time.Now().Add(24*time.Hour))
-	Cache.WriteConfig()
+	if err := Cache.WriteConfig(); err != nil {
+		// Without the persisted expiry, LoadCachedAPI treats the cache as
+		// missing and every subsequent invocation re-syncs the spec.
+		// Surface the reason on stderr instead of silently degrading.
+		LogError("Could not persist API cache expiry (next runs will re-sync): %s", err)
+	}
 
 	b, err := cbor.Marshal(api)
 	if err != nil {
@@ -101,8 +109,29 @@ func cacheAPI(name string, api *API) {
 	}
 	filename := filepath.Join(getCacheDir(), name+".cbor")
 	if err := os.WriteFile(filename, b, 0o600); err != nil {
-		LogError("Could not write API cache %s", err)
+		LogError("Could not write API cache %s (next runs will re-sync): %s", filename, err)
 	}
+}
+
+func apiCacheBase(name string) string {
+	config := configs[name]
+	if config == nil {
+		return ""
+	}
+	base := config.Base
+	profile := viper.GetString("rsh-profile")
+	if profile != "" && profile != "default" && config.Profiles[profile] != nil && config.Profiles[profile].Base != "" {
+		base = config.Profiles[profile].Base
+	}
+	return strings.TrimRight(base, "/")
+}
+
+func apiCacheMatchesBase(name string) bool {
+	expected := apiCacheBase(name)
+	if expected == "" {
+		return true
+	}
+	return Cache.GetString(name+".base") == expected
 }
 
 // LoadCachedAPI loads an API from the local cache without making network
@@ -110,6 +139,9 @@ func cacheAPI(name string, api *API) {
 // Unlike Load, this skips the version check since it is used only to
 // populate command names and descriptions for help output.
 func LoadCachedAPI(name string) *API {
+	if !apiCacheMatchesBase(name) {
+		return nil
+	}
 	expires := Cache.GetTime(name + ".expires")
 	if expires.IsZero() || !time.Now().Before(expires) {
 		return nil
@@ -150,12 +182,15 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 
 	// See if there is a cache we can quickly load.
 	expires := Cache.GetTime(name + ".expires")
-	if !viper.GetBool("rsh-no-cache") && !expires.IsZero() && expires.After(time.Now()) {
+	if !viper.GetBool("rsh-no-cache") && apiCacheMatchesBase(name) && !expires.IsZero() && expires.After(time.Now()) {
 		var cached API
 		filename := filepath.Join(getCacheDir(), name+".cbor")
 		if data, err := os.ReadFile(filename); err == nil {
 			if err := cbor.Unmarshal(data, &cached); err == nil {
-				if cached.RestishVersion == root.Version {
+				// API subcommands do not carry the root CLI version, but they still
+				// need to reuse the already-validated cache instead of refreshing the
+				// spec on every operation invocation.
+				if root.Version == "" || cached.RestishVersion == root.Version {
 					setupRootFromAPI(root, &cached)
 					return cached, nil
 				}

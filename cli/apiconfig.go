@@ -27,10 +27,10 @@ type APIAuth struct {
 
 // TLSConfig contains the TLS setup for the HTTP client
 type TLSConfig struct {
-	InsecureSkipVerify bool          `json:"insecure,omitempty" yaml:"insecure,omitempty" mapstructure:"insecure"`
-	Cert               string        `json:"cert,omitempty" yaml:"cert,omitempty"`
-	Key                string        `json:"key,omitempty" yaml:"key,omitempty"`
-	CACert             string        `json:"ca_cert,omitempty" yaml:"ca_cert,omitempty" mapstructure:"ca_cert"`
+	InsecureSkipVerify bool   `json:"insecure,omitempty" yaml:"insecure,omitempty" mapstructure:"insecure"`
+	Cert               string `json:"cert,omitempty" yaml:"cert,omitempty"`
+	Key                string `json:"key,omitempty" yaml:"key,omitempty"`
+	CACert             string `json:"ca_cert,omitempty" yaml:"ca_cert,omitempty" mapstructure:"ca_cert"`
 }
 
 // APIProfile contains account-specific API information
@@ -86,6 +86,41 @@ type apiConfigs map[string]*APIConfig
 
 var configs apiConfigs
 var apiCommand *cobra.Command
+
+// OverrideAPIConfig updates an API config in memory. This is used for Surf's
+// environment override before commands are registered from the OpenAPI cache.
+func OverrideAPIConfig(name, base string, specFiles []string) {
+	config := configs[name]
+	if config == nil {
+		config = &APIConfig{name: name}
+	}
+	config.name = name
+	config.Base = base
+	config.SpecFiles = specFiles
+	if config.Profiles == nil {
+		config.Profiles = map[string]*APIProfile{}
+	}
+	if config.Profiles["default"] == nil {
+		config.Profiles["default"] = &APIProfile{}
+	}
+	configs[name] = config
+
+	for _, cmd := range Root.Commands() {
+		if cmd.Use == name {
+			cmd.Short = base
+			break
+		}
+	}
+}
+
+// APIBase returns the configured base URL for an API, if present.
+func APIBase(name string) string {
+	config := configs[name]
+	if config == nil {
+		return ""
+	}
+	return config.Base
+}
 
 func initAPIConfig() {
 	apis = viper.New()

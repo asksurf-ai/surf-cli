@@ -10,7 +10,7 @@ Every API endpoint is available as a CLI command, dynamically generated from the
 curl -fsSL https://downloads.asksurf.ai/cli/releases/install.sh | sh
 ```
 
-Installs to `~/.surf/bin`. No sudo required.
+Installs to `~/.local/bin`. No sudo required.
 
 To install a specific version:
 
@@ -49,6 +49,59 @@ surf auth --clear
 
 Run `surf help` to see all available commands.
 
+## On-chain SQL
+
+Every on-chain table lives in the `agent` database. Discover schema first:
+
+```sh
+surf catalog search "dex trades"
+surf catalog show ethereum_dex_trades
+```
+
+Short queries run synchronously with a 30s budget:
+
+```sh
+echo '{"sql":"SELECT project, sum(amount_usd) FROM agent.ethereum_dex_trades WHERE block_date = today() - 1 GROUP BY project ORDER BY 2 DESC LIMIT 10"}' \
+  | surf onchain-sql
+```
+
+Heavy queries — joins, multi-table scans, or scans whose estimated size exceeds
+the synchronous budget — are rejected from the sync path with
+`SYNC_QUERY_REQUIRES_ASYNC`. Run them as a durable job:
+
+```sh
+echo '{"sql":"SELECT ..."}' | surf onchain-sql-job-create
+surf onchain-sql-job-get <job_id>                 # poll until terminal
+surf onchain-sql-job-results <job_id> --format json
+```
+
+Or keep one call and request async inline:
+
+```sh
+echo '{"sql":"SELECT ..."}' | surf onchain-sql --prefer respond-async
+```
+
+Pass `--idempotency-key <key>` on `onchain-sql` or `onchain-sql-job-create` to
+reuse an accepted job on retry instead of running the query twice. The reused
+submission is still billed like any other SQL call — the key prevents duplicate
+execution, not duplicate charging.
+
+Creating the job is the billed step (same price as a sync SQL call); polling and
+result download are free, and results are retained for 24 hours. `HTTP 202` means
+accepted, not finished — poll `onchain-sql-job-get` until the status is terminal.
+
+To see how a query would scan without running it, use preflight — it returns
+estimated rows/bytes and the enforced budgets:
+
+```sh
+echo '{"sql":"SELECT ..."}' | surf onchain-sql-preflight
+```
+
+Preflight costs the same 4 credits as a SQL call, so reach for it when a query
+keeps getting rejected rather than before every query. Check `data.accepted`:
+a rejected plan still returns HTTP 200, with `accepted: false` and `warnings[]`
+entries carrying a `recommended_action`.
+
 ## Authentication
 
 API keys are resolved in this order:
@@ -78,13 +131,37 @@ Configuration is stored in `~/.surf/`.
 
 **Prerequisites:** Go 1.25+
 
-```sh
-# Build
-go build -o surf ./cmd/surf
+### Local development
 
-# Run
-./surf help
+Build the binary and symlink it into `~/.local/bin/surf` so the `surf` in your
+PATH resolves to your local build:
+
+```sh
+go build -o bin/surf ./cmd/surf
+ln -sf "$(pwd)/bin/surf" ~/.local/bin/surf
+
+surf version   # confirm you're on the local build
+surf help
 ```
+
+Rebuild after changes — the symlink keeps pointing at `bin/surf`, so a fresh
+`go build -o bin/surf ./cmd/surf` is all you need to re-run against new code.
+
+### Staging testing
+
+To test against the staging CDN + API, install from the staging installer:
+
+```sh
+curl -fsSL https://downloads-stg.asksurf.ai/cli/releases/install.sh | sh
+```
+
+> **Do not run `surf install` afterwards.** It pulls the production binary
+> from `downloads.asksurf.ai` and overwrites the staging one you just
+> installed. Use `surf sync` (spec refresh only) and direct API commands
+> for testing instead.
+
+To go back to production, re-run the production installer from the
+[Install](#install) section.
 
 ### Releasing
 

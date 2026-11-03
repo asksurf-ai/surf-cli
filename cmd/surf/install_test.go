@@ -40,9 +40,11 @@ func TestCopyBinary(t *testing.T) {
 	if string(got) != "binary-content" {
 		t.Errorf("copied content = %q, want %q", got, "binary-content")
 	}
-	info, _ := os.Stat(dst)
-	if info.Mode().Perm()&0111 == 0 {
-		t.Error("copied file is not executable")
+	if runtime.GOOS != "windows" {
+		info, _ := os.Stat(dst)
+		if info.Mode().Perm()&0111 == 0 {
+			t.Error("copied file is not executable")
+		}
 	}
 }
 

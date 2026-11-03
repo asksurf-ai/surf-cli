@@ -275,7 +275,6 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 	return resp, nil
 }
 
-
 // isRetryable returns true if a request should be retried.
 func isRetryable(code int) bool {
 	if code == /* 408 */ http.StatusRequestTimeout ||
@@ -581,6 +580,11 @@ func MakeRequestAndFormat(req *http.Request) {
 		}
 		panic(err)
 	}
+	transformed, err := transformResponseForCommand(currentCommand, parsed.Body)
+	if err != nil {
+		panic(err)
+	}
+	parsed.Body = transformed
 
 	if err := Formatter.Format(parsed); err != nil {
 		if e, ok := err.(shorthand.Error); ok {

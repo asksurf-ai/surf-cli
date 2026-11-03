@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,8 @@ var embeddedAPIsJSON []byte
 
 var version = "dev"
 var configDir string
+
+const defaultSurfGatewayBase = "https://api.asksurf.ai/gateway"
 
 func main() {
 	// Force config and cache to ~/.surf/ on all platforms.
@@ -51,7 +54,7 @@ func main() {
 
 	// Inject "surf" as the API name into os.Args so restish's Run() loads
 	// the API config. Skip injection for commands that don't need API loading.
-	//   surf market-futures --symbol BTC  →  [surf, surf, market-futures, --symbol, BTC]
+	//   surf market-price --symbol BTC  →  [surf, surf, market-price, --symbol, BTC]
 	//   surf auth                         →  [surf, auth]  (no injection)
 	if shouldInjectAPIName() {
 		os.Args = append([]string{os.Args[0], "surf"}, os.Args[1:]...)
@@ -60,6 +63,7 @@ func main() {
 	// Initialize restish.
 	cli.Init("surf", version)
 	cli.Defaults()
+	applySurfAPIBaseURLOverride()
 	cli.AddLoader(openapi.New())
 
 	// Send Cobra diagnostics (deprecation warnings, usage errors) to stderr
@@ -95,6 +99,14 @@ func main() {
 	cli.Root.PersistentFlags().Bool("json", false, "Output result as JSON (alias for -o json)")
 	cli.Root.PersistentFlags().Bool("debug", false, "Enable debug log output")
 	cli.Root.PersistentFlags().Bool("quiet", false, "Suppress non-error diagnostic output")
+	cli.Root.PersistentFlags().String("agent-view", "", "Output an agent-friendly response view")
+	cli.Root.PersistentFlags().Bool("shape", false, "Output response shape summary as JSON")
+	if f := cli.Root.PersistentFlags().Lookup("agent-view"); f != nil {
+		f.Hidden = true
+	}
+	if f := cli.Root.PersistentFlags().Lookup("shape"); f != nil {
+		f.Hidden = true
+	}
 
 	// Add -v as shorthand for --version. Cobra auto-registers --version
 	// (from Root.Version) but without a short flag.
@@ -112,6 +124,16 @@ func main() {
 			origPreRun(cmd, args)
 		}
 		if j, err := cmd.Flags().GetBool("json"); err == nil && j {
+			viper.Set("rsh-output-format", "json")
+		}
+		if view, err := cmd.Flags().GetString("agent-view"); err == nil && view != "" {
+			viper.Set("rsh-agent-view", view)
+			if viper.GetString("rsh-output-format") == "auto" {
+				viper.Set("rsh-output-format", "json")
+			}
+		}
+		if shape, err := cmd.Flags().GetBool("shape"); err == nil && shape {
+			viper.Set("rsh-shape", true)
 			viper.Set("rsh-output-format", "json")
 		}
 		if d, err := cmd.Flags().GetBool("debug"); err == nil && d {
@@ -191,6 +213,20 @@ func main() {
 		}
 	}
 
+	// Lazy-sync: fresh install (or expired cache) + user is invoking an API
+	// command → fetch the spec once so commands register and the call can
+	// proceed, instead of failing with "unknown command" or "no cached API
+	// spec — run surf sync first".
+	if cli.LoadCachedAPI("surf") == nil && needsCachedAPI() {
+		fmt.Fprintln(os.Stderr, "No cached API spec, syncing...")
+		viper.Set("rsh-no-cache", true)
+		if _, err := cli.Load(currentSurfGatewayBase(), cli.Root); err != nil {
+			fmt.Fprintf(os.Stderr, "Auto-sync failed: %v\n", err)
+			// Fall through — the downstream "no cached API spec" /
+			// "unknown command" path will produce a more specific error.
+		}
+	}
+
 	// Populate "Available API Commands" from cached API spec as full
 	// operation commands (with flags, Long description, etc.). These are
 	// used when --help/-h skips injection, and also for Root help display.
@@ -231,6 +267,24 @@ func main() {
 	os.Exit(exitCode)
 }
 
+// needsCachedAPI reports whether the current argv invokes a command that
+// requires the cached OpenAPI spec. Meta commands (auth, sync, help, version,
+// install, completion, telemetry, feedback, catalog) work without it.
+// list-operations DOES need it — it enumerates the spec — so it's not in
+// the meta set and will trigger auto-sync on cache miss.
+func needsCachedAPI() bool {
+	meta := map[string]bool{
+		"auth": true, "sync": true, "catalog": true,
+		"help": true, "completion": true, "version": true, "install": true,
+		"telemetry": true, "feedback": true,
+	}
+	if cmd := firstCommandArg(os.Args); cmd != "" {
+		return !meta[cmd]
+	}
+	// No command given → will show root help, no sync needed.
+	return false
+}
+
 // shouldInjectAPIName returns true if os.Args represents an API operation
 // (not a local command like auth/help/completion).
 // When --help / -h is present, skip injection so Cobra routes to the
@@ -248,14 +302,121 @@ func shouldInjectAPIName() bool {
 			return false
 		}
 	}
-	for _, arg := range os.Args[1:] {
-		if strings.HasPrefix(arg, "-") {
-			continue
-		}
-		return !local[arg]
+	if cmd := firstCommandArg(os.Args); cmd != "" {
+		return !local[cmd]
 	}
 	// No non-flag args → show help, no injection.
 	return false
+}
+
+func firstCommandArg(argv []string) string {
+	for i := 1; i < len(argv); i++ {
+		arg := argv[i]
+		if arg == "--" {
+			if i+1 < len(argv) {
+				return argv[i+1]
+			}
+			return ""
+		}
+		if strings.HasPrefix(arg, "--") {
+			if flagConsumesValue(arg) && !strings.Contains(arg, "=") {
+				i++
+			}
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			if shortFlagConsumesValue(arg) && len(arg) == 2 {
+				i++
+			}
+			continue
+		}
+		return arg
+	}
+	return ""
+}
+
+func flagConsumesValue(arg string) bool {
+	name := strings.TrimPrefix(arg, "--")
+	if idx := strings.Index(name, "="); idx >= 0 {
+		name = name[:idx]
+	}
+	switch name {
+	case "surf-api-base-url", "rsh-output-format", "rsh-filter", "rsh-header",
+		"rsh-query", "rsh-profile", "rsh-client-cert", "rsh-client-key",
+		"rsh-ca-cert", "rsh-retry", "rsh-timeout", "category":
+		return true
+	default:
+		return false
+	}
+}
+
+func shortFlagConsumesValue(arg string) bool {
+	name := strings.TrimPrefix(arg, "-")
+	if idx := strings.Index(name, "="); idx >= 0 {
+		name = name[:idx]
+	}
+	switch name {
+	case "s", "o", "f", "H", "q", "p", "t", "c":
+		return true
+	default:
+		return false
+	}
+}
+
+func explicitSurfAPIBaseURLOverride(args []string) string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case strings.HasPrefix(arg, "--surf-api-base-url="):
+			return strings.TrimPrefix(arg, "--surf-api-base-url=")
+		case arg == "--surf-api-base-url" && i+1 < len(args):
+			return args[i+1]
+		case strings.HasPrefix(arg, "-s="):
+			return strings.TrimPrefix(arg, "-s=")
+		case arg == "-s" && i+1 < len(args):
+			return args[i+1]
+		case strings.HasPrefix(arg, "-s") && len(arg) > 2:
+			return strings.TrimPrefix(arg, "-s")
+		}
+	}
+	return os.Getenv("SURF_API_BASE_URL")
+}
+
+func normalizeSurfGatewayBase(raw string) string {
+	base := strings.TrimRight(strings.TrimSpace(raw), "/")
+	if strings.HasSuffix(base, "/v1") {
+		base = strings.TrimSuffix(base, "/v1")
+	}
+	return base
+}
+
+func surfSpecFile(base string) string {
+	return strings.TrimRight(base, "/") + "/openapi.json"
+}
+
+func applySurfAPIBaseURLOverride() {
+	raw := explicitSurfAPIBaseURLOverride(os.Args[1:])
+	if raw == "" {
+		return
+	}
+	base := normalizeSurfGatewayBase(raw)
+	if base == "" {
+		return
+	}
+	viper.Set("surf-api-base-url", raw)
+	cli.OverrideAPIConfig("surf", base, []string{surfSpecFile(base)})
+}
+
+func currentSurfGatewayBase() string {
+	if raw := explicitSurfAPIBaseURLOverride(os.Args[1:]); raw != "" {
+		if base := normalizeSurfGatewayBase(raw); base != "" {
+			return base
+		}
+	}
+	if base := cli.APIBase("surf"); base != "" {
+		return strings.TrimRight(base, "/")
+	}
+	return defaultSurfGatewayBase
 }
 
 func removeCommands(root *cobra.Command, names ...string) {
@@ -364,8 +525,11 @@ func newSyncCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			viper.Set("rsh-no-cache", true)
-			if _, err := cli.Load("https://api.asksurf.ai/gateway", cli.Root); err != nil {
+			if _, err := cli.Load(currentSurfGatewayBase(), cli.Root); err != nil {
 				return fmt.Errorf("sync failed: %w", err)
+			}
+			if cli.LoadCachedAPI("surf") == nil {
+				return fmt.Errorf("sync failed: cached API spec was not written")
 			}
 			fmt.Fprintln(os.Stderr, "API spec synced.")
 			return nil
@@ -378,10 +542,11 @@ func newListOperationsCmd() *cobra.Command {
 	var detail bool
 	var category string
 	var asJSON bool
+	var compact bool
 	cmd := &cobra.Command{
 		Use:   "list-operations",
 		Short: "List all available API operations",
-		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.\n\nUse --detail to show full descriptions (useful for choosing between similar endpoints).\nUse --category to filter by group name.\nUse --json to emit a machine-readable command catalog (for agents): name, method, group, required/optional flags with type, description, default, and example.",
+		Long:  "Show available API endpoints with methods, parameters, and descriptions.\nRun `surf sync` first if no operations appear.\n\nUse --detail to show full descriptions (useful for choosing between similar endpoints).\nUse --category to filter by group name.\nUse --json to emit a machine-readable command catalog (for agents): name, method, group, required/optional flags with type, enum values, bounds, description, default, and example.\nAdd --compact to --json to drop descriptions and summaries — the smallest form that still carries every enum and bound, so an agent can plan calls without reading --help.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			api := cli.LoadCachedAPI("surf")
@@ -392,7 +557,10 @@ func newListOperationsCmd() *cobra.Command {
 			ops := filterOps(api.Operations, category)
 
 			if asJSON {
-				return printOperationsJSON(ops)
+				return printOperationsJSON(ops, compact)
+			}
+			if compact {
+				return fmt.Errorf("--compact only applies with --json")
 			}
 
 			if groupByTag {
@@ -407,17 +575,23 @@ func newListOperationsCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&detail, "detail", "d", false, "Show full description for each operation")
 	cmd.Flags().StringVarP(&category, "category", "c", "", "Filter by category name (case-insensitive substring match)")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Emit machine-readable JSON catalog (for agents)")
+	cmd.Flags().BoolVar(&compact, "compact", false, "With --json: omit descriptions and summaries (implies --json)")
 	return cmd
 }
 
-// flagCatalog is the agent-facing shape of one CLI flag.
+// flagCatalog is the agent-facing shape of one CLI flag. Description is omitted
+// in compact mode; enums/min/max are always kept because they decide whether a
+// call will be rejected.
 type flagCatalog struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Required    bool   `json:"required"`
-	Description string `json:"description,omitempty"`
-	Default     any    `json:"default,omitempty"`
-	Example     any    `json:"example,omitempty"`
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Required    bool     `json:"required,omitempty"`
+	Enum        []string `json:"enum,omitempty"`
+	Min         *float64 `json:"min,omitempty"`
+	Max         *float64 `json:"max,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Default     any      `json:"default,omitempty"`
+	Example     any      `json:"example,omitempty"`
 }
 
 // opCatalog is the agent-facing shape of one API operation.
@@ -434,7 +608,9 @@ type opCatalog struct {
 
 // printOperationsJSON emits the command catalog as JSON to stdout. Includes
 // only visible, non-deprecated operations. Ordering matches the spec order.
-func printOperationsJSON(ops []cli.Operation) error {
+// With compact set, flag descriptions and the operation summary are dropped,
+// which is what an agent needs to plan calls without reading --help.
+func printOperationsJSON(ops []cli.Operation, compact bool) error {
 	out := make([]opCatalog, 0, len(ops))
 	for _, op := range ops {
 		if op.Hidden || op.Deprecated != "" {
@@ -444,14 +620,16 @@ func printOperationsJSON(ops []cli.Operation) error {
 			Name:         op.Name,
 			Method:       op.Method,
 			Group:        op.Group,
-			Short:        op.Short,
 			BodyRequired: op.BodyMediaType != "",
 		}
+		if !compact {
+			c.Short = op.Short
+		}
 		for _, p := range op.PathParams {
-			c.PathFlags = append(c.PathFlags, paramToCatalog(p))
+			c.PathFlags = append(c.PathFlags, paramToCatalog(p, compact))
 		}
 		for _, p := range op.QueryParams {
-			fc := paramToCatalog(p)
+			fc := paramToCatalog(p, compact)
 			if p.Required {
 				c.RequiredFlags = append(c.RequiredFlags, fc)
 			} else {
@@ -459,7 +637,7 @@ func printOperationsJSON(ops []cli.Operation) error {
 			}
 		}
 		for _, p := range op.HeaderParams {
-			fc := paramToCatalog(p)
+			fc := paramToCatalog(p, compact)
 			if p.Required {
 				c.RequiredFlags = append(c.RequiredFlags, fc)
 			} else {
@@ -468,20 +646,29 @@ func printOperationsJSON(ops []cli.Operation) error {
 		}
 		out = append(out, c)
 	}
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(catalogOut)
 	enc.SetIndent("", "  ")
 	return enc.Encode(out)
 }
 
-func paramToCatalog(p *cli.Param) flagCatalog {
-	return flagCatalog{
-		Name:        p.OptionName(),
-		Type:        p.Type,
-		Required:    p.Required,
-		Description: p.Description,
-		Default:     p.Default,
-		Example:     p.Example,
+// catalogOut lets tests capture the catalog without touching os.Stdout.
+var catalogOut io.Writer = os.Stdout
+
+func paramToCatalog(p *cli.Param, compact bool) flagCatalog {
+	fc := flagCatalog{
+		Name:     p.OptionName(),
+		Type:     p.Type,
+		Required: p.Required,
+		Enum:     p.Enum,
+		Min:      p.Minimum,
+		Max:      p.Maximum,
+		Default:  p.Default,
+		Example:  p.Example,
 	}
+	if !compact {
+		fc.Description = p.Description
+	}
+	return fc
 }
 
 func filterOps(ops []cli.Operation, category string) []cli.Operation {

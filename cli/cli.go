@@ -238,6 +238,9 @@ func Init(name string, version string) {
 		return s
 	})
 
+	// The help template inlines the HelpAfterUsageAnnotation below
+	// Usage/Flags; see splitHelpBlocks. Nothing else is needed here.
+
 	Root = &cobra.Command{
 		Use:     filepath.Base(os.Args[0]),
 		Long:    "A generic client for REST-ish APIs <https://rest.sh/>",
@@ -266,8 +269,13 @@ func Init(name string, version string) {
 	)
 	Root.SetHelpTemplate(`{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces | highlight}}
 
-{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}{{if not .HasParent}}
-Documentation: https://docs.asksurf.ai/llms.txt
+{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}{{if .Annotations}}{{with index .Annotations "surf-help-after-usage"}}
+
+Format of the response:
+
+{{. | trimTrailingWhitespaces | highlight}}
+{{end}}{{end}}{{if not .HasParent}}
+Documentation: https://agents.asksurf.ai/llms.txt
 Report issues: https://github.com/asksurf-ai/surf-cli/issues
 {{end}}`)
 

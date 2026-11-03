@@ -9,8 +9,18 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
 )
+
+type captureFormatter struct {
+	resp Response
+}
+
+func (f *captureFormatter) Format(resp Response) error {
+	f.resp = resp
+	return nil
+}
 
 func TestFixAddress(t *testing.T) {
 	reset(false)
@@ -59,6 +69,55 @@ func TestRequestPagination(t *testing.T) {
 
 	// Response body should be a concatenation of all pages.
 	assert.Equal(t, []any{1.0, 2.0, 3.0, 4.0, 5.0, 6.0}, resp.Body)
+}
+
+func TestMakeRequestAndFormatTransformsOnchainTxResponse(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+
+	oldFormatter := Formatter
+	oldCommand := currentCommand
+	defer func() {
+		Formatter = oldFormatter
+		currentCommand = oldCommand
+	}()
+
+	capture := &captureFormatter{}
+	Formatter = capture
+	currentCommand = "onchain-tx"
+	viper.Set("rsh-agent-view", "")
+	viper.Set("rsh-shape", false)
+
+	gock.New("http://example.com").
+		Get("/tx").
+		Reply(http.StatusOK).
+		JSON(map[string]any{
+			"data": []any{
+				map[string]any{
+					"hash":        "0xabc",
+					"blockNumber": "0x157f411",
+					"value":       "0xde0b6b3a7640000",
+				},
+			},
+		})
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/tx", nil)
+	MakeRequestAndFormat(req)
+
+	require.True(t, gock.IsDone())
+	body, ok := capture.resp.Body.(map[string]any)
+	require.True(t, ok)
+	data, ok := body["data"].([]any)
+	require.True(t, ok)
+	require.Len(t, data, 1)
+	tx, ok := data[0].(map[string]any)
+	require.True(t, ok)
+
+	assert.Equal(t, "0x157f411", tx["blockNumber"])
+	assert.Equal(t, "22541329", tx["blockNumberDecimal"])
+	assert.Equal(t, "1000000000000000000", tx["valueDecimal"])
+	assert.Equal(t, "1", tx["valueNativeDecimal"])
 }
 
 func TestGetStatus(t *testing.T) {
@@ -142,7 +201,7 @@ func TestRequestRetryAfter(t *testing.T) {
 		Put("/").
 		Times(1).
 		Reply(http.StatusTooManyRequests).
-		SetHeader("Retry-After", time.Now().Format(http.TimeFormat))
+		SetHeader("Retry-After", "1")
 
 	gock.New("http://example.com").
 		Put("/").
