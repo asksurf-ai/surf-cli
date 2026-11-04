@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -37,6 +36,8 @@ type Param struct {
 	Default     any      `json:"default,omitempty" yaml:"default,omitempty"`
 	Example     any      `json:"example,omitempty" yaml:"example,omitempty"`
 	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
+	Minimum     *float64 `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+	Maximum     *float64 `json:"maximum,omitempty" yaml:"maximum,omitempty"`
 }
 
 // enumStringValue is a pflag.Value whose Type() reports a custom placeholder
@@ -120,9 +121,58 @@ func (p Param) OptionName() string {
 	return strcase.ToDelimited(name, '-')
 }
 
+// HelpfulExampleFor judges redundancy against the description that will
+// actually be shown. Compact output drops descriptions, so an example that was
+// "already in the description" must reappear there.
+func (p Param) HelpfulExampleFor(desc string) any {
+	if p.Example == nil {
+		return nil
+	}
+	ex := fmt.Sprintf("%v", p.Example)
+	if ex == "" || p.exampleRedundant(desc, ex) {
+		return nil
+	}
+	return p.Example
+}
+
+// exampleRedundant reports whether showing the example would repeat something
+// the reader already has: the same value as the default, or text that already
+// appears in the description. Most Surf parameters carry both an enum and an
+// example, so without this check the hint adds tokens instead of information.
+func (p Param) exampleRedundant(desc, example string) bool {
+	if strings.Contains(desc, "example:") || strings.Contains(desc, "Example:") {
+		return true
+	}
+	if strings.Contains(desc, example) {
+		return true
+	}
+	for _, v := range p.Enum {
+		if v == example {
+			return true
+		}
+	}
+	return p.Default != nil && fmt.Sprintf("%v", p.Default) == example
+}
+
+// SupportsFlag reports whether AddFlag can register this parameter type. The
+// catalog uses it so it never advertises a flag the command does not have.
+func (p Param) SupportsFlag() bool {
+	switch p.Type {
+	case "boolean", "integer", "number", "string",
+		"array[boolean]", "array[integer]", "array[string]":
+		return true
+	}
+	return false
+}
+
 // AddFlag adds a new option flag to a command's flag set for this parameter.
 func (p Param) AddFlag(flags *pflag.FlagSet) any {
 	name := p.OptionName()
+	if !p.SupportsFlag() {
+		// The catalog uses SupportsFlag too, so the flag is simply absent
+		// everywhere instead of logging on every command startup.
+		return nil
+	}
 	def := p.Default
 	desc := p.Description
 	if p.Required {
@@ -155,8 +205,10 @@ func (p Param) AddFlag(flags *pflag.FlagSet) any {
 		}
 		if len(p.Enum) > 0 {
 			placeholder := "{" + strings.Join(p.Enum, "|") + "}"
-			// Skip the custom placeholder if it would be too wide and break
-			// alignment in --help output. pflag falls back to "string".
+			// Skip the custom placeholder if it would be too wide: pflag pads
+			// every flag line to the widest type column, so one long enum
+			// would push every description onto its own line. Wide enums are
+			// still listed in the description by appendSchemaHints.
 			if len(placeholder) <= 40 {
 				v := def.(string)
 				flags.Var(&enumStringValue{val: &v, typeStr: placeholder}, name, desc)
@@ -167,16 +219,25 @@ func (p Param) AddFlag(flags *pflag.FlagSet) any {
 	case "array[boolean]":
 		if def == nil {
 			def = []bool{}
+		} else if anyList, ok := def.([]any); ok {
+			typed := make([]bool, len(anyList))
+			for i, item := range anyList {
+				typed[i] = item.(bool)
+			}
+			def = typed
 		}
 		return flags.BoolSlice(name, def.([]bool), desc)
 	case "array[integer]":
 		if def == nil {
 			def = []int{}
+		} else if anyList, ok := def.([]any); ok {
+			typed := make([]int, len(anyList))
+			for i, item := range anyList {
+				typed[i] = typeConvert(item, 0).(int)
+			}
+			def = typed
 		}
 		return flags.IntSlice(name, def.([]int), desc)
-	case "array[number]":
-		log.Printf("number slice not implemented for param %s", p.Name)
-		return nil
 	// Float slices aren't implemented in the pflag package...
 	// if def == nil {
 	// 	def = []float64{}
