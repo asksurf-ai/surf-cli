@@ -7,43 +7,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStripSchemaBlocks(t *testing.T) {
+func TestSplitHelpBlocks(t *testing.T) {
 	tests := []struct {
-		name    string
-		in      string
-		wantOut string
-		// Substrings that must NOT appear in the output.
-		mustNotContain []string
-		// Substrings that MUST appear in the output.
-		mustContain []string
+		name        string
+		in          string
+		wantAbove   []string
+		wantBelow   []string
+		notAbove    []string
+		notAnywhere []string
 	}{
 		{
-			name:    "empty",
-			in:      "",
-			wantOut: "",
+			name:      "prose only stays above",
+			in:        "Returns historical price data.\n\nUse --time-range or --from/--to.",
+			wantAbove: []string{"Returns historical price data.", "Use --time-range"},
+			wantBelow: nil,
 		},
 		{
-			name:    "prose only",
-			in:      "Returns historical price data.\n\nUse --time-range or --from/--to.",
-			wantOut: "Returns historical price data.\n\nUse --time-range or --from/--to.",
-		},
-		{
-			name: "strips option schema",
+			name: "option and argument schemas are dropped",
 			in: strings.Join([]string{
 				"Returns historical price data.",
 				"",
 				"## Option Schema:",
 				"```schema",
-				"{",
-				"  --symbol: (string) Token symbol",
-				"}",
+				"{ --symbol: (string) Token symbol }",
+				"```",
+				"",
+				"## Argument Schema:",
+				"```schema",
+				"{ item-id: (string) Item ID }",
 				"```",
 			}, "\n"),
-			mustNotContain: []string{"Option Schema", "--symbol: (string)"},
-			mustContain:    []string{"Returns historical price data."},
+			wantAbove:   []string{"Returns historical price data."},
+			notAnywhere: []string{"Option Schema", "--symbol: (string)", "Argument Schema", "item-id:"},
 		},
 		{
-			name: "keeps response blocks (unique return-shape info)",
+			name: "success responses move below",
 			in: strings.Join([]string{
 				"Token price history.",
 				"",
@@ -54,6 +52,15 @@ func TestStripSchemaBlocks(t *testing.T) {
 				"```schema",
 				"{ data*: [...] }",
 				"```",
+			}, "\n"),
+			wantAbove: []string{"Token price history."},
+			wantBelow: []string{"## Response 200", "data*: [...]"},
+			notAbove:  []string{"## Response 200", "data*: [...]"},
+		},
+		{
+			name: "error responses stay above",
+			in: strings.Join([]string{
+				"Token price history.",
 				"",
 				"## Response default (application/json)",
 				"",
@@ -63,25 +70,40 @@ func TestStripSchemaBlocks(t *testing.T) {
 				"{ error*: {...} }",
 				"```",
 			}, "\n"),
-			mustContain: []string{"Token price history.", "Response 200", "Response default", "data*:", "error*:"},
+			wantAbove: []string{"## Response default", "error*:"},
+			wantBelow: nil,
 		},
 		{
-			name: "strips argument schema",
+			name: "only 2xx responses move when merged with an error code",
 			in: strings.Join([]string{
-				"Get a single item.",
+				"SQL executor.",
 				"",
-				"## Argument Schema:",
+				"## Responses 200/408 (application/json)",
+				"",
 				"```schema",
-				"{",
-				"  item-id: (string) Item ID",
-				"}",
+				"{ data*: [...] }",
 				"```",
 			}, "\n"),
-			mustNotContain: []string{"Argument Schema", "item-id:"},
-			mustContain:    []string{"Get a single item."},
+			wantAbove: []string{"## Responses 200/408"},
+			wantBelow: nil,
 		},
 		{
-			name: "keeps input example and response",
+			name:      "2XX range code moves below",
+			in:        "Token price history.\n\n## Response 2XX (application/json)\n\n```schema\n{ data*: [...] }\n```",
+			wantAbove: []string{"Token price history."},
+			wantBelow: []string{"## Response 2XX", "data*: [...]"},
+			notAbove:  []string{"## Response 2XX"},
+		},
+		{
+			name:        "CRLF input is normalized",
+			in:          "Token price history.\r\n\r\n## Response 200 (application/json)\r\n\r\nOK\r\n",
+			wantAbove:   []string{"Token price history."},
+			wantBelow:   []string{"## Response 200", "OK"},
+			notAbove:    []string{"## Response 200"},
+			notAnywhere: []string{"\r"},
+		},
+		{
+			name: "input example and request schema stay above",
 			in: strings.Join([]string{
 				"Execute SQL.",
 				"",
@@ -91,24 +113,10 @@ func TestStripSchemaBlocks(t *testing.T) {
 				`{"sql": "SELECT 1"}`,
 				"```",
 				"",
-				"## Response 200 (application/json)",
-				"```schema",
-				"{ data*: [...] }",
-				"```",
-			}, "\n"),
-			mustContain: []string{"Execute SQL.", "Input Example", `"sql": "SELECT 1"`, "Response 200", "data*:"},
-		},
-		{
-			name: "keeps request schema and response",
-			in: strings.Join([]string{
-				"Execute SQL.",
-				"",
 				"## Request Schema (application/json)",
 				"",
 				"```schema",
-				"{",
-				"  sql*: (string) SQL query",
-				"}",
+				"{ sql*: (string) SQL query }",
 				"```",
 				"",
 				"## Response 200 (application/json)",
@@ -116,54 +124,28 @@ func TestStripSchemaBlocks(t *testing.T) {
 				"{ data*: [...] }",
 				"```",
 			}, "\n"),
-			mustContain: []string{"Request Schema", "sql*: (string) SQL query", "Response 200", "data*:"},
+			wantAbove: []string{"## Input Example", `"sql": "SELECT 1"`, "## Request Schema", "sql*: (string) SQL query"},
+			wantBelow: []string{"## Response 200", "data*: [...]"},
 		},
 		{
-			name: "keeps user-authored sections",
+			name: "user-authored sections stay above",
 			in: strings.Join([]string{
 				"SQL executor.",
 				"",
 				"## Rules",
 				"- Only SELECT allowed",
-				"- Max 10,000 rows",
 				"",
 				"## Example",
 				"",
 				"```sql",
 				"SELECT 1",
 				"```",
-				"",
-				"## Option Schema:",
-				"```schema",
-				"{ --sql: string }",
-				"```",
 			}, "\n"),
-			mustContain:    []string{"## Rules", "Only SELECT allowed", "## Example", "SELECT 1"},
-			mustNotContain: []string{"Option Schema", "--sql: string"},
+			wantAbove: []string{"## Rules", "Only SELECT allowed", "## Example", "SELECT 1"},
+			wantBelow: nil,
 		},
 		{
-			name: "interleaved sections — strips Option Schema, keeps Response",
-			in: strings.Join([]string{
-				"Op description.",
-				"",
-				"## Option Schema:",
-				"```schema",
-				"{ --x: string }",
-				"```",
-				"",
-				"## Rules",
-				"Must use --x.",
-				"",
-				"## Response 200 (application/json)",
-				"```schema",
-				"{ data: [] }",
-				"```",
-			}, "\n"),
-			mustContain:    []string{"Op description.", "## Rules", "Must use --x.", "Response 200", "{ data: [] }"},
-			mustNotContain: []string{"Option Schema", "--x: string"},
-		},
-		{
-			name: "code block containing a literal ## is not mistaken for a heading",
+			name: "literal ## inside a fence is not a heading",
 			in: strings.Join([]string{
 				"Example.",
 				"",
@@ -171,28 +153,26 @@ func TestStripSchemaBlocks(t *testing.T) {
 				"## This is a bash comment, not a heading",
 				"echo hi",
 				"```",
-				"",
-				"## Option Schema:",
-				"```schema",
-				"{ --x: string }",
-				"```",
 			}, "\n"),
-			mustContain:    []string{"## This is a bash comment", "echo hi"},
-			mustNotContain: []string{"Option Schema", "--x: string"},
+			wantAbove: []string{"## This is a bash comment", "echo hi"},
+			wantBelow: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := stripSchemaBlocks(tt.in)
-			if tt.wantOut != "" {
-				assert.Equal(t, tt.wantOut, got)
+			above, below := splitHelpBlocks(tt.in)
+			for _, s := range tt.wantAbove {
+				assert.Contains(t, above, s, "expected above to contain %q\n\nabove:\n%s\n\nbelow:\n%s", s, above, below)
 			}
-			for _, s := range tt.mustContain {
-				assert.Contains(t, got, s, "expected output to contain %q\n\noutput:\n%s", s, got)
+			for _, s := range tt.wantBelow {
+				assert.Contains(t, below, s, "expected below to contain %q\n\nabove:\n%s\n\nbelow:\n%s", s, above, below)
 			}
-			for _, s := range tt.mustNotContain {
-				assert.NotContains(t, got, s, "expected output NOT to contain %q\n\noutput:\n%s", s, got)
+			for _, s := range tt.notAbove {
+				assert.NotContains(t, above, s, "did not expect above to contain %q\n\nabove:\n%s", s, above)
+			}
+			for _, s := range tt.notAnywhere {
+				assert.NotContains(t, above+below, s, "did not expect output to contain %q", s)
 			}
 		})
 	}
@@ -206,18 +186,38 @@ func TestIsDroppedSchemaHeading(t *testing.T) {
 		{"## Option Schema:", true},
 		{"## Option Schema", true},
 		{"## Argument Schema:", true},
-		{"## Response 200 (application/json)", false},  // kept — unique return-shape info
-		{"## Response default (application/json)", false}, // kept
-		{"## Responses 200/201 (application/json)", false}, // kept
-		{"## Request Schema (application/json)", false}, // kept
-		{"## Input Example", false},                     // kept
+		{"## Response 200 (application/json)", false},
+		{"## Response default (application/json)", false},
+		{"## Request Schema (application/json)", false},
+		{"## Input Example", false},
 		{"## Rules", false},
-		{"## Example", false},
-		{"## Time range options", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.line, func(t *testing.T) {
 			assert.Equal(t, tt.want, isDroppedSchemaHeading(tt.line))
+		})
+	}
+}
+
+func TestIsBelowSchemaHeading(t *testing.T) {
+	tests := []struct {
+		line string
+		want bool
+	}{
+		{"## Response 200 (application/json)", true},
+		{"## Response 201", true},
+		{"## Responses 200/201 (application/json)", true},
+		{"## Response 204", true},
+		{"## Response 408 (application/json)", false},
+		{"## Response 429 (application/json)", false},
+		{"## Response default (application/json)", false},
+		{"## Responses 200/408 (application/json)", false},
+		{"## Request Schema (application/json)", false},
+		{"## Input Example", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.line, func(t *testing.T) {
+			assert.Equal(t, tt.want, isBelowSchemaHeading(tt.line))
 		})
 	}
 }

@@ -266,7 +266,11 @@ func Init(name string, version string) {
 	)
 	Root.SetHelpTemplate(`{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces | highlight}}
 
-{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}{{if not .HasParent}}
+{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}{{if .Annotations}}{{with index .Annotations "` + HelpAfterUsageAnnotation + `"}}
+Format of the response:
+
+{{. | trimTrailingWhitespaces | highlight}}
+{{end}}{{end}}{{if not .HasParent}}
 Documentation: https://agents.asksurf.ai/llms.txt
 Report issues: https://github.com/asksurf-ai/surf-cli/issues
 {{end}}`)
