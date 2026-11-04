@@ -864,7 +864,9 @@ func Run() (returnErr error) {
 		}
 	}()
 	if err := Root.Execute(); err != nil {
-		LogError("Error: %v", err)
+		// LogError already prefixes the message with ERROR:, so adding
+		// another "Error:" here produced `ERROR: Error: …`.
+		LogError("%v", err)
 		returnErr = err
 	}
 

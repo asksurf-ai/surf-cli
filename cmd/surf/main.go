@@ -66,6 +66,10 @@ func main() {
 
 	// Send Cobra diagnostics (deprecation warnings, usage errors) to stderr
 	// so they don't pollute JSON output on stdout.
+	// cli.Run is the single place that reports errors, with the ERROR:
+	// prefix. Letting Cobra print the same error first produced two lines
+	// with different prefixes for every command, not only operations.
+	cli.Root.SilenceErrors = true
 	cli.Root.SetOut(os.Stderr)
 	cli.Root.SetErr(os.Stderr)
 
