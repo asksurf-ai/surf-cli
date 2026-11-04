@@ -264,6 +264,15 @@ func main() {
 	cli.Root.AddCommand(newTelemetryCmd())
 	cli.Root.AddCommand(newFeedbackCmd())
 
+	// Cobra captures the output writer when it builds the completion commands
+	// during Execute, so this must be set before cli.Run. Root otherwise writes
+	// to stderr to keep stdout clean for API JSON, but completion output is
+	// consumed on stdout: the generated script (`surf completion bash > f`) and
+	// the candidates the shell reads from `surf __complete`.
+	if completionWritesStdout() {
+		cli.Root.SetOut(os.Stdout)
+	}
+
 	// Run.
 	err = cli.Run()
 
@@ -276,8 +285,65 @@ func main() {
 		exitCode = cli.GetExitCode()
 	}
 
-	cli.ReportCLIEvent(cli.GetCurrentCommand(), exitCode, errMsg)
+	// Completion runs on every Tab, so it must not post telemetry: the
+	// synchronous request would stall the prompt and fill the event stream.
+	if !isCompletionInvocation() {
+		cli.ReportCLIEvent(cli.GetCurrentCommand(), exitCode, errMsg)
+	}
 	os.Exit(exitCode)
+}
+
+// isCompletionInvocation reports whether this invocation exists only to serve
+// shell completion: a protocol request or a generated completion script.
+func isCompletionInvocation() bool {
+	return isCompletionProtocol() || firstCommandArg(os.Args) == "completion"
+}
+
+// isCompletionProtocol reports whether this invocation is one of Cobra's
+// hidden completion requests rather than a command the user ran.
+func isCompletionProtocol() bool {
+	switch firstCommandArg(os.Args) {
+	case "__complete", "__completeNoDesc":
+		return true
+	}
+	return false
+}
+
+// completionWritesStdout reports whether this invocation's output is consumed
+// by the shell rather than by a human reading stderr diagnostics. The hidden
+// protocol always is; the visible `completion` command only when it is
+// generating a script, not for help or a mistyped shell name (otherwise
+// `surf completion bahs > file` redirects a Usage page into the script).
+func completionWritesStdout() bool {
+	if isCompletionProtocol() {
+		return true
+	}
+	if firstCommandArg(os.Args) != "completion" {
+		return false
+	}
+	for _, arg := range os.Args[1:] {
+		if arg == "--help" || arg == "-h" {
+			return false
+		}
+	}
+	shells := 0
+	seen := false
+	for _, arg := range os.Args[1:] {
+		if arg == "completion" && !seen {
+			seen = true
+			continue
+		}
+		if !seen || strings.HasPrefix(arg, "-") {
+			continue
+		}
+		switch arg {
+		case "bash", "zsh", "fish", "powershell":
+			shells++
+		default:
+			return false
+		}
+	}
+	return shells == 1
 }
 
 // needsCachedAPI reports whether the current argv invokes a command that
@@ -290,6 +356,9 @@ func needsCachedAPI() bool {
 		"auth": true, "sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
 		"telemetry": true, "feedback": true,
+		// Cobra's hidden completion protocol. Without these, Tab completion
+		// would trigger an auto-sync before Cobra even sees the request.
+		"__complete": true, "__completeNoDesc": true,
 	}
 	if cmd := firstCommandArg(os.Args); cmd != "" {
 		return !meta[cmd]
@@ -308,6 +377,10 @@ func shouldInjectAPIName() bool {
 		"auth": true, "sync": true, "catalog": true,
 		"help": true, "completion": true, "version": true, "install": true,
 		"list-operations": true, "telemetry": true, "feedback": true,
+		// Cobra's hidden completion protocol commands. Injecting the API name
+		// here turned `surf __complete …` into `surf surf __complete …`, which
+		// Cobra rejected as an unknown command, breaking Tab completion.
+		"__complete": true, "__completeNoDesc": true,
 	}
 	// If --help or -h appears anywhere, don't inject.
 	for _, arg := range os.Args[1:] {
