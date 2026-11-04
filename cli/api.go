@@ -95,6 +95,7 @@ func cacheAPI(name string, api *API) {
 	if base := apiCacheBase(name); base != "" {
 		Cache.Set(name+".base", base)
 	}
+	Cache.Set(name+".cache_version", apiCacheVersion)
 	Cache.Set(name+".expires", time.Now().Add(24*time.Hour))
 	if err := Cache.WriteConfig(); err != nil {
 		// Without the persisted expiry, LoadCachedAPI treats the cache as
@@ -134,10 +135,17 @@ func apiCacheMatchesBase(name string) bool {
 	return Cache.GetString(name+".base") == expected
 }
 
+// apiCacheVersion identifies the cached catalog shape. Bump it whenever
+// cli.Operation or cli.Param changes in a way the catalog depends on, so an
+// old cache cannot feed the new catalog. Registration deliberately ignores
+// it (see LoadCachedAPIAllowStale): names and flags remain usable.
+const apiCacheVersion = 1
+
 // LoadCachedAPI loads an API from the local cache without making network
-// requests. Returns nil if no valid cache exists or is expired.
+// requests. Returns nil if no valid cache exists, is expired, or was written
+// by a CLI that used a different catalog shape.
 func LoadCachedAPI(name string) *API {
-	return loadCachedAPI(name, false)
+	return loadCachedAPI(name, false, true)
 }
 
 // LoadCachedAPIAllowStale is LoadCachedAPI without the TTL check. Command
@@ -146,10 +154,10 @@ func LoadCachedAPI(name string) *API {
 // and Tab completion lose every API command until a networked command
 // happened to refresh the spec.
 func LoadCachedAPIAllowStale(name string) *API {
-	return loadCachedAPI(name, true)
+	return loadCachedAPI(name, true, false)
 }
 
-func loadCachedAPI(name string, allowExpired bool) *API {
+func loadCachedAPI(name string, allowExpired, requireVersion bool) *API {
 	if !apiCacheMatchesBase(name) {
 		return nil
 	}
@@ -158,6 +166,9 @@ func loadCachedAPI(name string, allowExpired bool) *API {
 		if expires.IsZero() || !time.Now().Before(expires) {
 			return nil
 		}
+	}
+	if requireVersion && Cache.GetInt(name+".cache_version") != apiCacheVersion {
+		return nil
 	}
 	filename := filepath.Join(getCacheDir(), name+".cbor")
 	data, err := os.ReadFile(filename)
