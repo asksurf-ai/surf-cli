@@ -88,6 +88,21 @@ func TestSplitHelpBlocks(t *testing.T) {
 			wantBelow: nil,
 		},
 		{
+			name:      "2XX range code moves below",
+			in:        "Token price history.\n\n## Response 2XX (application/json)\n\n```schema\n{ data*: [...] }\n```",
+			wantAbove: []string{"Token price history."},
+			wantBelow: []string{"## Response 2XX", "data*: [...]"},
+			notAbove:  []string{"## Response 2XX"},
+		},
+		{
+			name:        "CRLF input is normalized",
+			in:          "Token price history.\r\n\r\n## Response 200 (application/json)\r\n\r\nOK\r\n",
+			wantAbove:   []string{"Token price history."},
+			wantBelow:   []string{"## Response 200", "OK"},
+			notAbove:    []string{"## Response 200"},
+			notAnywhere: []string{"\r"},
+		},
+		{
 			name: "input example and request schema stay above",
 			in: strings.Join([]string{
 				"Execute SQL.",

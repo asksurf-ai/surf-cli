@@ -47,6 +47,10 @@ func splitHelpBlocks(long string) (above, below string) {
 	mode := 0 // 0 = above, 1 = dropping, 2 = below
 
 	for _, line := range lines {
+		// Normalize CRLF so heading detection and the rendered blocks do not
+		// depend on the spec file's line endings.
+		line = strings.TrimSuffix(line, "\r")
+
 		// Track fenced code blocks so a literal `## Response` inside a
 		// user-authored code example is never mistaken for a section
 		// boundary. (Not strictly needed for today's spec, but cheap
@@ -72,8 +76,8 @@ func splitHelpBlocks(long string) (above, below string) {
 		appendTo(mode, line, &aboveOut, &belowOut)
 	}
 
-	return strings.TrimRight(strings.Join(aboveOut, "\n"), "\n"),
-		strings.TrimRight(strings.Join(belowOut, "\n"), "\n")
+	return strings.TrimRight(strings.Join(aboveOut, "\n"), "\r\n"),
+		strings.TrimRight(strings.Join(belowOut, "\n"), "\r\n")
 }
 
 func appendTo(mode int, line string, above, below *[]string) {
@@ -118,6 +122,9 @@ func isBelowSchemaHeading(line string) bool {
 		codes = codes[:i]
 	}
 	for _, code := range strings.Split(codes, "/") {
+		if code == "2XX" {
+			continue
+		}
 		n, err := strconv.Atoi(code)
 		if err != nil || n < 200 || n >= 300 {
 			return false
