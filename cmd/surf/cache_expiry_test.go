@@ -39,8 +39,10 @@ func TestExpiredCacheStillListsCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Point the base at a closed port so any attempted sync fails fast; the
-	// command tree must still be populated from the stale cache.
+	// Close the server so any attempted sync fails fast; the command tree
+	// must still be populated from the stale cache.
+	srv.Close()
+
 	cmd := surfCmd(t, bin, home, nil, "--help")
 	stdout, stderr := splitOutput(cmd)
 	if err := cmd.Run(); err != nil {
@@ -50,7 +52,7 @@ func TestExpiredCacheStillListsCommands(t *testing.T) {
 	if !strings.Contains(out, "cache-fixture") {
 		t.Errorf("expired cache should still register API commands:\n%s", out)
 	}
-	if strings.Contains(out, "No cached API spec") {
+	if strings.Contains(out, "No cached API spec") || strings.Contains(out, "Auto-sync failed") {
 		t.Errorf("--help should not sync when a stale cache is usable:\n%s", out)
 	}
 }
@@ -99,6 +101,7 @@ func TestUpgradedCacheStillListsCommands(t *testing.T) {
 	t.Cleanup(srv.Close)
 	seedSurfSpecCache(t, bin, home, srv.URL+"/gateway", srv.URL+"/gateway/openapi.json")
 	dropCacheVersion(t, home)
+	srv.Close()
 
 	cmd := surfCmd(t, bin, home, nil, "--help")
 	stdout, stderr := splitOutput(cmd)
@@ -109,7 +112,7 @@ func TestUpgradedCacheStillListsCommands(t *testing.T) {
 	if !strings.Contains(out, "cache-fixture") {
 		t.Errorf("an unversioned cache should still register API commands:\n%s", out)
 	}
-	if strings.Contains(out, "No cached API spec") {
+	if strings.Contains(out, "No cached API spec") || strings.Contains(out, "Auto-sync failed") {
 		t.Errorf("--help should not sync for an unversioned cache:\n%s", out)
 	}
 }
@@ -137,5 +140,36 @@ func TestUpgradedCacheRefreshesCatalog(t *testing.T) {
 	cfg := readCacheConfig(t, home)
 	if got := cfg["surf"]["cache_version"]; got != float64(1) {
 		t.Errorf("cache_version = %v, want 1", got)
+	}
+}
+
+// TestUpgradedCacheOperationDoesNotSync is the upgrade regression that the
+// pre-sync guard used to miss: a normal operation with an unversioned cache
+// must run from the cache, not attempt a spec download. Offline, that attempt
+// turned into a panic inside cli.Run.
+func TestUpgradedCacheOperationDoesNotSync(t *testing.T) {
+	bin := buildBareSurfBin(t)
+	home := t.TempDir()
+
+	srv, _ := newSpecAndOperationServer(t, "cache-fixture", nil)
+	t.Cleanup(srv.Close)
+	seedSurfSpecCache(t, bin, home, srv.URL+"/gateway", srv.URL+"/gateway/openapi.json")
+	dropCacheVersion(t, home)
+	srv.Close()
+
+	cmd := surfCmd(t, bin, home, nil, "cache-fixture")
+	_, stderr := splitOutput(cmd)
+	err := cmd.Run()
+	if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 2 {
+		t.Fatalf("unversioned cache must not panic offline:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "panic:") {
+		t.Fatalf("unversioned cache must not panic offline:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "No cached API spec, syncing") {
+		t.Errorf("a normal operation should not trigger a spec sync:\n%s", stderr.String())
+	}
+	if err == nil {
+		t.Fatalf("expected the request to fail against the closed server")
 	}
 }
