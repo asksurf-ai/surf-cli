@@ -138,8 +138,11 @@ func TestUpgradedCacheRefreshesCatalog(t *testing.T) {
 		t.Errorf("catalog should be refreshed after auto-sync:\n%s", stdout.String())
 	}
 	cfg := readCacheConfig(t, home)
-	if got := cfg["surf"]["cache_version"]; got == nil || got == float64(0) {
-		t.Errorf("cache_version = %v, want a persisted version", got)
+	// Must match cli.apiCacheVersion. Asserting only "non-zero" hid a
+	// reverted bump: the v1 cache then matches and the catalog silently
+	// loses min/max/body_required again.
+	if got := cfg["surf"]["cache_version"]; got != float64(2) {
+		t.Errorf("cache_version = %v, want 2", got)
 	}
 }
 
