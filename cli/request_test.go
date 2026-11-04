@@ -201,7 +201,7 @@ func TestRequestRetryAfter(t *testing.T) {
 		Put("/").
 		Times(1).
 		Reply(http.StatusTooManyRequests).
-		SetHeader("Retry-After", time.Now().Format(http.TimeFormat))
+		SetHeader("Retry-After", time.Now().Add(time.Second).UTC().Format(http.TimeFormat))
 
 	gock.New("http://example.com").
 		Put("/").
