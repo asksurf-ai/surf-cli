@@ -215,11 +215,19 @@ func main() {
 		}
 	}
 
-	// Lazy-sync: fresh install (or expired cache) + user is invoking an API
-	// command → fetch the spec once so commands register and the call can
-	// proceed, instead of failing with "unknown command" or "no cached API
-	// spec — run surf sync first".
-	if cli.LoadCachedAPI("surf") == nil && needsCachedAPI() {
+	// Lazy-sync: fetch the spec once when there is nothing to read, or when
+	// the catalog needs a version match. A normal operation with any cached
+	// spec must not hit the network here: `Load` reuses the cache and, after
+	// an upgrade, old caches are still usable for constructing requests. Only
+	// `list-operations` depends on the catalog shape, so it forces a refresh
+	// on a version mismatch instead.
+	//
+	// Without this distinction, an upgrade made every existing cache look
+	// missing (no cache_version); offline that turned into a failed pre-sync
+	// and a panic inside cli.Run's Load call.
+	needsCatalog := firstCommandArg(os.Args) == "list-operations"
+	if cli.LoadCachedAPI("surf") == nil && needsCachedAPI() &&
+		(needsCatalog || cli.LoadCachedAPIAllowStale("surf") == nil) {
 		fmt.Fprintln(os.Stderr, "No cached API spec, syncing...")
 		viper.Set("rsh-no-cache", true)
 		if _, err := cli.Load(currentSurfGatewayBase(), cli.Root); err != nil {
@@ -232,7 +240,10 @@ func main() {
 	// Populate "Available API Commands" from cached API spec as full
 	// operation commands (with flags, Long description, etc.). These are
 	// used when --help/-h skips injection, and also for Root help display.
-	if api := cli.LoadCachedAPI("surf"); api != nil {
+	// Registration reads the cache even when it has expired: the command
+	// names and flags it needs are still valid, and an expired cache must not
+	// empty `surf --help` until the next network call refreshes it.
+	if api := cli.LoadCachedAPIAllowStale("surf"); api != nil {
 		for _, op := range api.Operations {
 			if op.Hidden || op.Deprecated != "" {
 				continue
