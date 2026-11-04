@@ -227,3 +227,50 @@ func TestOperationsIndexIsCompact(t *testing.T) {
 	// The whole fixture index stays well under the full catalog's size.
 	assert.Less(t, buf.Len(), 1200, "index should be a discovery-sized payload:\n%s", buf.String())
 }
+
+// runCatalog seeds a stub spec and runs list-operations with the given flags,
+// returning stdout and stderr so the command wiring is covered too.
+func runCatalog(t *testing.T, flags ...string) (string, string) {
+	t.Helper()
+	bin := buildBareSurfBin(t)
+	home := t.TempDir()
+	srv, _ := newSpecAndOperationServer(t, "catalog-fixture", nil)
+	t.Cleanup(srv.Close)
+	seedSurfSpecCache(t, bin, home, srv.URL+"/gateway", srv.URL+"/gateway/openapi.json")
+
+	cmd := surfCmd(t, bin, home, nil, append([]string{"list-operations"}, flags...)...)
+	stdout, stderr := splitOutput(cmd)
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("surf list-operations %v failed: %v\n%s\n%s", flags, err, stdout.String(), stderr.String())
+	}
+	return stdout.String(), stderr.String()
+}
+
+// --compact must imply --json on its own; dropping the imply logic in
+// newListOperationsCmd used to leave every unit test green.
+func TestListOperationsCompactImpliesJSON(t *testing.T) {
+	stdout, _ := runCatalog(t, "--compact")
+	if !json.Valid([]byte(stdout)) {
+		t.Fatalf("--compact alone should emit JSON:\n%s", stdout)
+	}
+	if strings.Contains(stdout, `"short"`) {
+		t.Errorf("--compact should omit the summary:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "catalog-fixture") {
+		t.Errorf("catalog missing the seeded operation:\n%s", stdout)
+	}
+}
+
+// --index must imply --json and stay on one line so it is cheap for agents.
+func TestListOperationsIndexImpliesJSON(t *testing.T) {
+	stdout, _ := runCatalog(t, "--index")
+	if !json.Valid([]byte(stdout)) {
+		t.Fatalf("--index alone should emit JSON:\n%s", stdout)
+	}
+	if strings.Count(strings.TrimSpace(stdout), "\n") != 0 {
+		t.Errorf("--index should be a single line:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, `"name":"catalog-fixture"`) || strings.Contains(stdout, `"method"`) {
+		t.Errorf("--index should contain only name/group/short:\n%s", stdout)
+	}
+}

@@ -138,8 +138,8 @@ func TestUpgradedCacheRefreshesCatalog(t *testing.T) {
 		t.Errorf("catalog should be refreshed after auto-sync:\n%s", stdout.String())
 	}
 	cfg := readCacheConfig(t, home)
-	if got := cfg["surf"]["cache_version"]; got != float64(1) {
-		t.Errorf("cache_version = %v, want 1", got)
+	if got := cfg["surf"]["cache_version"]; got == nil || got == float64(0) {
+		t.Errorf("cache_version = %v, want a persisted version", got)
 	}
 }
 

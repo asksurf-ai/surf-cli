@@ -139,7 +139,10 @@ func apiCacheMatchesBase(name string) bool {
 // cli.Operation or cli.Param changes in a way the catalog depends on, so an
 // old cache cannot feed the new catalog. Registration deliberately ignores
 // it (see LoadCachedAPIAllowStale): names and flags remain usable.
-const apiCacheVersion = 1
+//
+// v2 added Param.Minimum/Maximum and Operation.BodyRequired; a v1 cache
+// lacks them, so the catalog must not be served from it.
+const apiCacheVersion = 2
 
 // LoadCachedAPI loads an API from the local cache without making network
 // requests. Returns nil if no valid cache exists, is expired, or was written
