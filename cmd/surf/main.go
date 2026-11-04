@@ -310,9 +310,40 @@ func isCompletionProtocol() bool {
 }
 
 // completionWritesStdout reports whether this invocation's output is consumed
-// by the shell rather than by a human reading stderr diagnostics.
+// by the shell rather than by a human reading stderr diagnostics. The hidden
+// protocol always is; the visible `completion` command only when it is
+// generating a script, not for help or a mistyped shell name (otherwise
+// `surf completion bahs > file` redirects a Usage page into the script).
 func completionWritesStdout() bool {
-	return isCompletionInvocation()
+	if isCompletionProtocol() {
+		return true
+	}
+	if firstCommandArg(os.Args) != "completion" {
+		return false
+	}
+	for _, arg := range os.Args[1:] {
+		if arg == "--help" || arg == "-h" {
+			return false
+		}
+	}
+	shells := 0
+	seen := false
+	for _, arg := range os.Args[1:] {
+		if arg == "completion" && !seen {
+			seen = true
+			continue
+		}
+		if !seen || strings.HasPrefix(arg, "-") {
+			continue
+		}
+		switch arg {
+		case "bash", "zsh", "fish", "powershell":
+			shells++
+		default:
+			return false
+		}
+	}
+	return shells == 1
 }
 
 // needsCachedAPI reports whether the current argv invokes a command that

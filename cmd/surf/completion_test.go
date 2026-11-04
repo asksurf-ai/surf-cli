@@ -89,3 +89,42 @@ func TestCompleteDoesNotSyncWithoutCache(t *testing.T) {
 		t.Errorf("completion must not sync without a cache:\n%s", out)
 	}
 }
+
+// TestCompletionDiagnosticsStayOnStderr guards the redirect footgun:
+// `surf completion bahs > file` (or `completion --help`) must not write a
+// Usage page to stdout, while the real script path keeps stdout clean of
+// diagnostics (covered by TestCompletionScriptGoesToStdout).
+func TestCompletionDiagnosticsStayOnStderr(t *testing.T) {
+	bin := buildBareSurfBin(t)
+	home := t.TempDir()
+
+	cases := []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{name: "no shell", args: []string{"completion"}},
+		{name: "help", args: []string{"completion", "bash", "--help"}},
+		{name: "typo", args: []string{"completion", "bahs"}},
+		{name: "extra arg", args: []string{"completion", "bash", "extra"}, wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := surfCmd(t, bin, home, nil, tc.args...)
+			stdout, stderr := splitOutput(cmd)
+			err := cmd.Run()
+			if tc.wantErr && err == nil {
+				t.Fatalf("surf %v unexpectedly succeeded", tc.args)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("surf %v failed: %v\n%s", tc.args, err, stderr.String())
+			}
+			if stdout.String() != "" {
+				t.Errorf("completion diagnostics went to stdout:\n%s", stdout.String())
+			}
+			if stderr.String() == "" {
+				t.Errorf("expected help/error on stderr")
+			}
+		})
+	}
+}
