@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -49,5 +51,41 @@ func TestCompletionScriptGoesToStdout(t *testing.T) {
 	}
 	if stderr.String() != "" {
 		t.Errorf("completion script wrote to stderr:\n%s", stderr.String())
+	}
+}
+
+// TestCompleteDoesNotSyncWithoutCache exercises the meta-command path: with
+// no cache at all, completion must still answer immediately (empty candidates
+// plus the no-file-comp directive) and must not attempt a spec download.
+func TestCompleteDoesNotSyncWithoutCache(t *testing.T) {
+	bin := buildBareSurfBin(t)
+	home := t.TempDir()
+	surfDir := filepath.Join(home, ".surf")
+	if err := os.MkdirAll(surfDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	apisJSON := `{
+  "$schema": "https://rest.sh/schemas/apis.json",
+  "surf": {
+    "base": "http://127.0.0.1:1/gateway",
+    "spec_files": ["http://127.0.0.1:1/openapi.json"],
+    "profiles": {"default": {}}
+  }
+}`
+	if err := os.WriteFile(filepath.Join(surfDir, "apis.json"), []byte(apisJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := surfCmd(t, bin, home, nil, "__complete", "new")
+	stdout, stderr := splitOutput(cmd)
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("surf __complete without a cache failed: %v\n%s\n%s", err, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), ":4") {
+		t.Errorf("expected the no-file-comp directive on stdout:\n%s", stdout.String())
+	}
+	out := stdout.String() + stderr.String()
+	if strings.Contains(out, "syncing") || strings.Contains(out, "Auto-sync failed") {
+		t.Errorf("completion must not sync without a cache:\n%s", out)
 	}
 }
