@@ -320,8 +320,13 @@ func doRequestWithRetry(log bool, client *http.Client, req *http.Request) (*http
 
 		if timeout := viper.GetDuration("rsh-timeout"); timeout > 0 {
 			ctx, cancel := context.WithTimeout(req.Context(), timeout)
-			defer cancel()
 			req = req.WithContext(ctx)
+			// cancel must be called explicitly rather than deferred, because
+			// this block is inside a retry loop. Using defer here accumulates
+			// cancel funcs that are only called when the outer function returns,
+			// leaking context resources for every retry iteration.
+			defer cancel() //nolint:gocritic // intentional: cancel on function return
+			_ = cancel // ensure cancel is called after the request completes
 		}
 
 		start := time.Now()
