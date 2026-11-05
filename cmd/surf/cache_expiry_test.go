@@ -90,6 +90,46 @@ func dropCacheVersion(t *testing.T, home string) {
 	writeCacheConfig(t, home, cfg)
 }
 
+// dropCacheBaseAndVersion simulates a cache written before the CLI recorded
+// either key. Every cache from a released CLI before cache versioning has this
+// shape, so the upgrade path must handle it.
+func dropCacheBaseAndVersion(t *testing.T, home string) {
+	t.Helper()
+	cfg := readCacheConfig(t, home)
+	delete(cfg["surf"], "base")
+	delete(cfg["surf"], "cache_version")
+	writeCacheConfig(t, home, cfg)
+}
+
+// TestPreVersioningCacheStillListsCommands pins the upgrade path that a cache
+// without cache_version alone does not cover: released CLIs also wrote no
+// base, so the base check must not reject the cache for registration. Before
+// the fix, `surf --help` listed no API commands after an upgrade until the next
+// sync, and Tab completion lost them too.
+func TestPreVersioningCacheStillListsCommands(t *testing.T) {
+	bin := buildBareSurfBin(t)
+	home := t.TempDir()
+
+	srv, _ := newSpecAndOperationServer(t, "cache-fixture", nil)
+	t.Cleanup(srv.Close)
+	seedSurfSpecCache(t, bin, home, srv.URL+"/gateway", srv.URL+"/gateway/openapi.json")
+	dropCacheBaseAndVersion(t, home)
+	srv.Close()
+
+	cmd := surfCmd(t, bin, home, nil, "--help")
+	stdout, stderr := splitOutput(cmd)
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("surf --help failed: %v\n%s\n%s", err, stdout.String(), stderr.String())
+	}
+	out := stdout.String() + stderr.String()
+	if !strings.Contains(out, "cache-fixture") {
+		t.Errorf("a cache without base or cache_version should still register API commands:\n%s", out)
+	}
+	if strings.Contains(out, "No cached API spec") || strings.Contains(out, "Auto-sync failed") {
+		t.Errorf("--help should not sync for a pre-versioning cache:\n%s", out)
+	}
+}
+
 // TestUpgradedCacheStillListsCommands covers the upgrade path: existing users
 // have caches without cache_version, and registration must not treat those as
 // missing. Only the catalog fields need a version match.

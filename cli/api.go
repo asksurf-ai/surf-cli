@@ -161,7 +161,13 @@ func LoadCachedAPIAllowStale(name string) *API {
 }
 
 func loadCachedAPI(name string, allowExpired, requireVersion bool) *API {
-	if !apiCacheMatchesBase(name) {
+	// Registration and completion (allowExpired) need only the cached names and
+	// flags, which stay usable when the cache was written against another base
+	// or predates the base/version keys entirely. Enforcing the base there made
+	// a cache from a pre-versioning CLI look missing, so an upgrade emptied
+	// `surf --help` and Tab completion until the next sync. The catalog and
+	// request paths still require a matching base.
+	if !allowExpired && !apiCacheMatchesBase(name) {
 		return nil
 	}
 	if !allowExpired {
