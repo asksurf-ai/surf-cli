@@ -183,6 +183,85 @@ func TestRequestRetryIn(t *testing.T) {
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 }
 
+func TestCapRetryDelay(t *testing.T) {
+	viper.Set("rsh-max-retry-after", 2*time.Second)
+	defer viper.Set("rsh-max-retry-after", 5*time.Second)
+
+	if got := capRetryDelay(30 * time.Second); got != 2*time.Second {
+		t.Errorf("capRetryDelay(30s) = %s, want 2s", got)
+	}
+	if got := capRetryDelay(time.Second); got != time.Second {
+		t.Errorf("capRetryDelay(1s) = %s, want 1s", got)
+	}
+	viper.Set("rsh-max-retry-after", time.Duration(0))
+	if got := capRetryDelay(30 * time.Second); got != 30*time.Second {
+		t.Errorf("capRetryDelay with no cap = %s, want 30s", got)
+	}
+}
+
+func TestRetryTooSlow(t *testing.T) {
+	viper.Set("rsh-retry-max-attempt-time", 2*time.Second)
+	defer viper.Set("rsh-retry-max-attempt-time", 10*time.Second)
+
+	if !retryTooSlow(2 * time.Second) {
+		t.Error("retryTooSlow(2s) = false, want true")
+	}
+	if retryTooSlow(time.Second) {
+		t.Error("retryTooSlow(1s) = true, want false")
+	}
+	viper.Set("rsh-retry-max-attempt-time", time.Duration(0))
+	if retryTooSlow(time.Hour) {
+		t.Error("retryTooSlow with no limit = true, want false")
+	}
+}
+
+func TestRequestDoesNotRetrySlowFailure(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+	viper.Set("rsh-retry", 2)
+	viper.Set("rsh-retry-max-attempt-time", 5*time.Millisecond)
+
+	gock.New("http://example.com").
+		Get("/").
+		Times(1).
+		Reply(http.StatusServiceUnavailable).
+		Delay(20 * time.Millisecond)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	resp, err := MakeRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+	assert.True(t, gock.IsDone())
+}
+
+func TestRequestRetriesFastFailure(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+	viper.Set("rsh-retry", 1)
+	viper.Set("rsh-retry-max-attempt-time", time.Second)
+
+	gock.New("http://example.com").
+		Get("/").
+		Times(1).
+		Reply(http.StatusServiceUnavailable).
+		SetHeader("Retry-After", "0")
+
+	gock.New("http://example.com").
+		Get("/").
+		Times(1).
+		Reply(http.StatusOK)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	resp, err := MakeRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.True(t, gock.IsDone())
+}
+
 func TestRequestRetryAfter(t *testing.T) {
 	defer gock.Off()
 
