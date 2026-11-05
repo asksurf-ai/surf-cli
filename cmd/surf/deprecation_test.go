@@ -15,7 +15,7 @@ func TestDeprecationWarningGoesToStderr(t *testing.T) {
 	// Find a deprecated command to test with.
 	// list-operations excludes deprecated commands, but they still work
 	// when called directly.
-	cmd := exec.Command(bin, "search-polymarket", "--q", "test", "--json")
+	cmd := exec.Command(bin, "project-pulse", "--q", "test", "--json")
 	stdout := &strBuf{}
 	stderr := &strBuf{}
 	cmd.Stdout = stdout
