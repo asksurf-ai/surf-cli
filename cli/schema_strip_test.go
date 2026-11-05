@@ -58,7 +58,7 @@ func TestSplitHelpBlocks(t *testing.T) {
 			notAbove:  []string{"## Response 200", "data*: [...]"},
 		},
 		{
-			name: "error responses stay above",
+			name: "error responses move below",
 			in: strings.Join([]string{
 				"Token price history.",
 				"",
@@ -70,11 +70,12 @@ func TestSplitHelpBlocks(t *testing.T) {
 				"{ error*: {...} }",
 				"```",
 			}, "\n"),
-			wantAbove: []string{"## Response default", "error*:"},
-			wantBelow: nil,
+			wantAbove: []string{"Token price history."},
+			wantBelow: []string{"## Response default", "error*:"},
+			notAbove:  []string{"## Response default", "error*:"},
 		},
 		{
-			name: "only 2xx responses move when merged with an error code",
+			name: "merged success and error responses move below",
 			in: strings.Join([]string{
 				"SQL executor.",
 				"",
@@ -84,8 +85,8 @@ func TestSplitHelpBlocks(t *testing.T) {
 				"{ data*: [...] }",
 				"```",
 			}, "\n"),
-			wantAbove: []string{"## Responses 200/408"},
-			wantBelow: nil,
+			wantBelow: []string{"## Responses 200/408"},
+			notAbove:  []string{"## Responses 200/408"},
 		},
 		{
 			name:      "2XX range code moves below",
@@ -199,7 +200,7 @@ func TestIsDroppedSchemaHeading(t *testing.T) {
 	}
 }
 
-func TestIsBelowSchemaHeading(t *testing.T) {
+func TestIsResponseSchemaHeading(t *testing.T) {
 	tests := []struct {
 		line string
 		want bool
@@ -208,16 +209,59 @@ func TestIsBelowSchemaHeading(t *testing.T) {
 		{"## Response 201", true},
 		{"## Responses 200/201 (application/json)", true},
 		{"## Response 204", true},
-		{"## Response 408 (application/json)", false},
-		{"## Response 429 (application/json)", false},
-		{"## Response default (application/json)", false},
-		{"## Responses 200/408 (application/json)", false},
+		{"## Response 408 (application/json)", true},
+		{"## Response 429 (application/json)", true},
+		{"## Response default (application/json)", true},
+		{"## Responses 200/408 (application/json)", true},
+		{"## Response", false},
 		{"## Request Schema (application/json)", false},
 		{"## Input Example", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.line, func(t *testing.T) {
-			assert.Equal(t, tt.want, isBelowSchemaHeading(tt.line))
+			assert.Equal(t, tt.want, isResponseSchemaHeading(tt.line))
 		})
+	}
+}
+
+// TestResponseBlocksOrderedSuccessFirst pins the order inside the response
+// block: success codes, then error codes, then the shared default envelope,
+// regardless of the order the spec emitted them in.
+func TestResponseBlocksOrderedSuccessFirst(t *testing.T) {
+	in := strings.Join([]string{
+		"SQL executor.",
+		"",
+		"## Response default (application/json)",
+		"",
+		"Error",
+		"",
+		"## Response 408 (application/json)",
+		"",
+		"Timed out",
+		"",
+		"## Response 200 (application/json)",
+		"",
+		"OK",
+		"",
+		"## Response 202 (application/json)",
+		"",
+		"Accepted",
+	}, "\n")
+
+	above, below := splitHelpBlocks(in)
+	assert.Contains(t, above, "SQL executor.")
+	for _, s := range []string{"## Response 200", "## Response 202", "## Response 408", "## Response default"} {
+		assert.NotContains(t, above, s)
+		assert.Contains(t, below, s)
+	}
+
+	order := []string{"## Response 200", "## Response 202", "## Response 408", "## Response default"}
+	last := -1
+	for _, s := range order {
+		pos := strings.Index(below, s)
+		if pos < last {
+			t.Fatalf("response blocks out of order at %q:\n%s", s, below)
+		}
+		last = pos
 	}
 }

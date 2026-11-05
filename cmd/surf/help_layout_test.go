@@ -132,14 +132,19 @@ func TestHelpPutsFlagsBeforeResponseSchema(t *testing.T) {
 		t.Errorf("## Input Example must stay above Usage (pos=%d, usage=%d):\n%s", inputExample, usage, out)
 	}
 
-	// Error responses stay above Usage with the prose that explains recovery.
+	// Every response schema renders after Usage/Flags: success first, then
+	// error codes, then the shared default envelope.
 	for name, pos := range map[string]int{"default": responseDefault, "408": response408} {
 		if pos < 0 {
 			t.Errorf("## Response %s missing from --help:\n%s", name, out)
 			continue
 		}
-		if pos > usage {
-			t.Errorf("## Response %s should stay above Usage (pos=%d, usage=%d)", name, pos, usage)
+		if pos < responseBlock {
+			t.Errorf("## Response %s should follow the response block (pos=%d, block=%d)", name, pos, responseBlock)
 		}
+	}
+	if response408 < response200 || responseDefault < response408 {
+		t.Errorf("response order should be 200, 408, default (200@%d, 408@%d, default@%d)",
+			response200, response408, responseDefault)
 	}
 }
