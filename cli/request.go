@@ -286,6 +286,14 @@ func capRetryDelay(d time.Duration) time.Duration {
 	return d
 }
 
+// retryTooSlow reports whether a failed attempt already took long enough that
+// another try is unlikely to help. A slow 5xx is usually an upstream timeout
+// rather than a transient blip, and retrying it multiplies the latency.
+func retryTooSlow(elapsed time.Duration) bool {
+	max := viper.GetDuration("rsh-retry-max-attempt-time")
+	return max > 0 && elapsed >= max
+}
+
 // isRetryable returns true if a request should be retried.
 func isRetryable(code int) bool {
 	if code == /* 408 */ http.StatusRequestTimeout ||
@@ -339,15 +347,18 @@ func doRequestWithRetry(log bool, client *http.Client, req *http.Request) (*http
 		resp, err = client.Do(req)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				if triesLeft > 0 {
+				elapsed := time.Since(start)
+				if triesLeft > 0 && !retryTooSlow(elapsed) {
 					// Try again after letting the user know.
 					LogWarning("Got request timeout after %s, retrying", viper.GetDuration("rsh-timeout").Truncate(time.Millisecond))
 					continue
-				} else {
-					// Add a human-friendly error before the original (context deadline
-					// exceeded).
-					err = fmt.Errorf("Request timed out after %s: %w", viper.GetDuration("rsh-timeout"), err)
 				}
+				if triesLeft > 0 {
+					LogWarning("Got request timeout after %s, not retrying because the attempt was slow", elapsed.Truncate(time.Millisecond))
+				}
+				// Add a human-friendly error before the original (context deadline
+				// exceeded).
+				err = fmt.Errorf("Request timed out after %s: %w", viper.GetDuration("rsh-timeout"), err)
 			}
 			return resp, err
 		}
@@ -357,6 +368,12 @@ func doRequestWithRetry(log bool, client *http.Client, req *http.Request) (*http
 		}
 
 		if triesLeft > 0 && isRetryable(resp.StatusCode) {
+			elapsed := time.Since(start)
+			if retryTooSlow(elapsed) {
+				LogWarning("Got %s after %s, not retrying because the attempt was slow", resp.Status, elapsed.Truncate(time.Millisecond))
+				break
+			}
+
 			// Attempt to parse when to retry! Default is 1 second.
 			retryAfter := 1 * time.Second
 

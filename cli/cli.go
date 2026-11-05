@@ -564,6 +564,7 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-retry", "", "Number of times to retry on certain failures", 2, false)
 	AddGlobalFlag("rsh-timeout", "t", "Timeout for HTTP requests", time.Duration(0), false)
 	AddGlobalFlag("rsh-max-retry-after", "", "Maximum time to wait between automatic retries", 5*time.Second, false)
+	AddGlobalFlag("rsh-retry-max-attempt-time", "", "Maximum duration of a failed attempt eligible for retry (0 disables)", 10*time.Second, false)
 
 	Root.RegisterFlagCompletionFunc("rsh-output-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"auto", "json", "yaml"}, cobra.ShellCompDirectiveNoFileComp
