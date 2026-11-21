@@ -451,6 +451,8 @@ func shortFlagConsumesValue(arg string) bool {
 }
 
 func explicitSurfAPIBaseURLOverride(args []string) string {
+	// Skip operation flag values so `--q "-scam tokens"` isn't read as -s.
+	args = cli.EagerArgs(args)
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
