@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/asksurf-ai/surf-cli/cli"
 	"github.com/asksurf-ai/surf-cli/openapi"
@@ -22,6 +23,11 @@ var embeddedAPIsJSON []byte
 
 var version = "dev"
 var configDir string
+
+// commandStart anchors wall-clock timing for the whole invocation; rawArgs
+// keeps the original os.Args before the API-name injection for debug logs.
+var commandStart = time.Now()
+var rawArgs []string
 
 const defaultSurfGatewayBase = "https://api.asksurf.ai/gateway"
 
@@ -55,6 +61,7 @@ func main() {
 	// the API config. Skip injection for commands that don't need API loading.
 	//   surf market-price --symbol BTC  →  [surf, surf, market-price, --symbol, BTC]
 	//   surf auth                         →  [surf, auth]  (no injection)
+	rawArgs = os.Args
 	if shouldInjectAPIName() {
 		os.Args = append([]string{os.Args[0], "surf"}, os.Args[1:]...)
 	}
@@ -100,7 +107,7 @@ func main() {
 	// paths) which shadows this persistent one — that's fine, both end up
 	// producing JSON output.
 	cli.Root.PersistentFlags().Bool("json", false, "Output result as JSON (alias for -o json)")
-	cli.Root.PersistentFlags().Bool("debug", false, "Enable debug log output")
+	cli.Root.PersistentFlags().Bool("debug", false, "Enable debug output and record requests, responses, and timing to ~/.surf/debug.log")
 	cli.Root.PersistentFlags().Bool("quiet", false, "Suppress non-error diagnostic output")
 	cli.Root.PersistentFlags().String("agent-view", "", "Output an agent-friendly response view")
 	cli.Root.PersistentFlags().Bool("shape", false, "Output response shape summary as JSON")
@@ -142,6 +149,14 @@ func main() {
 		if d, err := cmd.Flags().GetBool("debug"); err == nil && d {
 			viper.Set("rsh-verbose", true)
 			cli.EnableVerbose()
+			// Keep this after origPreRun: restish's pre-run dumps
+			// viper.AllSettings() at debug level, which includes the raw
+			// -H/-q flag values — enabling file logging first would
+			// persist them unsanitized.
+			cli.EnableDebugLog(configDir, commandStart)
+			// Replace the absolute executable path with the program name in
+			// the persisted header.
+			cli.DebugLogCommand(append([]string{"surf"}, rawArgs[1:]...))
 		}
 		if q, err := cmd.Flags().GetBool("quiet"); err == nil && q {
 			cli.SetQuiet(true)
@@ -285,6 +300,8 @@ func main() {
 	} else {
 		exitCode = cli.GetExitCode()
 	}
+
+	cli.DebugLogSummary(cli.GetCurrentCommand(), exitCode, errMsg, time.Since(commandStart))
 
 	// Completion runs on every Tab, so it must not post telemetry: the
 	// synchronous request would stall the prompt and fill the event stream.
