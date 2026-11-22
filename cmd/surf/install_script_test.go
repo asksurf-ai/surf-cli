@@ -66,7 +66,7 @@ func downloadedVersion(urls []string, tag string) bool {
 
 // A named version below v1.0.12 is refused before any request.
 func TestInstallScriptRefusesNamedVersionBelowFloor(t *testing.T) {
-	for _, v := range []string{"v1.0.11", "v1.0.0", "v1.0.12-rc.1", "v0.99.99"} {
+	for _, v := range []string{"v1.0.11", "v1.0.9", "v1.0.0", "v1.0.12-rc.1", "v0.99.99"} {
 		t.Run(v, func(t *testing.T) {
 			out, urls, err := runInstallScript(t, t.TempDir(), "v1.2.3", v)
 			if err == nil || !strings.Contains(out, "Error: refusing surf "+v+": this script installs only v1.0.12 or newer") {
