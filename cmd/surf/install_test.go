@@ -122,6 +122,21 @@ func TestInstallAside(t *testing.T) {
 	}
 }
 
+// A failed install puts the renamed-aside binary back.
+func TestInstallAsideRollsBack(t *testing.T) {
+	dir := t.TempDir()
+	dst := filepath.Join(dir, "surf.exe")
+	os.WriteFile(dst, []byte("running"), 0755)
+
+	if err := installAside(filepath.Join(dir, "missing"), dst); err == nil {
+		t.Fatal("expected an error for a missing source")
+	}
+	if got, _ := os.ReadFile(dst); string(got) != "running" {
+		t.Errorf("dst = %q after a failed install, want the original back", got)
+	}
+	assertOnlyEntries(t, dir, "surf.exe")
+}
+
 func TestCreateSymlink(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlinks not used on windows")

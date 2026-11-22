@@ -1,14 +1,18 @@
 #!/bin/sh
 # Installs the surf CLI from a GitHub release.
 #
-# Download this script from a named release, check it, then run it:
+# Download this script from a named release, check it, then run it; the
+# script runs only if the download and the check pass:
 #
 #   VERSION=v1.2.3
-#   curl -fsSLO "https://github.com/asksurf-ai/surf-cli/releases/download/${VERSION}/install.sh"
-#   gh attestation verify install.sh --repo asksurf-ai/surf-cli \
-#     --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
-#     --source-ref "refs/tags/${VERSION}" --deny-self-hosted-runners
-#   sh install.sh "$VERSION"
+#   DIR=$(mktemp -d)
+#   ( cd "$DIR" &&
+#     curl -fsSLO "https://github.com/asksurf-ai/surf-cli/releases/download/${VERSION}/install.sh" &&
+#     gh attestation verify install.sh --repo asksurf-ai/surf-cli \
+#       --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
+#       --source-ref "refs/tags/${VERSION}" --deny-self-hosted-runners &&
+#     sh install.sh "$VERSION" )
+#   rm -rf "$DIR"
 #
 # Without a version it installs the latest release, and refuses one older than
 # the surf already installed in ~/.local/bin. The binary is always checked
@@ -43,8 +47,10 @@ elif command -v wget >/dev/null 2>&1; then
   # it nor --max-redirect. So read every redirect wget reports (-S) and fail
   # on a non-https one, or on more than MAX_REDIRECTS. Options that GNU wget
   # and BusyBox wget both support.
+  # Print the Location of every redirect in a wget -S log.
+  locations() { sed -n 's/^ *[Ll][Oo][Cc][Aa][Tt][Ii][Oo][Nn]: *//p' "$1" | tr -d '\r'; }
   check_redirects() {
-    LOCATIONS=$(sed -n 's/^ *[Ll]ocation: *//p' "$1" | tr -d '\r')
+    LOCATIONS=$(locations "$1")
     [ -z "$LOCATIONS" ] && return 0
     if [ "$(printf '%s\n' "$LOCATIONS" | wc -l)" -gt "$MAX_REDIRECTS" ]; then
       echo "Error: more than ${MAX_REDIRECTS} redirects" >&2
@@ -67,7 +73,7 @@ elif command -v wget >/dev/null 2>&1; then
   redirect_target() {
     wget -q -S -T 60 --spider "$1" 2>"${WORKDIR}/wget.log" || true
     check_redirects "${WORKDIR}/wget.log" || return 1
-    sed -n 's/^ *[Ll]ocation: *//p' "${WORKDIR}/wget.log" | tr -d '\r' | head -n 1
+    locations "${WORKDIR}/wget.log" | head -n 1
   }
 else
   echo "Error: curl or wget is required" >&2
@@ -140,22 +146,40 @@ fi
 INSTALLED_SURF="${HOME}/.local/bin/surf${EXE}"
 
 # Latest only moves forward: refuse a latest release older than the installed
-# surf, when its version output parses. Latest is never a prerelease, so
-# comparing major.minor.patch is enough. A named version is always installed.
-if [ -z "$NAMED_VERSION" ] && [ -x "$INSTALLED_SURF" ]; then
-  # surf prints "surf version <version>", to stderr.
-  INSTALLED=$("$INSTALLED_SURF" --version 2>&1 | awk '$1 == "surf" && $2 == "version" { print $3; exit }' || true)
+# surf. A named version is always installed. The installed version is read from
+# the directory ~/.local/bin/surf links to (~/.local/share/surf/versions/<v>/surf,
+# where surf install puts it), never by running that binary: it may have come
+# from the retired download host.
+if [ -z "$NAMED_VERSION" ] && { [ -e "$INSTALLED_SURF" ] || [ -L "$INSTALLED_SURF" ]; }; then
+  INSTALLED=""
+  VERSIONS_DIR="${HOME}/.local/share/surf/versions/"
+  if [ -L "$INSTALLED_SURF" ]; then
+    TARGET=$(readlink "$INSTALLED_SURF" || true)
+    case "$TARGET" in
+      "${VERSIONS_DIR}"*/surf"${EXE}")
+        INSTALLED="${TARGET#"$VERSIONS_DIR"}"
+        INSTALLED="${INSTALLED%/surf"${EXE}"}"
+        ;;
+    esac
+  fi
   if printf '%s\n' "$INSTALLED" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+    # Exit 0 when the installed version is higher: a higher major.minor.patch,
+    # or the same one where the installed version is stable and latest is a
+    # prerelease.
     if awk -v a="$INSTALLED" -v b="$VERSION" 'BEGIN {
-        sub(/^v/, "", a); sub(/^v/, "", b); sub(/-.*/, "", a); sub(/-.*/, "", b)
+        sub(/^v/, "", a); sub(/^v/, "", b)
+        pa = index(a, "-"); pb = index(b, "-")
+        sub(/-.*/, "", a); sub(/-.*/, "", b)
         split(a, x, "."); split(b, y, ".")
         for (i = 1; i <= 3; i++) if (x[i] + 0 != y[i] + 0) exit !(x[i] + 0 > y[i] + 0)
-        exit 1
+        exit !(!pa && pb)
       }'; then
       echo "Error: the latest release ${VERSION} is older than the installed surf ${INSTALLED}." >&2
       echo "To install ${VERSION} anyway, name it: sh install.sh ${VERSION}" >&2
       exit 1
     fi
+  else
+    echo "Note: the version of ${INSTALLED_SURF} is unknown (it is not a link into ${VERSIONS_DIR}), so the check for an older release is skipped."
   fi
 fi
 

@@ -7,10 +7,10 @@ Every API endpoint is available as a CLI command, dynamically generated from the
 ## Existing users: do not run `surf install` on v1.0.11 or older
 
 surf v1.0.11 and older download updates from a host that is no longer
-trusted. Check your version with `surf version`. If it is 1.0.11 or older, do
-not run `surf install`. Reinstall with the verified steps below instead; they
-replace `~/.local/bin/surf`. Releases from v1.0.12 on update from GitHub
-Releases and check what they download.
+trusted. If you installed surf before v1.0.12, or are not sure, do not run
+`surf install` or the old `surf` binary to find out. Reinstall with the
+verified steps below; they replace `~/.local/bin/surf`. Releases from v1.0.12
+on update from GitHub Releases and check what they download.
 
 ## Install
 
@@ -26,38 +26,51 @@ With the [GitHub CLI](https://cli.github.com/) (`gh`) signed in, download a
 named release, check its checksum and build provenance attestation, then let
 the binary install itself. Pick the release from the
 [Releases page](https://github.com/asksurf-ai/surf-cli/releases) and the asset
-for your platform, `surf_<linux|darwin|windows>_<amd64|arm64>[.exe]`:
+for your platform, `surf_<linux|darwin|windows>_<amd64|arm64>[.exe]`. The
+steps run in a new temporary directory and are joined with `&&`, so the binary
+runs only if the download, the checksum and the attestation all pass; the
+directory is removed either way:
 
 ```sh
 VERSION=v1.0.12
 ASSET=surf_darwin_arm64
-gh release download "$VERSION" -R asksurf-ai/surf-cli -p "$ASSET" -p checksums.txt
-awk -v f="$ASSET" '$2 == f' checksums.txt | shasum -a 256 -c -   # or: sha256sum -c -
-gh attestation verify "$ASSET" --repo asksurf-ai/surf-cli \
-  --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
-  --source-ref "refs/tags/$VERSION" --deny-self-hosted-runners
-chmod +x "$ASSET" && ./"$ASSET" install --local
+DIR=$(mktemp -d)
+( cd "$DIR" &&
+  gh release download "$VERSION" -R asksurf-ai/surf-cli -p "$ASSET" -p checksums.txt &&
+  awk -v f="$ASSET" '$2 == f' checksums.txt | shasum -a 256 -c - &&
+  gh attestation verify "$ASSET" --repo asksurf-ai/surf-cli \
+    --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
+    --source-ref "refs/tags/$VERSION" --deny-self-hosted-runners &&
+  chmod +x "$ASSET" && ./"$ASSET" install --local )
+rm -rf "$DIR"
 ```
+
+On Linux without `shasum`, use `sha256sum -c -` instead.
 
 ### Install script
 
 `install.sh` does the same for your platform. Download it from a named
-release, check it, then run it (do not pipe it into `sh`):
+release, check it, then run it (do not pipe it into `sh`). As above, the
+script runs only if the download and the attestation pass:
 
 ```sh
 VERSION=v1.0.12
-curl -fsSLO "https://github.com/asksurf-ai/surf-cli/releases/download/$VERSION/install.sh"
-gh attestation verify install.sh --repo asksurf-ai/surf-cli \
-  --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
-  --source-ref "refs/tags/$VERSION" --deny-self-hosted-runners
-sh install.sh "$VERSION"
+DIR=$(mktemp -d)
+( cd "$DIR" &&
+  curl -fsSLO "https://github.com/asksurf-ai/surf-cli/releases/download/$VERSION/install.sh" &&
+  gh attestation verify install.sh --repo asksurf-ai/surf-cli \
+    --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
+    --source-ref "refs/tags/$VERSION" --deny-self-hosted-runners &&
+  sh install.sh "$VERSION" )
+rm -rf "$DIR"
 ```
 
 The script checks the binary against the release's `checksums.txt`. If `gh`
 is installed and signed in to github.com, it also checks the binary's build
 provenance attestation and stops if that check fails for any reason. Without
 a version it installs the latest release, and refuses one older than the surf
-already in `~/.local/bin`.
+already in `~/.local/bin`. It reads that version from the directory
+`~/.local/bin/surf` links to and never runs the installed binary.
 
 ### Updating
 
@@ -213,7 +226,9 @@ go install github.com/asksurf-ai/surf-cli/cmd/surf@stg
 ```
 
 > **Do not run `surf install` afterwards.** It downloads the latest
-> production release and overwrites the build you just installed.
+> production release and overwrites the build you just installed. Until `stg`
+> contains the GitHub Releases change, a build from `stg` still has the old
+> updater, which downloads from the retired host.
 
 To go back to production, re-run the installer from the [Install](#install)
 section.

@@ -59,16 +59,19 @@ release:
   header: |
     ## Upgrading from surf v1.0.11 or older
 
-    **Do not run `surf install` on v1.0.11 or older.** Those versions download updates from a host that is no longer trusted. Reinstall from this release instead, and check the binary first. Pick the asset for your platform, `surf_<linux|darwin|windows>_<amd64|arm64>[.exe]`:
+    **Do not run `surf install` on v1.0.11 or older.** Those versions download updates from a host that is no longer trusted. If you installed surf before v1.0.12, or are not sure, reinstall from this release, and do not run the old binary to find out. Pick the asset for your platform, `surf_<linux|darwin|windows>_<amd64|arm64>[.exe]`. The binary runs only if the download, the checksum and the attestation all pass:
 
     ```sh
     ASSET=surf_darwin_arm64
-    gh release download {{ .Tag }} -R asksurf-ai/surf-cli -p "$ASSET" -p checksums.txt
-    awk -v f="$ASSET" '$2 == f' checksums.txt | shasum -a 256 -c -
-    gh attestation verify "$ASSET" --repo asksurf-ai/surf-cli \
-      --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
-      --source-ref refs/tags/{{ .Tag }} --deny-self-hosted-runners
-    chmod +x "$ASSET" && ./"$ASSET" install --local
+    DIR=$(mktemp -d)
+    ( cd "$DIR" &&
+      gh release download {{ .Tag }} -R asksurf-ai/surf-cli -p "$ASSET" -p checksums.txt &&
+      awk -v f="$ASSET" '$2 == f' checksums.txt | shasum -a 256 -c - &&
+      gh attestation verify "$ASSET" --repo asksurf-ai/surf-cli \
+        --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
+        --source-ref refs/tags/{{ .Tag }} --deny-self-hosted-runners &&
+      chmod +x "$ASSET" && ./"$ASSET" install --local )
+    rm -rf "$DIR"
     ```
 
     Releases from v1.0.12 on update from GitHub Releases, check `checksums.txt`, and check the attestation when `gh` is signed in.
