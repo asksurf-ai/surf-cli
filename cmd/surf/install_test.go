@@ -393,13 +393,18 @@ func assertOnlyEntries(t *testing.T, dir string, want ...string) {
 
 // releaseFiles is a v1.2.3 release with a correct binary and checksums.txt.
 func releaseFiles(binary string) map[string]string {
+	return releaseFilesAt("v1.2.3", binary)
+}
+
+// releaseFilesAt is a release of tag with a correct binary and checksums.txt.
+func releaseFilesAt(tag, binary string) map[string]string {
 	name := releaseAssetName(runtime.GOOS, runtime.GOARCH)
 	return map[string]string{
-		"v1.2.3/" + name: binary,
-		"v1.2.3/checksums.txt": sha256Hex("other") + "  " + name + "-musl\n" +
+		tag + "/" + name: binary,
+		tag + "/checksums.txt": sha256Hex("other") + "  " + name + "-musl\n" +
 			sha256Hex(binary) + "  " + name + "\n" +
 			sha256Hex("install") + "  install.sh\n",
-		"v1.2.3/surf_unused_amd64": "unused",
+		tag + "/surf_unused_amd64": "unused",
 	}
 }
 
@@ -507,9 +512,32 @@ func TestHTTPClientStopsAfterMaxRedirects(t *testing.T) {
 	}
 }
 
+// An http URL is refused before any request: the server below would answer.
 func TestFetchURLRefusesHTTP(t *testing.T) {
-	if _, err := fetchURL("http://example.com/checksums.txt", maxChecksumsBytes); err == nil {
-		t.Error("expected fetchURL to refuse an http URL")
+	var mu sync.Mutex
+	var requests []string
+	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requests = append(requests, r.URL.Path)
+		mu.Unlock()
+		io.WriteString(w, sha256Hex("binary")+"  surf_linux_amd64\n")
+	}))
+	defer plain.Close()
+
+	if body, err := fetchURL(plain.URL+"/checksums.txt", maxChecksumsBytes); err == nil || !strings.Contains(err.Error(), "refusing non-https URL") {
+		t.Errorf("fetchURL(http) = %q, %v; want a non-https refusal", body, err)
+	}
+	dst := filepath.Join(t.TempDir(), "surf")
+	if err := downloadToFile(plain.URL+"/surf", dst, maxBinaryBytes); err == nil || !strings.Contains(err.Error(), "refusing non-https URL") {
+		t.Errorf("downloadToFile(http) error = %v, want a non-https refusal", err)
+	}
+	if _, err := os.Stat(dst); !os.IsNotExist(err) {
+		t.Errorf("downloadToFile(http) created %s", dst)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(requests) != 0 {
+		t.Errorf("made http requests %v, want none", requests)
 	}
 }
 
@@ -676,6 +704,103 @@ func TestSelfUpdateRejectsInvalidVersion(t *testing.T) {
 	}
 	if len(fake.requests) != 0 {
 		t.Errorf("made requests %v for invalid versions", fake.requests)
+	}
+}
+
+func TestBelowReleaseFloor(t *testing.T) {
+	tests := map[string]bool{
+		"v0.99.99":     true,
+		"v1.0.0":       true,
+		"v1.0.11":      true,
+		"v1.0.12-rc.1": true,
+		"v1.0.12":      false,
+		"v1.0.13-rc.1": false,
+		"v1.0.13":      false,
+		"v1.1.0":       false,
+		"v2.0.0":       false,
+		"dev":          true,
+	}
+	for tag, want := range tests {
+		if got := belowReleaseFloor(tag); got != want {
+			t.Errorf("belowReleaseFloor(%q) = %v, want %v", tag, got, want)
+		}
+	}
+}
+
+// A named release below v1.0.12 is refused before any request, although the
+// fake release has a correct binary and checksums.txt.
+func TestSelfUpdateRefusesNamedReleaseBelowFloor(t *testing.T) {
+	for _, tag := range []string{"v1.0.11", "v1.0.0", "v1.0.12-rc.1", "v0.99.99"} {
+		t.Run(tag, func(t *testing.T) {
+			fake := fakeReleases(t, "v1.2.3", releaseFilesAt(tag, "surf-binary-"+tag))
+			setVersion(t, "1.2.3")
+			t.Setenv("SHELL", "")
+			home := t.TempDir()
+
+			err := selfUpdate(home, []string{tag})
+			if err == nil || !strings.Contains(err.Error(), "refusing surf "+tag+": surf installs only v1.0.12 or newer") {
+				t.Fatalf("selfUpdate(%s) error = %v, want a refusal below v1.0.12", tag, err)
+			}
+			fake.mu.Lock()
+			defer fake.mu.Unlock()
+			if len(fake.requests) != 0 {
+				t.Errorf("made requests %v for a release below v1.0.12", fake.requests)
+			}
+			if _, err := os.Stat(filepath.Join(home, ".local")); !os.IsNotExist(err) {
+				t.Error("selfUpdate installed a release below v1.0.12")
+			}
+		})
+	}
+}
+
+// A latest release below v1.0.12 is refused before any download. The refusal
+// comes before the downgrade check, whose hint would name a version that is
+// refused anyway.
+func TestSelfUpdateRefusesLatestReleaseBelowFloor(t *testing.T) {
+	for _, running := range []string{"dev", "1.0.12"} {
+		t.Run(running, func(t *testing.T) {
+			fake := fakeReleases(t, "v1.0.11", releaseFilesAt("v1.0.11", "surf-binary-v1.0.11"))
+			setVersion(t, running)
+			t.Setenv("SHELL", "")
+			home := t.TempDir()
+
+			err := selfUpdate(home, nil)
+			if err == nil || !strings.Contains(err.Error(), "refusing the latest release v1.0.11: surf installs only v1.0.12 or newer") {
+				t.Fatalf("selfUpdate() error = %v, want a refusal below v1.0.12", err)
+			}
+			if d := fake.downloads(); len(d) != 0 {
+				t.Errorf("downloaded %v for a latest release below v1.0.12", d)
+			}
+			if _, err := os.Stat(filepath.Join(home, ".local")); !os.IsNotExist(err) {
+				t.Error("selfUpdate installed a release below v1.0.12")
+			}
+		})
+	}
+}
+
+// v1.0.12 itself installs, named or latest.
+func TestSelfUpdateInstallsReleaseAtFloor(t *testing.T) {
+	tests := map[string]struct {
+		latest string
+		args   []string
+	}{
+		"named":  {"v1.2.3", []string{"v1.0.12"}},
+		"latest": {"v1.0.12", nil},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			fakeReleases(t, tt.latest, releaseFilesAt("v1.0.12", "surf-binary-v1.0.12"))
+			setVersion(t, "dev")
+			t.Setenv("SHELL", "")
+			home := t.TempDir()
+
+			if err := selfUpdate(home, tt.args); err != nil {
+				t.Fatalf("selfUpdate(%v) error: %v", tt.args, err)
+			}
+			if got, _ := os.ReadFile(installedBinary(home, "1.0.12")); string(got) != "surf-binary-v1.0.12" {
+				t.Errorf("installed %q, want the v1.0.12 binary", got)
+			}
+		})
 	}
 }
 

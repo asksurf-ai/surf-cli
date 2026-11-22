@@ -43,6 +43,24 @@ const (
 // under ~/.local/share/surf/versions, so anything else is refused.
 var releaseTagPattern = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$`)
 
+// minReleaseTag is the oldest release surf installs: the first one published
+// to GitHub Releases with checksums.txt and build provenance attestations, and
+// the first immutable one. Earlier releases (v1.0.0 to v1.0.11) have no assets
+// and can still be changed, so anyone who can write to the repository could
+// attach files to one. install.sh has the same floor.
+const minReleaseTag = "v1.0.12"
+
+// releaseFloorReason says why a release below minReleaseTag is refused.
+const releaseFloorReason = "surf installs only " + minReleaseTag + " or newer, the releases published with checksums and build provenance attestations; earlier releases can still be changed"
+
+// belowReleaseFloor reports whether a release tag is older than minReleaseTag,
+// by semver precedence, so prereleases of v1.0.12 are below it too. A tag that
+// is not a version is below it.
+func belowReleaseFloor(tag string) bool {
+	c, ok := compareVersions(tag, minReleaseTag)
+	return !ok || c < 0
+}
+
 // sha256Pattern is a hex-encoded SHA-256 digest.
 var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
@@ -490,9 +508,10 @@ func downloadRelease(tag string) (string, error) {
 	return binaryPath, nil
 }
 
-// selfUpdate installs the named release, or the latest one. It refuses to
-// move to a release older than the running surf unless the user named that
-// version, and does nothing when the release is the running version.
+// selfUpdate installs the named release, or the latest one. It never installs
+// a release older than minReleaseTag. It refuses to move to a release older
+// than the running surf unless the user named that version, and does nothing
+// when the release is the running version.
 func selfUpdate(home string, args []string) error {
 	var tag string
 	if len(args) == 1 {
@@ -500,10 +519,16 @@ func selfUpdate(home string, args []string) error {
 		if !releaseTagPattern.MatchString(tag) {
 			return fmt.Errorf("invalid version %q (expected a tag like v1.2.3)", tag)
 		}
+		if belowReleaseFloor(tag) {
+			return fmt.Errorf("refusing surf %s: %s", tag, releaseFloorReason)
+		}
 	} else {
 		latest, err := latestReleaseTag()
 		if err != nil {
 			return fmt.Errorf("could not determine latest version: %w", err)
+		}
+		if belowReleaseFloor(latest) {
+			return fmt.Errorf("refusing the latest release %s: %s", latest, releaseFloorReason)
 		}
 		if c, ok := compareVersions(latest, version); ok && c < 0 {
 			return fmt.Errorf("the latest release %s is older than this surf (%s); to install it anyway, run: surf install %s", latest, displayVersion(version), latest)
@@ -591,7 +616,8 @@ func newInstallCmd() *cobra.Command {
 		Use:   "install [version]",
 		Short: "Install or update surf",
 		Long: "Downloads the latest surf release, or the named version (for example v1.2.3), and installs it to ~/.local/bin/surf. " +
-			"Without a version it refuses a release older than this surf. Use --local to install the current binary without downloading.",
+			"It installs only " + minReleaseTag + " or newer. Without a version it refuses a release older than this surf. " +
+			"Use --local to install the current binary without downloading.",
 		Args:   cobra.MaximumNArgs(1),
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
