@@ -1,13 +1,13 @@
 module github.com/asksurf-ai/surf-cli
 
-go 1.25.6
+go 1.26.11
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/alecthomas/chroma v0.10.0
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/amzn/ion-go v1.1.3
-	github.com/andybalholm/brotli v1.0.4
+	github.com/andybalholm/brotli v1.2.7
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
 	github.com/danielgtaylor/shorthand/v2 v2.1.1
@@ -23,7 +23,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pb33f/libopenapi v0.22.3
-	github.com/shamaton/msgpack/v2 v2.1.1
+	github.com/shamaton/msgpack/v2 v2.4.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -32,8 +32,8 @@ require (
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/image v0.45.0
-	golang.org/x/term v0.45.0
-	golang.org/x/text v0.41.0
+	golang.org/x/term v0.47.0
+	golang.org/x/text v0.43.0
 	gopkg.in/h2non/gock.v1 v1.1.2
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -81,7 +81,7 @@ require (
 	github.com/yuin/goldmark v1.5.3 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
