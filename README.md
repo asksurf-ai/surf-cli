@@ -7,15 +7,26 @@ Every API endpoint is available as a CLI command, dynamically generated from the
 ## Install
 
 ```sh
-curl -fsSL https://downloads.asksurf.ai/cli/releases/install.sh | sh
+curl -fsSL https://github.com/asksurf-ai/surf-cli/releases/latest/download/install.sh | sh
 ```
 
-Installs to `~/.local/bin`. No sudo required.
+Installs to `~/.local/bin`. No sudo required. Binaries come from
+[GitHub Releases](https://github.com/asksurf-ai/surf-cli/releases). The
+installer checks the download against the release's `checksums.txt`. If the
+[GitHub CLI](https://cli.github.com/) is installed and signed in, it also
+verifies the build provenance attestation.
 
 To install a specific version:
 
 ```sh
-curl -fsSL https://downloads.asksurf.ai/cli/releases/install.sh | sh -s v0.1.3
+curl -fsSL https://github.com/asksurf-ai/surf-cli/releases/latest/download/install.sh | sh -s v1.2.3
+```
+
+To verify a downloaded binary yourself:
+
+```sh
+gh attestation verify surf_darwin_arm64 --repo asksurf-ai/surf-cli \
+  --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml
 ```
 
 ### Build from source
@@ -149,27 +160,32 @@ Rebuild after changes — the symlink keeps pointing at `bin/surf`, so a fresh
 
 ### Staging testing
 
-To test against the staging CDN + API, install from the staging installer:
+Build the CLI from the `stg` branch (to test against another API, set
+`SURF_API_BASE_URL`, see [Environment Variables](#environment-variables)):
 
 ```sh
-curl -fsSL https://downloads-stg.asksurf.ai/cli/releases/install.sh | sh
+go install github.com/asksurf-ai/surf-cli/cmd/surf@stg
 ```
 
-> **Do not run `surf install` afterwards.** It pulls the production binary
-> from `downloads.asksurf.ai` and overwrites the staging one you just
-> installed. Use `surf sync` (spec refresh only) and direct API commands
-> for testing instead.
+> **Do not run `surf install` afterwards.** It downloads the latest
+> production release and overwrites the build you just installed.
 
-To go back to production, re-run the production installer from the
-[Install](#install) section.
+To go back to production, re-run the installer from the [Install](#install)
+section.
 
 ### Releasing
 
-Releases are built with [GoReleaser](https://goreleaser.com/) and published to S3/CloudFront.
+Releases are built with [GoReleaser](https://goreleaser.com/) by
+`.github/workflows/release.yml` and published only to GitHub Releases:
 
-```sh
-git tag v0.x.x
-goreleaser release --clean
-```
+1. Merge the changes to `main`.
+2. Optionally, write the release notes in a draft release titled with the new
+   tag (for example `v1.2.3`). Do not publish the draft by hand.
+3. Tag a `main` commit and push the tag: `git tag v1.2.3 <main-sha> && git push origin v1.2.3`.
 
-Builds binaries for Linux, macOS, and Windows (amd64/arm64) and uploads to the configured release bucket.
+The workflow refuses a tag that is not `v<semver>` on `main`, then:
+- runs the tests;
+- builds the binaries for Linux, macOS and Windows (amd64/arm64);
+- uploads them, `checksums.txt` and `install.sh` to a draft release;
+- attests every file in `checksums.txt`;
+- and only then publishes the release.

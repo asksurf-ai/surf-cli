@@ -1,47 +1,69 @@
 name: Release
 
+# Builds the surf binaries and publishes them, with checksums.txt and
+# install.sh, as a GitHub Release, plus a build provenance attestation for
+# every file in checksums.txt. No cloud credentials: GitHub Releases is the
+# only place release binaries go. Release by pushing a `v<semver>` tag on a
+# main commit.
+
 on:
   push:
     tags: ['v*']
 
-permissions:
-  contents: write
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
+    name: Build, attest and publish
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     environment: production
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      RELEASE_BUCKET: ${{ secrets.RELEASE_BUCKET }}
-      RELEASE_DIRECTORY: ${{ secrets.RELEASE_DIRECTORY }}
+    permissions:
+      contents: write # create the GitHub Release and upload its assets
+      id-token: write # sign the build provenance attestations
+      attestations: write # store the build provenance attestations
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+          persist-credentials: false
+
+      - name: Require a version tag on main
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Tag ${GITHUB_REF_NAME} is not v<semver>."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag ${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which is not on main. Tag a main commit."
+            exit 1
+          fi
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: stable
-          cache: true
-      - uses: aws-actions/configure-aws-credentials@v4
+          cache: false
+
+      - name: Test
+        run: go test ./...
+
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      - uses: goreleaser/goreleaser-action@v6
-        with:
+          version: v2.20.3
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload install.sh
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: dist/checksums.txt
+
+      - name: Publish the release
         env:
-          INSTALL_SH_URL: ${{ secrets.INSTALL_SH_URL }}
-        run: aws s3 cp install.sh "${INSTALL_SH_URL}" --content-type "text/plain"
-      - name: Update latest version pointer
-        env:
-          RELEASE_LATEST_URL: ${{ secrets.RELEASE_LATEST_URL }}
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-          CLOUDFRONT_LATEST_PATH: ${{ secrets.CLOUDFRONT_LATEST_PATH }}
-        run: |
-          echo -n "${{ github.ref_name }}" | aws s3 cp - "${RELEASE_LATEST_URL}" --content-type "text/plain" --cache-control "max-age=60"
-          aws cloudfront create-invalidation --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" --paths "${CLOUDFRONT_LATEST_PATH}"
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false

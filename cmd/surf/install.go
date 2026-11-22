@@ -9,13 +9,24 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-const cdnBase = "https://downloads.asksurf.ai/cli/releases"
+// releasesURL is the GitHub Releases page that carries the surf binaries,
+// checksums.txt and install.sh. A variable so tests can point it at a local
+// server.
+var releasesURL = "https://github.com/asksurf-ai/surf-cli/releases"
+
+// releaseTagPattern is the shape of a release tag. The tag names a directory
+// under ~/.local/share/surf/versions, so anything else is refused.
+var releaseTagPattern = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$`)
+
+// sha256Pattern is a hex-encoded SHA-256 digest.
+var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // minSkillVersion is the minimum surf skill version required by this CLI release.
 // Bump this when SKILL.md has breaking changes that require a skill update.
@@ -169,26 +180,72 @@ func sha256File(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// downloadLatestBinary downloads the latest surf binary from CDN to a temp file.
+// latestReleaseTag returns the tag of the latest GitHub release. GitHub
+// answers /releases/latest with a redirect to /releases/tag/<tag>; the
+// redirect is read, not followed.
+func latestReleaseTag() (string, error) {
+	client := &http.Client{
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Get(releasesURL + "/latest")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 300 || resp.StatusCode > 399 {
+		return "", fmt.Errorf("HTTP %d from %s/latest, expected a redirect to the latest release", resp.StatusCode, releasesURL)
+	}
+	location := resp.Header.Get("Location")
+	i := strings.LastIndex(location, "/releases/tag/")
+	if i < 0 {
+		return "", fmt.Errorf("no release found at %s/latest", releasesURL)
+	}
+	tag := location[i+len("/releases/tag/"):]
+	if !releaseTagPattern.MatchString(tag) {
+		return "", fmt.Errorf("latest release tag %q is not a version tag", tag)
+	}
+	return tag, nil
+}
+
+// releaseAssetName is the release asset name of the surf binary for a platform.
+func releaseAssetName(goos, goarch string) string {
+	name := fmt.Sprintf("surf_%s_%s", goos, goarch)
+	if goos == "windows" {
+		name += ".exe"
+	}
+	return name
+}
+
+// checksumFor returns the SHA-256 that a goreleaser checksums.txt lists for
+// exactly the named file.
+func checksumFor(checksums, filename string) (string, error) {
+	for _, line := range strings.Split(checksums, "\n") {
+		parts := strings.Fields(line)
+		if len(parts) == 2 && parts[1] == filename {
+			if !sha256Pattern.MatchString(parts[0]) {
+				return "", fmt.Errorf("malformed checksum for %s", filename)
+			}
+			return parts[0], nil
+		}
+	}
+	return "", fmt.Errorf("checksum not found for %s", filename)
+}
+
+// downloadLatestBinary downloads the latest surf binary from GitHub Releases
+// to a temp file and verifies it against the release's checksums.txt.
 // Returns the path to the downloaded binary and the version string.
 func downloadLatestBinary() (path string, ver string, err error) {
-	// Get latest version.
-	ver, err = fetchURL(cdnBase + "/latest")
+	ver, err = latestReleaseTag()
 	if err != nil {
 		return "", "", fmt.Errorf("could not determine latest version: %w", err)
 	}
-	ver = strings.TrimSpace(ver)
 
-	// Build platform filename.
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
-	if goarch == "amd64" {
-		goarch = "amd64"
-	}
-	filename := fmt.Sprintf("surf_%s_%s", goos, goarch)
-	if goos == "windows" {
-		filename += ".exe"
-	}
+	filename := releaseAssetName(goos, goarch)
+	base := releasesURL + "/download/" + ver
 
 	fmt.Printf("Downloading surf %s for %s/%s...\n", ver, goos, goarch)
 
@@ -199,31 +256,22 @@ func downloadLatestBinary() (path string, ver string, err error) {
 	}
 
 	binaryPath := filepath.Join(tmpDir, filename)
-	if err := downloadToFile(cdnBase+"/"+ver+"/"+filename, binaryPath); err != nil {
+	if err := downloadToFile(base+"/"+filename, binaryPath); err != nil {
 		os.RemoveAll(tmpDir)
 		return "", "", fmt.Errorf("download failed: %w", err)
 	}
 
 	// Download and verify checksum.
-	checksums, err := fetchURL(cdnBase + "/" + ver + "/checksums.txt")
+	checksums, err := fetchURL(base + "/checksums.txt")
 	if err != nil {
 		os.RemoveAll(tmpDir)
 		return "", "", fmt.Errorf("could not download checksums: %w", err)
 	}
 
-	var expected string
-	for _, line := range strings.Split(checksums, "\n") {
-		if strings.Contains(line, filename) {
-			parts := strings.Fields(line)
-			if len(parts) >= 1 {
-				expected = parts[0]
-			}
-			break
-		}
-	}
-	if expected == "" {
+	expected, err := checksumFor(checksums, filename)
+	if err != nil {
 		os.RemoveAll(tmpDir)
-		return "", "", fmt.Errorf("checksum not found for %s", filename)
+		return "", "", err
 	}
 
 	actual, err := sha256File(binaryPath)
@@ -331,7 +379,7 @@ func newInstallCmd() *cobra.Command {
 				return installBinary(home, exe, version)
 			}
 
-			// Self-update mode: download latest from CDN.
+			// Self-update mode: download the latest GitHub release.
 			binaryPath, ver, err := downloadLatestBinary()
 			if err != nil {
 				return err

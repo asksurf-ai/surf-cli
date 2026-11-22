@@ -17,6 +17,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    flags:
+      - -trimpath
     ldflags:
       - -s -w -X main.version={{.Version}}
 
@@ -27,6 +29,8 @@ archives:
 
 checksum:
   name_template: "checksums.txt"
+  extra_files:
+    - glob: ./install.sh
 
 changelog:
   sort: asc
@@ -37,11 +41,18 @@ changelog:
       - "^style:"
       - "^test:"
 
-blobs:
-  - provider: s3
-    bucket: "{{ .Env.RELEASE_BUCKET }}"
-    region: "{{ .Env.AWS_REGION }}"
-    directory: "{{ .Env.RELEASE_DIRECTORY }}/{{ .Tag }}"
-
+# GitHub Releases is the only place binaries are published. The release workflow
+# leaves the release a draft while it uploads, attests every file in
+# checksums.txt, and only then publishes it, so a published release always has
+# its attestations. A draft titled with the tag is reused, so release notes can
+# be written there before the tag is pushed.
 release:
-  disable: true
+  github:
+    owner: asksurf-ai
+    name: surf-cli
+  draft: true
+  use_existing_draft: true
+  prerelease: auto
+  mode: keep-existing
+  extra_files:
+    - glob: ./install.sh

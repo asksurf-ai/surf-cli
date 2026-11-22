@@ -1,6 +1,11 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -166,5 +171,131 @@ func TestAddToPathFish(t *testing.T) {
 	content, _ := os.ReadFile(rcFile)
 	if !strings.Contains(string(content), "set -gx PATH") {
 		t.Error("fish rc should contain 'set -gx PATH'")
+	}
+}
+
+// fakeReleases serves a GitHub-Releases-shaped tree: /releases/latest
+// redirects to /releases/tag/<latestTag>, and /releases/download/<tag>/<file>
+// serves files[tag+"/"+file].
+func fakeReleases(t *testing.T, latestTag string, files map[string]string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/releases/latest":
+			if latestTag == "" {
+				http.Redirect(w, r, "/releases", http.StatusFound)
+				return
+			}
+			http.Redirect(w, r, "/releases/tag/"+latestTag, http.StatusFound)
+		case strings.HasPrefix(r.URL.Path, "/releases/download/"):
+			body, ok := files[strings.TrimPrefix(r.URL.Path, "/releases/download/")]
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			io.WriteString(w, body)
+		default:
+			t.Errorf("unexpected request %s", r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	old := releasesURL
+	releasesURL = srv.URL + "/releases"
+	t.Cleanup(func() { releasesURL = old })
+}
+
+func sha256Hex(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
+}
+
+func TestDownloadLatestBinaryFromGitHubRelease(t *testing.T) {
+	name := releaseAssetName(runtime.GOOS, runtime.GOARCH)
+	binary := "surf-binary-v1.2.3"
+	checksums := sha256Hex("other") + "  " + name + "-musl\n" +
+		sha256Hex(binary) + "  " + name + "\n" +
+		sha256Hex("install") + "  install.sh\n"
+	fakeReleases(t, "v1.2.3", map[string]string{
+		"v1.2.3/" + name:           binary,
+		"v1.2.3/checksums.txt":     checksums,
+		"v1.2.2/" + name:           "old",
+		"v1.2.2/checksums.txt":     sha256Hex("old") + "  " + name + "\n",
+		"v1.2.3/surf_unused_amd64": "unused",
+	})
+
+	path, ver, err := downloadLatestBinary()
+	if err != nil {
+		t.Fatalf("downloadLatestBinary() error: %v", err)
+	}
+	defer os.RemoveAll(filepath.Dir(path))
+	if ver != "v1.2.3" {
+		t.Errorf("version = %q, want v1.2.3", ver)
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != binary {
+		t.Errorf("downloaded %q, want %q", got, binary)
+	}
+}
+
+func TestDownloadLatestBinaryRejectsChecksumMismatch(t *testing.T) {
+	name := releaseAssetName(runtime.GOOS, runtime.GOARCH)
+	fakeReleases(t, "v1.2.3", map[string]string{
+		"v1.2.3/" + name:       "tampered",
+		"v1.2.3/checksums.txt": sha256Hex("original") + "  " + name + "\n",
+	})
+
+	path, _, err := downloadLatestBinary()
+	if err == nil {
+		os.RemoveAll(filepath.Dir(path))
+		t.Fatal("expected a checksum mismatch error")
+	}
+	if !strings.Contains(err.Error(), "checksum mismatch") {
+		t.Errorf("error = %v, want checksum mismatch", err)
+	}
+}
+
+func TestLatestReleaseTagRejectsNonVersionTags(t *testing.T) {
+	for _, tag := range []string{"..", "v1.2.3%2F..%2F..", "latest", "1.2.3", "v1.2"} {
+		t.Run(tag, func(t *testing.T) {
+			fakeReleases(t, tag, nil)
+			if got, err := latestReleaseTag(); err == nil {
+				t.Errorf("latestReleaseTag() = %q, want an error", got)
+			}
+		})
+	}
+}
+
+func TestLatestReleaseTagWithoutRelease(t *testing.T) {
+	fakeReleases(t, "", nil)
+	if got, err := latestReleaseTag(); err == nil {
+		t.Errorf("latestReleaseTag() = %q, want an error", got)
+	}
+}
+
+func TestChecksumForMatchesExactName(t *testing.T) {
+	checksums := sha256Hex("a") + "  surf_linux_amd64-musl\n" +
+		sha256Hex("b") + "  surf_linux_amd64\n"
+	got, err := checksumFor(checksums, "surf_linux_amd64")
+	if err != nil {
+		t.Fatalf("checksumFor() error: %v", err)
+	}
+	if got != sha256Hex("b") {
+		t.Errorf("checksumFor() = %q, want the surf_linux_amd64 line", got)
+	}
+	if _, err := checksumFor(checksums, "surf_linux_arm64"); err == nil {
+		t.Error("expected an error for a missing file")
+	}
+	if _, err := checksumFor("nothex  surf_linux_amd64\n", "surf_linux_amd64"); err == nil {
+		t.Error("expected an error for a malformed checksum")
+	}
+}
+
+func TestReleaseAssetName(t *testing.T) {
+	if got := releaseAssetName("windows", "arm64"); got != "surf_windows_arm64.exe" {
+		t.Errorf("releaseAssetName(windows) = %q", got)
+	}
+	if got := releaseAssetName("darwin", "arm64"); got != "surf_darwin_arm64" {
+		t.Errorf("releaseAssetName(darwin) = %q", got)
 	}
 }
