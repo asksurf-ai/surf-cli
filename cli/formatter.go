@@ -1,10 +1,8 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
-	"image/color"
 	"net/http"
 	"reflect"
 	"sort"
@@ -21,8 +19,6 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/exp/maps"
 	"golang.org/x/term"
-
-	"github.com/eliukblau/pixterm/pkg/ansimage"
 )
 
 // DisplayRanges includes all viewable Unicode characters along with white
@@ -537,8 +533,7 @@ func (f *DefaultFormatter) formatAuto(format string, resp Response) ([]byte, err
 		encoded = []byte(text)
 	}
 
-	ct := resp.Headers["Content-Type"]
-	if resp.Body != nil && (ct == "image/png" || ct == "image/jpeg" || ct == "image/webp" || ct == "image/gif") {
+	if codec, ok := imageCodecs[resp.Headers["Content-Type"]]; ok && resp.Body != nil {
 		if b, ok := resp.Body.([]byte); ok {
 			// This is likely an image. Let's display it if we can! Get the window
 			// size, read and scale the image, and display it using unicode.
@@ -548,12 +543,11 @@ func (f *DefaultFormatter) formatAuto(format string, resp Response) ([]byte, err
 				w, h = 80, 24
 			}
 
-			image, err := ansimage.NewScaledFromReader(bytes.NewReader(b), h*2, w*1, color.Transparent, ansimage.ScaleModeFit, ansimage.NoDithering)
+			rendered, err := renderImage(codec, b, w, h*2)
 			if err == nil {
-				return append(encoded, f.nl([]byte(image.Render()))...), nil
-			} else {
-				LogWarning("Unable to display image: %v", err)
+				return append(encoded, f.nl([]byte(rendered))...), nil
 			}
+			LogWarning("Unable to display image: %v", err)
 		}
 	}
 

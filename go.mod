@@ -11,7 +11,6 @@ require (
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
 	github.com/danielgtaylor/shorthand/v2 v2.1.1
-	github.com/eliukblau/pixterm v1.3.1
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gbl08ma/httpcache v1.0.2
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -32,8 +31,9 @@ require (
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
-	golang.org/x/term v0.30.0
-	golang.org/x/text v0.35.0
+	golang.org/x/image v0.45.0
+	golang.org/x/term v0.45.0
+	golang.org/x/text v0.41.0
 	gopkg.in/h2non/gock.v1 v1.1.2
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -47,7 +47,6 @@ require (
 	github.com/danielgtaylor/mexpr v1.8.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
@@ -82,8 +81,7 @@ require (
 	github.com/yuin/goldmark v1.5.3 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/image v0.38.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

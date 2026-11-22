@@ -63,8 +63,13 @@ var formatterTests = []struct {
 		headers: map[string]string{
 			"Content-Type": "image/png",
 		},
-		body:   img,
-		result: []byte{0x20, 0x30, 0x20, 0xa, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x54, 0x79, 0x70, 0x65, 0x3a, 0x20, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x2f, 0x70, 0x6e, 0x67, 0xa, 0xa},
+		body: img,
+		// A 2x2 PNG of half-transparent yellow: one line of two cells, the
+		// color drawn over black.
+		result: " 0 \nContent-Type: image/png\n\n" +
+			"\x1b[48;2;127;127;0m\x1b[38;2;127;127;0m▄" +
+			"\x1b[48;2;127;127;0m\x1b[38;2;127;127;0m▄" +
+			"\x1b[0m\n",
 	},
 	{
 		name: "image-empty",
