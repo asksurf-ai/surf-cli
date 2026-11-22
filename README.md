@@ -72,12 +72,16 @@ a version it installs the latest release, and refuses one older than the surf
 already in `~/.local/bin`. It reads that version from the directory
 `~/.local/bin/surf` links to and never runs the installed binary.
 
+Both the script and `surf install` install only v1.0.12 or newer, named or
+latest. Earlier releases have no checksums or attestations and can still be
+changed, so they are refused.
+
 ### Updating
 
 `surf install` updates to the latest release and never to an older one;
-`surf install v1.2.3` installs exactly that version. It checks the download
-against `checksums.txt` and, when `gh` is signed in to github.com, its build
-provenance attestation.
+`surf install v1.2.3` installs exactly that version (v1.0.12 or newer). It
+checks the download against `checksums.txt` and, when `gh` is signed in to
+github.com, its build provenance attestation.
 
 To check an installed binary yourself:
 

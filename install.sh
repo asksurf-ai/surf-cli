@@ -14,11 +14,13 @@
 #     sh install.sh "$VERSION" )
 #   rm -rf "$DIR"
 #
-# Without a version it installs the latest release, and refuses one older than
-# the surf already installed in ~/.local/bin. The binary is always checked
-# against the release's checksums.txt. When the GitHub CLI (gh) is installed
-# and signed in to github.com, its build provenance attestation is checked
-# too, and any failure of that check aborts the install.
+# It installs only v1.0.12 or newer: earlier releases have no checksums or
+# attestations and can still be changed. Without a version it installs the
+# latest release, and refuses one older than the surf already installed in
+# ~/.local/bin. The binary is always checked against the release's
+# checksums.txt. When the GitHub CLI (gh) is installed and signed in to
+# github.com, its build provenance attestation is checked too, and any
+# failure of that check aborts the install.
 set -e
 LC_ALL=C
 export LC_ALL
@@ -27,6 +29,10 @@ REPO="asksurf-ai/surf-cli"
 RELEASES_URL="https://github.com/${REPO}/releases"
 SIGNER_WORKFLOW="${REPO}/.github/workflows/release.yml"
 MAX_REDIRECTS=5
+# The oldest release this script installs: the first one published with
+# checksums.txt and build provenance attestations, and the first immutable one.
+# cmd/surf/install.go has the same floor.
+MIN_VERSION="v1.0.12"
 
 WORKDIR=$(mktemp -d)
 cleanup() { rm -rf "$WORKDIR"; }
@@ -136,6 +142,38 @@ if ! printf '%s\n' "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-
   exit 1
 fi
 
+# version_cmp A B prints 1, 0 or -1 when version A is higher than, the same as
+# or lower than version B: by major.minor.patch, then a stable release above a
+# prerelease of the same version (two prereleases of one version are the
+# same). A and B must already be checked to be versions.
+version_cmp() {
+  awk -v a="$1" -v b="$2" 'BEGIN {
+      sub(/^v/, "", a); sub(/^v/, "", b)
+      pa = index(a, "-"); pb = index(b, "-")
+      sub(/-.*/, "", a); sub(/-.*/, "", b)
+      split(a, x, "."); split(b, y, ".")
+      for (i = 1; i <= 3; i++)
+        if (x[i] + 0 != y[i] + 0) { r = (x[i] + 0 > y[i] + 0) ? 1 : -1; print r; exit }
+      r = 0
+      if (!pa && pb) r = 1
+      if (pa && !pb) r = -1
+      print r
+    }'
+}
+
+# Never install a release older than MIN_VERSION, named or latest. Those
+# releases predate immutable releases and have no checksums or attestations,
+# so anyone who can write to the repository could attach files to one. A
+# prerelease of MIN_VERSION is older too. Anything but "same" or "higher",
+# a failed comparison included, is refused.
+CMP=$(version_cmp "$VERSION" "$MIN_VERSION") || CMP=""
+if [ "$CMP" != 0 ] && [ "$CMP" != 1 ]; then
+  WHAT="surf ${VERSION}"
+  [ -n "$NAMED_VERSION" ] || WHAT="the latest release ${VERSION}"
+  echo "Error: refusing ${WHAT}: this script installs only ${MIN_VERSION} or newer, the releases published with checksums and build provenance attestations; earlier releases can still be changed." >&2
+  exit 1
+fi
+
 # Build filename (bare binary, no archive).
 FILENAME="surf_${OS}_${ARCH}"
 EXE=""
@@ -146,7 +184,7 @@ fi
 INSTALLED_SURF="${HOME}/.local/bin/surf${EXE}"
 
 # Latest only moves forward: refuse a latest release older than the installed
-# surf. A named version is always installed. The installed version is read from
+# surf. A named version skips this check. The installed version is read from
 # the directory ~/.local/bin/surf links to (~/.local/share/surf/versions/<v>/surf,
 # where surf install puts it), never by running that binary: it may have come
 # from the retired download host.
@@ -162,18 +200,11 @@ if [ -z "$NAMED_VERSION" ] && { [ -e "$INSTALLED_SURF" ] || [ -L "$INSTALLED_SUR
         ;;
     esac
   fi
-  if printf '%s\n' "$INSTALLED" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
-    # Exit 0 when the installed version is higher: a higher major.minor.patch,
-    # or the same one where the installed version is stable and latest is a
-    # prerelease.
-    if awk -v a="$INSTALLED" -v b="$VERSION" 'BEGIN {
-        sub(/^v/, "", a); sub(/^v/, "", b)
-        pa = index(a, "-"); pb = index(b, "-")
-        sub(/-.*/, "", a); sub(/-.*/, "", b)
-        split(a, x, "."); split(b, y, ".")
-        for (i = 1; i <= 3; i++) if (x[i] + 0 != y[i] + 0) exit !(x[i] + 0 > y[i] + 0)
-        exit !(!pa && pb)
-      }'; then
+  # The whole string must be a version. (awk matches ^ and $ at the ends of
+  # the string, where grep would match each line of a target with a newline;
+  # ENVIRON, unlike awk -v, takes the value as it is.)
+  if V="$INSTALLED" awk 'BEGIN { exit !(ENVIRON["V"] ~ /^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/) }'; then
+    if [ "$(version_cmp "$INSTALLED" "$VERSION")" = 1 ]; then
       echo "Error: the latest release ${VERSION} is older than the installed surf ${INSTALLED}." >&2
       echo "To install ${VERSION} anyway, name it: sh install.sh ${VERSION}" >&2
       exit 1
