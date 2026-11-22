@@ -4,18 +4,87 @@ CLI for the Surf data platform — crypto market data, on-chain analytics, and m
 
 Every API endpoint is available as a CLI command, dynamically generated from the Surf OpenAPI spec.
 
+## Existing users: do not run `surf install` on v1.0.11 or older
+
+surf v1.0.11 and older download updates from a host that is no longer
+trusted. If you installed surf before v1.0.12, or are not sure, do not run
+`surf install` or the old `surf` binary to find out. Reinstall with the
+verified steps below; they replace `~/.local/bin/surf`. Releases from v1.0.12
+on update from GitHub Releases and check what they download.
+
 ## Install
 
+Binaries come from [GitHub Releases](https://github.com/asksurf-ai/surf-cli/releases).
+surf installs to `~/.local/bin`; no sudo required.
+
+> The commands below work once v1.0.12, the first release published this way,
+> is out. Until then the release pages do not have these files.
+
+### Verified install (recommended)
+
+With the [GitHub CLI](https://cli.github.com/) (`gh`) signed in, download a
+named release, check its checksum and build provenance attestation, then let
+the binary install itself. Pick the release from the
+[Releases page](https://github.com/asksurf-ai/surf-cli/releases) and the asset
+for your platform, `surf_<linux|darwin|windows>_<amd64|arm64>[.exe]`. The
+steps run in a new temporary directory and are joined with `&&`, so the binary
+runs only if the download, the checksum and the attestation all pass; the
+directory is removed either way:
+
 ```sh
-curl -fsSL https://downloads.asksurf.ai/cli/releases/install.sh | sh
+VERSION=v1.0.12
+ASSET=surf_darwin_arm64
+DIR=$(mktemp -d)
+( cd "$DIR" &&
+  gh release download "$VERSION" -R asksurf-ai/surf-cli -p "$ASSET" -p checksums.txt &&
+  awk -v f="$ASSET" '$2 == f' checksums.txt | shasum -a 256 -c - &&
+  gh attestation verify "$ASSET" --repo asksurf-ai/surf-cli \
+    --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
+    --source-ref "refs/tags/$VERSION" --deny-self-hosted-runners &&
+  chmod +x "$ASSET" && ./"$ASSET" install --local )
+rm -rf "$DIR"
 ```
 
-Installs to `~/.local/bin`. No sudo required.
+On Linux without `shasum`, use `sha256sum -c -` instead.
 
-To install a specific version:
+### Install script
+
+`install.sh` does the same for your platform. Download it from a named
+release, check it, then run it (do not pipe it into `sh`). As above, the
+script runs only if the download and the attestation pass:
 
 ```sh
-curl -fsSL https://downloads.asksurf.ai/cli/releases/install.sh | sh -s v0.1.3
+VERSION=v1.0.12
+DIR=$(mktemp -d)
+( cd "$DIR" &&
+  curl -fsSLO "https://github.com/asksurf-ai/surf-cli/releases/download/$VERSION/install.sh" &&
+  gh attestation verify install.sh --repo asksurf-ai/surf-cli \
+    --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
+    --source-ref "refs/tags/$VERSION" --deny-self-hosted-runners &&
+  sh install.sh "$VERSION" )
+rm -rf "$DIR"
+```
+
+The script checks the binary against the release's `checksums.txt`. If `gh`
+is installed and signed in to github.com, it also checks the binary's build
+provenance attestation and stops if that check fails for any reason. Without
+a version it installs the latest release, and refuses one older than the surf
+already in `~/.local/bin`. It reads that version from the directory
+`~/.local/bin/surf` links to and never runs the installed binary.
+
+### Updating
+
+`surf install` updates to the latest release and never to an older one;
+`surf install v1.2.3` installs exactly that version. It checks the download
+against `checksums.txt` and, when `gh` is signed in to github.com, its build
+provenance attestation.
+
+To check an installed binary yourself:
+
+```sh
+gh attestation verify ~/.local/bin/surf --repo asksurf-ai/surf-cli \
+  --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
+  --source-ref refs/tags/v1.0.12 --deny-self-hosted-runners
 ```
 
 ### Build from source
@@ -149,27 +218,40 @@ Rebuild after changes — the symlink keeps pointing at `bin/surf`, so a fresh
 
 ### Staging testing
 
-To test against the staging CDN + API, install from the staging installer:
+Build the CLI from the `stg` branch (to test against another API, set
+`SURF_API_BASE_URL`, see [Environment Variables](#environment-variables)):
 
 ```sh
-curl -fsSL https://downloads-stg.asksurf.ai/cli/releases/install.sh | sh
+go install github.com/asksurf-ai/surf-cli/cmd/surf@stg
 ```
 
-> **Do not run `surf install` afterwards.** It pulls the production binary
-> from `downloads.asksurf.ai` and overwrites the staging one you just
-> installed. Use `surf sync` (spec refresh only) and direct API commands
-> for testing instead.
+> **Do not run `surf install` afterwards.** It downloads the latest
+> production release and overwrites the build you just installed. Until `stg`
+> contains the GitHub Releases change, a build from `stg` still has the old
+> updater, which downloads from the retired host.
 
-To go back to production, re-run the production installer from the
-[Install](#install) section.
+To go back to production, re-run the installer from the [Install](#install)
+section.
 
 ### Releasing
 
-Releases are built with [GoReleaser](https://goreleaser.com/) and published to S3/CloudFront.
+Releases are built with [GoReleaser](https://goreleaser.com/) by
+`.github/workflows/release.yml` and published only to GitHub Releases. Releases
+are immutable: once published, nothing can change their files.
 
-```sh
-git tag v0.x.x
-goreleaser release --clean
-```
+1. Merge the changes to `main`.
+2. Tag a `main` commit and push the tag: `git tag v1.2.3 <main-sha> && git push origin v1.2.3`.
+3. Another maintainer approves the `production` environment deployment.
 
-Builds binaries for Linux, macOS, and Windows (amd64/arm64) and uploads to the configured release bucket.
+The workflow refuses a tag that is not `v<semver>` on `main`, then:
+- runs the tests in a read-only job;
+- refuses the tag if a release or draft for it already exists;
+- builds the binaries for Linux, macOS and Windows (amd64/arm64) and uploads
+  them, `checksums.txt` and `install.sh` to a new draft release;
+- attests every file in `checksums.txt`;
+- checks that the draft holds exactly those files;
+- and only then publishes the release. It marks it latest only when it is the
+  highest stable version, so a backport release does not move "latest" back.
+
+If a run fails after it created the draft, delete that draft release, then
+re-run the workflow.

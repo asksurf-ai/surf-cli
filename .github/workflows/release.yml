@@ -1,47 +1,154 @@
 name: Release
 
+# Builds the surf binaries and publishes them, with checksums.txt and
+# install.sh, as a GitHub Release, plus a build provenance attestation for
+# every file in checksums.txt. No cloud credentials: GitHub Releases is the
+# only place release binaries go. Release by pushing a `v<semver>` tag on a
+# main commit.
+
 on:
   push:
     tags: ['v*']
 
-permissions:
-  contents: write
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  # Use exactly the Go version go.mod declares; never download another toolchain.
+  GOTOOLCHAIN: local
 
 jobs:
-  release:
+  test:
+    name: Check the tag and test
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
-    environment: production
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      RELEASE_BUCKET: ${{ secrets.RELEASE_BUCKET }}
-      RELEASE_DIRECTORY: ${{ secrets.RELEASE_DIRECTORY }}
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+          persist-credentials: false
+
+      - name: Require a version tag on main
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Tag ${GITHUB_REF_NAME} is not v<semver>."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag ${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which is not on main. Tag a main commit."
+            exit 1
+          fi
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
-          go-version: stable
-          cache: true
-      - uses: aws-actions/configure-aws-credentials@v4
+          go-version-file: go.mod
+          cache: false
+
+      - name: Verify modules
+        run: go mod verify
+
+      - name: Test
+        run: go test ./...
+
+      - name: Require go.mod and go.sum unchanged
+        run: git diff --exit-code -- go.mod go.sum
+
+  # Builds and publishes only. The `production` environment requires a
+  # reviewer and allows only `v*` tags.
+  release:
+    name: Build, attest and publish
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write # create the GitHub Release and upload its assets
+      id-token: write # sign the build provenance attestations
+      attestations: write # store the build provenance attestations
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      - uses: goreleaser/goreleaser-action@v6
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
+          go-version-file: go.mod
+          cache: false
+
+      # goreleaser adds to a release that already exists for the tag, and any
+      # workflow with contents: write can create a draft for a tag that does
+      # not exist yet. Start from no release at all. After a failed run, delete
+      # its draft release before re-running.
+      - name: Refuse a tag that already has a release or draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          EXISTING="$(gh api --paginate "repos/${GH_REPO}/releases?per_page=100" --jq '.[] | select(.tag_name == env.GITHUB_REF_NAME) | .id')"
+          if [ -n "$EXISTING" ]; then
+            echo "::error::A release or draft for ${GITHUB_REF_NAME} already exists (id ${EXISTING//$'\n'/, }). Delete it if it is a draft from a failed run, then re-run."
+            exit 1
+          fi
+
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: v2.20.3
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload install.sh
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Require go.mod and go.sum unchanged
+        run: git diff --exit-code -- go.mod go.sum
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: dist/checksums.txt
+
+      # Publishing makes the release immutable. First check that the tag has
+      # exactly one release, a draft whose assets are exactly the files in
+      # checksums.txt (same names and SHA-256) plus checksums.txt itself. Mark
+      # it latest only when it is the highest stable version, so a backport
+      # release never moves /releases/latest backward.
+      - name: Check the draft and publish it
         env:
-          INSTALL_SH_URL: ${{ secrets.INSTALL_SH_URL }}
-        run: aws s3 cp install.sh "${INSTALL_SH_URL}" --content-type "text/plain"
-      - name: Update latest version pointer
-        env:
-          RELEASE_LATEST_URL: ${{ secrets.RELEASE_LATEST_URL }}
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-          CLOUDFRONT_LATEST_PATH: ${{ secrets.CLOUDFRONT_LATEST_PATH }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          echo -n "${{ github.ref_name }}" | aws s3 cp - "${RELEASE_LATEST_URL}" --content-type "text/plain" --cache-control "max-age=60"
-          aws cloudfront create-invalidation --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" --paths "${CLOUDFRONT_LATEST_PATH}"
+          set -euo pipefail
+          mapfile -t IDS < <(gh api --paginate "repos/${GH_REPO}/releases?per_page=100" --jq '.[] | select(.tag_name == env.GITHUB_REF_NAME) | .id')
+          if [ "${#IDS[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one release for ${GITHUB_REF_NAME}, found ${#IDS[@]}."
+            exit 1
+          fi
+          ID="${IDS[0]}"
+          gh api "repos/${GH_REPO}/releases/${ID}" > "${RUNNER_TEMP}/release.json"
+          if ! jq -e '.draft == true' "${RUNNER_TEMP}/release.json" > /dev/null; then
+            echo "::error::Release ${ID} for ${GITHUB_REF_NAME} is not a draft."
+            exit 1
+          fi
+          {
+            awk 'NF { print $2 " sha256:" $1 }' dist/checksums.txt
+            echo "checksums.txt sha256:$(sha256sum dist/checksums.txt | cut -d ' ' -f 1)"
+          } | sort > "${RUNNER_TEMP}/expected-assets"
+          jq -r '.assets[] | "\(.name) \(.digest)"' "${RUNNER_TEMP}/release.json" | sort > "${RUNNER_TEMP}/draft-assets"
+          if ! diff -u "${RUNNER_TEMP}/expected-assets" "${RUNNER_TEMP}/draft-assets"; then
+            echo "::error::The draft's assets differ from the files that were built and attested."
+            exit 1
+          fi
+
+          LATEST=false
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            HIGHEST="$(gh api --paginate "repos/${GH_REPO}/releases?per_page=100" \
+              --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' \
+              | { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sort -V | tail -n 1)"
+            if [ -z "$HIGHEST" ] || [ "$(printf '%s\n%s\n' "$HIGHEST" "$GITHUB_REF_NAME" | sort -V | tail -n 1)" = "$GITHUB_REF_NAME" ]; then
+              LATEST=true
+            fi
+          fi
+          echo "Publishing ${GITHUB_REF_NAME} (release ${ID}), latest: ${LATEST}"
+          gh api -X PATCH "repos/${GH_REPO}/releases/${ID}" -F draft=false -f make_latest="$LATEST" --jq '.html_url'

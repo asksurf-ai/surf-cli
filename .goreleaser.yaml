@@ -3,7 +3,8 @@ version: 2
 
 before:
   hooks:
-    - go mod tidy
+    # Release builds use go.mod and go.sum exactly as tagged: verify, never tidy.
+    - go mod verify
 
 builds:
   - main: ./cmd/surf
@@ -17,6 +18,9 @@ builds:
     goarch:
       - amd64
       - arm64
+    flags:
+      - -trimpath
+      - -mod=readonly
     ldflags:
       - -s -w -X main.version={{.Version}}
 
@@ -27,6 +31,8 @@ archives:
 
 checksum:
   name_template: "checksums.txt"
+  extra_files:
+    - glob: ./install.sh
 
 changelog:
   sort: asc
@@ -37,11 +43,35 @@ changelog:
       - "^style:"
       - "^test:"
 
-blobs:
-  - provider: s3
-    bucket: "{{ .Env.RELEASE_BUCKET }}"
-    region: "{{ .Env.AWS_REGION }}"
-    directory: "{{ .Env.RELEASE_DIRECTORY }}/{{ .Tag }}"
-
+# GitHub Releases is the only place binaries are published. goreleaser creates
+# a new draft release for the tag and uploads every file to it. The release
+# workflow refuses a tag that already has a release or draft, attests every file
+# in checksums.txt, checks the draft's assets, and only then publishes it, so a
+# published (immutable) release always has all its files and attestations.
 release:
-  disable: true
+  github:
+    owner: asksurf-ai
+    name: surf-cli
+  draft: true
+  prerelease: auto
+  extra_files:
+    - glob: ./install.sh
+  header: |
+    ## Upgrading from surf v1.0.11 or older
+
+    **Do not run `surf install` on v1.0.11 or older.** Those versions download updates from a host that is no longer trusted. If you installed surf before v1.0.12, or are not sure, reinstall from this release, and do not run the old binary to find out. Pick the asset for your platform, `surf_<linux|darwin|windows>_<amd64|arm64>[.exe]`. The binary runs only if the download, the checksum and the attestation all pass:
+
+    ```sh
+    ASSET=surf_darwin_arm64
+    DIR=$(mktemp -d)
+    ( cd "$DIR" &&
+      gh release download {{ .Tag }} -R asksurf-ai/surf-cli -p "$ASSET" -p checksums.txt &&
+      awk -v f="$ASSET" '$2 == f' checksums.txt | shasum -a 256 -c - &&
+      gh attestation verify "$ASSET" --repo asksurf-ai/surf-cli \
+        --signer-workflow asksurf-ai/surf-cli/.github/workflows/release.yml \
+        --source-ref refs/tags/{{ .Tag }} --deny-self-hosted-runners &&
+      chmod +x "$ASSET" && ./"$ASSET" install --local )
+    rm -rf "$DIR"
+    ```
+
+    Releases from v1.0.12 on update from GitHub Releases, check `checksums.txt`, and check the attestation when `gh` is signed in.
