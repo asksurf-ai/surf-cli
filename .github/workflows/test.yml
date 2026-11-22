@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Test with exactly the Go version go.mod declares, as releases build with.
+  GOTOOLCHAIN: local
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -26,7 +30,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
-          go-version: stable
+          go-version-file: go.mod
           cache: true
       - name: Run tests
         run: go test -race ./...
