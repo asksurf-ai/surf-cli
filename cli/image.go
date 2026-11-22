@@ -14,10 +14,16 @@ import (
 	"golang.org/x/image/webp"
 )
 
-// maxImagePixels caps the size of an image the formatter decodes, read from
-// the image header before decoding, so a small response cannot make the CLI
-// allocate gigabytes. 2^25 is a little more than 8K UHD (7680x4320).
-const maxImagePixels = 1 << 25
+// maxImagePixels and maxImageDim cap the size of an image the formatter
+// decodes, read from the image header before decoding, so a small response
+// cannot make the CLI allocate gigabytes. 2^25 pixels is a little more than 8K
+// UHD (7680x4320). The scaler also allocates for every source row and column,
+// so a long thin image within the pixel limit (1 x 2^25 takes about 3 GiB)
+// needs the per-side limit too.
+const (
+	maxImagePixels = 1 << 25
+	maxImageDim    = 16384
+)
 
 type imageCodec struct {
 	decode       func(io.Reader) (image.Image, error)
@@ -44,8 +50,10 @@ func renderImage(c imageCodec, b []byte, maxW, maxH int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > maxImagePixels/cfg.Height {
-		return "", fmt.Errorf("image is %dx%d; the limit is %d pixels", cfg.Width, cfg.Height, maxImagePixels)
+	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > maxImageDim || cfg.Height > maxImageDim ||
+		cfg.Width > maxImagePixels/cfg.Height {
+		return "", fmt.Errorf("image is %dx%d; the limit is %d pixels, at most %d on a side",
+			cfg.Width, cfg.Height, maxImagePixels, maxImageDim)
 	}
 
 	src, err := c.decode(bytes.NewReader(b))
@@ -53,7 +61,11 @@ func renderImage(c imageCodec, b []byte, maxW, maxH int) (string, error) {
 		return "", err
 	}
 
+	// A GIF's first frame may be empty within a nonempty logical screen.
 	sb := src.Bounds()
+	if sb.Empty() {
+		return "", fmt.Errorf("image is %dx%d; nothing to draw", sb.Dx(), sb.Dy())
+	}
 	w, h := fitWithin(sb.Dx(), sb.Dy(), maxW, maxH)
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
 	if w == sb.Dx() && h == sb.Dy() {

@@ -202,7 +202,7 @@ Configuration is stored in `~/.surf/`.
 
 ## Development
 
-**Prerequisites:** Go 1.25+
+**Prerequisites:** Go 1.26.11 or newer (the version in `go.mod`)
 
 ### Local development
 
