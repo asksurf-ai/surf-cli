@@ -753,12 +753,9 @@ func Run() (returnErr error) {
 
 	// Because we may be doing HTTP calls before cobra has parsed the flags
 	// we parse the GlobalFlags here and already set some config values
-	// to ensure they are available
-	if err := GlobalFlags.Parse(os.Args[1:]); err != nil {
-		if err != pflag.ErrHelp {
-			panic(err)
-		}
-	}
+	// to ensure they are available. Errors are ignored on purpose: cobra
+	// parses the same flags again below and reports bad values with usage.
+	_ = GlobalFlags.Parse(EagerArgs(os.Args[1:]))
 	if noCache, _ := GlobalFlags.GetBool("rsh-no-cache"); noCache {
 		viper.Set("rsh-no-cache", true)
 	}
