@@ -267,8 +267,39 @@ func newCatalogShowCmd() *cobra.Command {
 	return cmd
 }
 
+type catalogMatch struct {
+	table  catalogTable
+	score  int
+	reason string
+}
+
+// searchCatalog scores every table against the query terms and returns the
+// best matches first, plus the total number of matches before the limit is
+// applied. Ties keep catalog order, so the same query always returns the same
+// tables and --limit cuts at the same place. A limit of 0 returns every match.
+func searchCatalog(tables []catalogTable, terms []string, limit int) ([]catalogMatch, int) {
+	var matches []catalogMatch
+	for _, t := range tables {
+		score, reason := scoreMatch(t, terms)
+		if score > 0 {
+			matches = append(matches, catalogMatch{t, score, reason})
+		}
+	}
+
+	sort.SliceStable(matches, func(i, j int) bool {
+		return matches[i].score > matches[j].score
+	})
+
+	total := len(matches)
+	if limit > 0 && limit < total {
+		matches = matches[:limit]
+	}
+	return matches, total
+}
+
 func newCatalogSearchCmd() *cobra.Command {
 	var jsonOut bool
+	var limit int
 
 	cmd := &cobra.Command{
 		Use:   "search <query>",
@@ -276,9 +307,14 @@ func newCatalogSearchCmd() *cobra.Command {
 		Long:  "Search table names, descriptions, categories, and column names for matching terms.",
 		Example: `  surf catalog search "polymarket volume"
   surf catalog search bridge
-  surf catalog search tvl --json`,
+  surf catalog search tvl --json
+  surf catalog search "dex revenue" --limit 5`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if limit < 0 {
+				return fmt.Errorf("--limit must be 0 (no limit) or a positive number, got %d", limit)
+			}
+
 			cat, err := fetchCatalog()
 			if err != nil {
 				return err
@@ -287,23 +323,7 @@ func newCatalogSearchCmd() *cobra.Command {
 			query := strings.ToLower(args[0])
 			terms := strings.Fields(query)
 
-			type match struct {
-				table  catalogTable
-				score  int
-				reason string
-			}
-
-			var matches []match
-			for _, t := range cat.Tables {
-				score, reason := scoreMatch(t, terms)
-				if score > 0 {
-					matches = append(matches, match{t, score, reason})
-				}
-			}
-
-			sort.Slice(matches, func(i, j int) bool {
-				return matches[i].score > matches[j].score
-			})
+			matches, total := searchCatalog(cat.Tables, terms, limit)
 
 			if len(matches) == 0 {
 				fmt.Fprintf(os.Stderr, "No tables matching %q\n", args[0])
@@ -326,7 +346,11 @@ func newCatalogSearchCmd() *cobra.Command {
 				return enc.Encode(results)
 			}
 
-			fmt.Fprintf(os.Stdout, "%d tables matching %q\n\n", len(matches), args[0])
+			if len(matches) < total {
+				fmt.Fprintf(os.Stdout, "%d of %d tables matching %q\n\n", len(matches), total, args[0])
+			} else {
+				fmt.Fprintf(os.Stdout, "%d tables matching %q\n\n", total, args[0])
+			}
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 			fmt.Fprintf(w, "TABLE\tCATEGORY\tMATCH\n")
 			for _, m := range matches {
@@ -337,6 +361,7 @@ func newCatalogSearchCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output as JSON")
+	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum number of tables to return (0 = all matches)")
 	return cmd
 }
 
